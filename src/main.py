@@ -1,4 +1,5 @@
-import panda as pd
+import pandas as pd
+import preprocessing
 
 file = "https://raw.githubusercontent.com/several27/FakeNewsCorpus/master/news_sample.csv"
 
@@ -6,7 +7,8 @@ file = "https://raw.githubusercontent.com/several27/FakeNewsCorpus/master/news_s
 def main():
     df = pd.read_csv(file, usecols=['content'])
     pd.set_option('display.max_colwidth', None)
-    print(df.loc[0])
+    df = preprocessing.clean_text(df)
+    print(df.loc[1])
 
 
 if __name__ == '__main__':
