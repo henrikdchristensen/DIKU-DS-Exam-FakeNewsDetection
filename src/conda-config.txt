@@ -1,0 +1,1 @@
+conda create -n fakenews python=3.11
