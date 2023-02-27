@@ -1,7 +1,12 @@
 import pandas as pd
 import preprocessing
+import os
 
-file = "https://raw.githubusercontent.com/several27/FakeNewsCorpus/master/news_sample.csv"
+#file = "https://raw.githubusercontent.com/several27/FakeNewsCorpus/master/news_sample.csv"
+file = "datasets/news_sample.csv"
+
+# Set current directory one level up:
+os.chdir("..")
 
 
 def main():
