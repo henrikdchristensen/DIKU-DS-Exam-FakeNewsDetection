@@ -26,7 +26,7 @@ def clean_text(df: pd.DataFrame):
     # Lowercase all characters
     df = df.applymap(lambda x: str(x).lower())
 
-    # Loop through each pattern and apply the pattern to each column and do replacement if needed
+    # Loop through each pattern and apply the pattern to each row and do replacement if needed
     for pattern, replacement in patterns.items():
         df = df.applymap(lambda x: re.sub(pattern, replacement, str(x)))
 
@@ -36,15 +36,22 @@ def clean_text(df: pd.DataFrame):
 def tokenize_text(df: pd.DataFrame):
     return df.applymap(lambda x: x.split())
 
+def remove_stopwords(words):
+    # Remove stopwords
+    stop_words = stopwords.words("english")
+
+    # Loop through all elements and remove stopwords
+    return [word for word in words if word not in stop_words]  # Remove stopwords from the list
+
 
 def stem(words: list[str]):
     ps = PorterStemmer()
+    stemmed_words = []
     for w in words:
-        # print(w, " : ", ps.stem(w))
-        ps.stem(w)
-    return words
+        stemmed_words.append(ps.stem(w))
+    return stemmed_words
 
- # compute the size of the vocabulary.
+
 
 
 # def vocabulary_size(words: list[str]):
