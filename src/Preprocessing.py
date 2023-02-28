@@ -102,47 +102,101 @@ def plot_word_frequency(sorted_frequency):
 """
 
 
+class Exploration:
 
-
-
-
-class Preprocessing:
-
-    def countURLs(df: pd.DataFrame):
+    def countItems(df: pd.DataFrame):
         # make list of tuples with the count of each
-        return df.applymap(lambda x: x.count('<URL>'))
+        # map =  df.applymap(lambda x: x.count('<URL>'))
+        # return map.sum(axis=1)
+        urls= 0
+        dates = 0
+        numbers = 0
 
-    def countDates(df: pd.DataFrame):
-        return df.applymap(lambda x: x.count('<DATE>'))
+        for text in df['content']:
+            urls += text.count("<URL>")
+            dates += text.count("<DATE>")
+            numbers += text.count("<NUM>")
 
-    def countNumbers(df: pd.DataFrame):
-        return df.applymap(lambda x: x.count('<NUM>'))
+        return {
+            "Urls": urls, 
+            "Dates": dates, 
+            "Numbers": numbers 
+        }
+
+    """ 
+    Distribution of sources: 
+    A bar chart showing the frequency of fake and real 
+    news articles from different sources can be used to 
+    visualize the distribution of sources. A box plot can also be used to show the spread of the sources' reputability scores.
+    """
+
+
+
+    def sourceDistribution(df: pd.DataFrame):
+
+        keys = df['type'].unique()
+        print(keys)
+        # return 
+
+        # print(keys)
+
+        
+        # make dict of sources and fake label count
+        sourceDict = {}
+        typeDict =  {k: 0 for k in keys}
+        
+        for index, row in df.iterrows():
+            print(row['domain'])
+            # print(row['unreliable'])
+
+            typeDict[row['type']] = 0
+
+            
+
+            if row['domain'] in sourceDict:
+                # src = sourceDict[row['domain']]
+                sourceDict[row['domain']][row['type']] += 1
+
+
+                # sourceDict[row['domain']] += row['unreliable']
+            else:
+                # make dict from keys and count
+                sourceDict[row['domain']] = {k: 0 for k in keys}
+        return sourceDict
 
     def get_words(content):
         """This regex command should select all words"""
-        return re.findall("(?:\w+[’'.-]?)+", content)
+        words = re.findall("(?:\w+[’'.-]?)+", content)
+        return words
 
-    def get_word_count(self, df: pd.DataFrame):
+    def get_word_info(df: pd.DataFrame):
+        """Returns dict witht the etries:  word:(count, frequency)"""
         total_word_count = {}
         for index, row in df.iterrows():
-            word_count = Counter(self.get_words(row['content']))
+            word_count = Counter(row['content'])
             for word, count in word_count.items():
                 if word in total_word_count:
                     total_word_count[word] += count
                 else:
                     total_word_count[word] = count
-                    
-        return {k: v for k, v in sorted(total_word_count.items(), key=lambda x: x[1], reverse=True)}
+        
+        total_words = sum(total_word_count.values())
+        return {w: (count, count / total_words) for w, count in sorted(total_word_count.items(), key=lambda x: x[1], reverse=True)}
 
-    def get_word_freq(self, df: pd.DataFrame):
-        word_count = self.get_word_count(df)
-        total_words = sum(word_count.values())
-        return ({k: (v / total_words) for k, v in word_count.items()})
+    def plot_word_freq(df: pd.DataFrame, num_words = 10000):
+        word_info = Exploration.get_word_info(df)
+        frequencies = [info[1] for _, info in word_info.items()]
+        plt.plot(frequencies)
+        plt.xlim([0, len(word_info)])
 
-    def plot_word_freq(self, df: pd.DataFrame, num_words = 10000):
-        frequencies = self.get_word_freq(df)
-        plt.plot(frequencies.values())
-        plt.xlim([0, num_words])
+    def get_stopwords(df: pd.DataFrame, freq_low, freq_high, print_stopwords_info = False):
+        stopwords = []
+        for k, v in Exploration.get_word_info(df).items():
+            if v[1] < freq_low or v[1] > freq_high:
+                if print_stopwords_info:
+                    print(f"{k}: {v[0]}, {v[1]}")
+                stopwords.append(k)
+        return stopwords
 
 
 """ 
@@ -164,4 +218,3 @@ def splitDataSet(pd: pd.DataFrame ):
     train, val = train_test_split(train_val, test_size=0.5, random_state=42)
 
     return train, val, test
-

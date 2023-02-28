@@ -10,6 +10,14 @@ file = "datasets/news_sample.csv"
 os.chdir("..")
 
 def main():
+
+    pd.set_option('display.max_colwidth', None)
+    df = pd.read_csv(file)
+    # df = ps.clean_text(df)
+    # df = ps.tokenize_text(df)
+    # print(ps.Exploration.get_stopwords(df, freq_low = 5e-5, freq_high = 1e-3, print_stopwords_info = True))
+
+
     pipeline = pd.read_csv(file, usecols=['id'])
     content = pd.read_csv(file, usecols=['content'])
     pd.set_option('display.max_colwidth', None)
@@ -36,6 +44,20 @@ def main():
     print("red. rate stopwords: " + reduction_rate_stopwords)
     print("red. rate stemming: " +reduction_rate_stemming)
 
+
+    url_count = ps.Exploration.countItems(df)
+    source_dist = ps.Exploration.sourceDistribution(df)
+
+    print(source_dist)
+    # date_count = ps.Exploration.countDates(df)
+    # number_count = ps.Exploration.countNumbers(df)
+
+    # print("URLs: ", url_count, "Dates: ", date_count, "Numbers: ", number_count)
+
+    print("URLs: ", url_count)
+
+
+# def exploreData() 
 
 
 if __name__ == '__main__':
