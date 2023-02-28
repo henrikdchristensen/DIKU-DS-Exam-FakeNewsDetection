@@ -1,6 +1,6 @@
 from multiprocessing import reduction
 import pandas as pd
-import preprocessing
+import Preprocessing as ps
 import os
 
 #file = "https://raw.githubusercontent.com/several27/FakeNewsCorpus/master/news_sample.csv"
@@ -35,6 +35,8 @@ def main():
     reduction_rate_stemming = 1 - word_count_after_stemming/word_count_without_stopwords
     print("red. rate stopwords: " + reduction_rate_stopwords)
     print("red. rate stemming: " +reduction_rate_stemming)
+
+
 
 if __name__ == '__main__':
     main()
