@@ -1,5 +1,5 @@
 import pandas as pd
-import preprocessing
+import Preprocessing as ps
 import os
 
 #file = "https://raw.githubusercontent.com/several27/FakeNewsCorpus/master/news_sample.csv"
@@ -12,9 +12,11 @@ os.chdir("..")
 def main():
     df = pd.read_csv(file, usecols=['content'])
     pd.set_option('display.max_colwidth', None)
-    df = preprocessing.clean_text(df)
-    df = preprocessing.tokenize_text(df)
+    df = ps.clean_text(df)
+    df = ps.tokenize_text(df)
     print(df.loc[1])
+
+
 
 
 if __name__ == '__main__':
