@@ -34,16 +34,16 @@ def num_rows_and_cols_csv(csv_file: str):
     return rows, cols
 
 
-def csv_to_hdf(csv_filename: str, hdf_filename: str, cols_sizes):
+def csv_to_hdf(csv_filename: str, hdf_filename: str, cols_sizes, chunk_size=500):
     # Remove exiting hdf file:
     if os.path.exists(hdf_filename):
         os.remove(hdf_filename)
     # Read csv as chunks and append to hdf file:
     with pd.HDFStore(hdf_filename, complib='blosc', complevel=9) as store:
-        for chunk in tqdm(pd.read_csv(csv_filename, chunksize=500,
+        for chunk in tqdm(pd.read_csv(csv_filename, chunksize=chunk_size,
                                       names=['x', 'id', 'domain', 'type', 'url', 'content', 'scraped_at', 'inserted_at', 'updated_at', 'title',
-                                             'authors', 'keywords', 'meta_keywords', 'meta_description', 'tags', 'summary', 'source']), total=ROWS/500):
-            chunk = chunk.astype(str)
+                                             'authors', 'keywords', 'meta_keywords', 'meta_description', 'tags', 'summary', 'source']), total=ROWS/chunk_size):
+            chunk = chunk.astype(str)  # TODO: Not sure if it's needed...
             store.append(key='data', value=chunk,
                          index=False, min_itemsize=cols_sizes)
 
@@ -65,8 +65,8 @@ def create_train_vali_and_test_sets(split, data_filename: str, train_filename: s
     if os.path.exists(test_filename):
         os.remove(test_filename)
     with pd.HDFStore(train_filename, complib='blosc', complevel=9) as train, pd.HDFStore(vali_filename, complib='blosc', complevel=9) as vali, pd.HDFStore(test_filename, complib='blosc', complevel=9) as test:
-        for i in tqdm(range(0, len(split)), total=len(split)):
-            for j, chunk in pd.read_hdf(data_filename, key='data', start=i, chunksize=1):
+        for i in tqdm(range(0, len(split), 500), total=len(split)):
+            for j, chunk in pd.read_hdf(data_filename, key='data', start=i, chunksize=500):
                 match split[i]:
                     case 0: train.append(key='train', value=chunk,
                                          index=False, min_itemsize=cols_sizes)
@@ -94,8 +94,8 @@ def create_randomly_split_array(size: int):
     return arr
 
 
-colssizes = {'x': 300, 'id': 150, 'domain': 40, 'type': 5, 'url': 700, 'content': 110000, 'scraped_at': 5, 'inserted_at': 5, 'updated_at': 5,
-             'title': 400, 'authors': 800, 'keywords': 5, 'meta_keywords': 40000, 'meta_description': 5000, 'tags': 30000, 'summary': 5, 'source': 5}
+colssizes = {'x': 300, 'id': 150, 'domain': 40, 'type': 5, 'url': 700, 'content': 200000, 'scraped_at': 5, 'inserted_at': 5, 'updated_at': 5,
+             'title': 400, 'authors': 800, 'keywords': 5, 'meta_keywords': 40000, 'meta_description': 15000, 'tags': 30000, 'summary': 5, 'source': 5}
 #['', 'id', 'domain', 'type', 'url', 'content', 'scraped_at', 'inserted_at', 'updated_at', 'title', 'authors', 'keywords', 'meta_keywords', 'meta_description', 'tags', 'summary', 'source']
 #rows, cols = num_rows_and_cols_csv(csv_file)
 
