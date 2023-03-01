@@ -40,17 +40,16 @@ def csv_to_hdf(csv_filename: str, hdf_filename: str, cols_sizes, chunk_size=500)
         os.remove(hdf_filename)
     # Read csv as chunks and append to hdf file:
     with pd.HDFStore(hdf_filename, complib='blosc', complevel=9) as store:
-        for chunk in tqdm(pd.read_csv(csv_filename, chunksize=chunk_size,
+        for chunk in tqdm(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=chunk_size,
                                       names=['x', 'id', 'domain', 'type', 'url', 'content', 'scraped_at', 'inserted_at', 'updated_at', 'title',
                                              'authors', 'keywords', 'meta_keywords', 'meta_description', 'tags', 'summary', 'source']), total=ROWS/chunk_size):
-            chunk = chunk.astype(str)  # TODO: Not sure if it's needed...
             store.append(key='data', value=chunk,
                          index=False, min_itemsize=cols_sizes)
 
 
 def get_csv_header(csv_file: str):
-    with open(csv_file, mode='r', encoding="utf-8") as f:
-        return next(csv.reader(f))
+    df = pd.read_csv(csv_file, nrows=0)
+    return df.columns.tolist()
 
 
 def read_hdf(filename: str, startIdx=0, stopIdx=0, columns_to_return=None):
@@ -94,11 +93,12 @@ def create_randomly_split_array(size: int):
     return arr
 
 
-colssizes = {'x': 300, 'id': 150, 'domain': 40, 'type': 5, 'url': 700, 'content': 200000, 'scraped_at': 5, 'inserted_at': 5, 'updated_at': 5,
+colssizes = {'x': 300, 'id': 150, 'domain': 40, 'type': 40, 'url': 700, 'content': 200000, 'scraped_at': 5, 'inserted_at': 5, 'updated_at': 5,
              'title': 400, 'authors': 800, 'keywords': 5, 'meta_keywords': 40000, 'meta_description': 15000, 'tags': 30000, 'summary': 5, 'source': 5}
 #['', 'id', 'domain', 'type', 'url', 'content', 'scraped_at', 'inserted_at', 'updated_at', 'title', 'authors', 'keywords', 'meta_keywords', 'meta_description', 'tags', 'summary', 'source']
 #rows, cols = num_rows_and_cols_csv(csv_file)
 
+# print(get_csv_header(csv_file))
 split = create_randomly_split_array(ROWS)
 csv_to_hdf(csv_file, hdf_file, colssizes)
 create_train_vali_and_test_sets(split, data_filename=hdf_file, train_filename='train.h5',
@@ -106,5 +106,3 @@ create_train_vali_and_test_sets(split, data_filename=hdf_file, train_filename='t
 #df = read_hdf(hdf_file)
 #value = df.iloc[1, 'domain']
 # print(value)
-
-# print(get_csv_header(csv_file))
