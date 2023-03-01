@@ -10,6 +10,8 @@ from tqdm import tqdm
 csv_file = "datasets/news_cleaned_2018_02_13.csv"
 hdf_file = 'data.h5'
 
+ROWS = 216212648
+
 # Set the current directory one level up:
 os.chdir("..")
 
@@ -37,10 +39,10 @@ def csv_to_hdf(csv_filename: str, hdf_filename: str, cols_sizes):
     if os.path.exists(hdf_filename):
         os.remove(hdf_filename)
     # Read csv as chunks and append to hdf file:
-    with pd.HDFStore(hdf_filename) as store:
-        for chunk in pd.read_csv(csv_filename, chunksize=500,
-                                 names=['x', 'id', 'domain', 'type', 'url', 'content', 'scraped_at', 'inserted_at', 'updated_at', 'title',
-                                        'authors', 'keywords', 'meta_keywords', 'meta_description', 'tags', 'summary', 'source']):
+    with pd.HDFStore(hdf_filename, complib='blosc', complevel=9) as store:
+        for chunk in tqdm(pd.read_csv(csv_filename, chunksize=500,
+                                      names=['x', 'id', 'domain', 'type', 'url', 'content', 'scraped_at', 'inserted_at', 'updated_at', 'title',
+                                             'authors', 'keywords', 'meta_keywords', 'meta_description', 'tags', 'summary', 'source']), total=ROWS/500):
             chunk = chunk.astype(str)
             store.append(key='data', value=chunk,
                          index=False, min_itemsize=cols_sizes)
@@ -62,21 +64,16 @@ def create_train_vali_and_test_sets(split, data_filename: str, train_filename: s
         os.remove(vali_filename)
     if os.path.exists(test_filename):
         os.remove(test_filename)
-    with pd.HDFStore(train_filename) as train, \
-            pd.HDFStore(vali_filename) as vali, \
-            pd.HDFStore(test_filename) as test:
+    with pd.HDFStore(train_filename, complib='blosc', complevel=9) as train, pd.HDFStore(vali_filename, complib='blosc', complevel=9) as vali, pd.HDFStore(test_filename, complib='blosc', complevel=9) as test:
         for i in tqdm(range(0, len(split)), total=len(split)):
-            for i, chunk in pd.read_hdf(data_filename, key='data', start=i, chunksize=1):
+            for j, chunk in pd.read_hdf(data_filename, key='data', start=i, chunksize=1):
                 match split[i]:
-                    case 0:
-                        train.append(key='train', value=chunk,
-                                     index=False, min_itemsize=cols_sizes)
-                    case 1:
-                        vali.append(key='vali', value=chunk,
-                                    index=False, min_itemsize=cols_sizes)
-                    case 2:
-                        test.append(key='test', value=chunk,
-                                    index=False, min_itemsize=cols_sizes)
+                    case 0: train.append(key='train', value=chunk,
+                                         index=False, min_itemsize=cols_sizes)
+                    case 1: vali.append(key='vali', value=chunk,
+                                        index=False, min_itemsize=cols_sizes)
+                    case 2: test.append(key='test', value=chunk,
+                                        index=False, min_itemsize=cols_sizes)
 
 
 def create_randomly_split_array(size: int):
@@ -97,11 +94,12 @@ def create_randomly_split_array(size: int):
     return arr
 
 
-colssizes = {'x': 254, 'id': 103, 'domain': 32, 'type': 5, 'url': 548, 'content': 104002, 'scraped_at': 5, 'inserted_at': 5, 'updated_at': 5,
-             'title': 348, 'authors': 689, 'keywords': 5, 'meta_keywords': 29929, 'meta_description': 4481, 'tags': 8142, 'summary': 5, 'source': 5}
+colssizes = {'x': 300, 'id': 150, 'domain': 40, 'type': 5, 'url': 700, 'content': 110000, 'scraped_at': 5, 'inserted_at': 5, 'updated_at': 5,
+             'title': 400, 'authors': 800, 'keywords': 5, 'meta_keywords': 40000, 'meta_description': 5000, 'tags': 30000, 'summary': 5, 'source': 5}
 #['', 'id', 'domain', 'type', 'url', 'content', 'scraped_at', 'inserted_at', 'updated_at', 'title', 'authors', 'keywords', 'meta_keywords', 'meta_description', 'tags', 'summary', 'source']
-rows, cols = num_rows_and_cols_csv(csv_file)
-split = create_randomly_split_array(rows)
+#rows, cols = num_rows_and_cols_csv(csv_file)
+
+split = create_randomly_split_array(ROWS)
 csv_to_hdf(csv_file, hdf_file, colssizes)
 create_train_vali_and_test_sets(split, data_filename=hdf_file, train_filename='train.h5',
                                 vali_filename='vali.h5', test_filename='test.h5', cols_sizes=colssizes)
