@@ -12,10 +12,13 @@ hdf_file = 'data.h5'
 train_file = 'train.h5'
 vali_file = 'vali.h5'
 test_file = 'test.h5'
+CHUNK_SIZE = 500
+COL_NAMES = ['x', 'id', 'domain', 'type', 'url', 'content', 'scraped_at', 'inserted_at', 'updated_at', 'title',
+                                             'authors', 'keywords', 'meta_keywords', 'meta_description', 'tags', 'summary', 'source']
 
 ROWS = 216212648
 
-colssizes = {'x': 300, 'id': 150, 'domain': 50, 'type': 50, 'url': 700, 'content': 200000, 'scraped_at': 100, 'inserted_at': 100, 'updated_at': 100,
+colssizes = {'x': 300, 'id': 150, 'domain': 50, 'type': 50, 'url': 2000, 'content': 200000, 'scraped_at': 100, 'inserted_at': 100, 'updated_at': 100,
              'title': 400, 'authors': 800, 'keywords': 5, 'meta_keywords': 40000, 'meta_description': 15000, 'tags': 30000, 'summary': 5, 'source': 5}
 
 # Set the current directory one level up:
@@ -39,15 +42,13 @@ def num_rows_and_cols_csv(csv_file: str):
     return rows, cols
 
 
-def csv_to_hdf(csv_filename: str, hdf_filename: str, cols_sizes, chunk_size=500):
+def csv_to_hdf(csv_filename: str, hdf_filename: str, cols_sizes, chunk_size=CHUNK_SIZE, col_names=COL_NAMES):
     # Remove exiting hdf file:
     if os.path.exists(hdf_filename):
         os.remove(hdf_filename)
     # Read csv as chunks and append to hdf file:
     with pd.HDFStore(hdf_filename, complib='blosc', complevel=9) as store:
-        for chunk in tqdm(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=chunk_size,
-                                      names=['x', 'id', 'domain', 'type', 'url', 'content', 'scraped_at', 'inserted_at', 'updated_at', 'title',
-                                             'authors', 'keywords', 'meta_keywords', 'meta_description', 'tags', 'summary', 'source']),
+        for chunk in tqdm(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=chunk_size, names=col_names),
                           desc='csv to hdf format', total=ROWS/chunk_size):
             store.append(key='data', value=chunk,
                          index=False, min_itemsize=cols_sizes)
@@ -72,9 +73,9 @@ def create_train_vali_and_test_sets(split, data_filename: str, train_filename: s
     with pd.HDFStore(train_filename, complib='blosc', complevel=9) as train,\
             pd.HDFStore(vali_filename, complib='blosc', complevel=9) as vali,\
             pd.HDFStore(test_filename, complib='blosc', complevel=9) as test:
-        for i in tqdm(range(0, len(split), 500),
+        for i in tqdm(range(0, len(split), CHUNK_SIZE),
                       desc='create train-, vali- and test sets', total=len(split)):
-            for chunk in pd.read_hdf(data_filename, key='data', start=i, chunksize=min(500, len(split)-i)):
+            for chunk in pd.read_hdf(data_filename, key='data', start=i, chunksize=min(CHUNK_SIZE, len(split)-i)):
                 match split[i]:
                     case 0: train.append(key='train', value=chunk,
                                          index=False, min_itemsize=cols_sizes)
