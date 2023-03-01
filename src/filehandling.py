@@ -14,12 +14,11 @@ vali_file = 'vali.h5'
 test_file = 'test.h5'
 CHUNK_SIZE = 500
 COL_NAMES = ['x', 'id', 'domain', 'type', 'url', 'content', 'scraped_at', 'inserted_at', 'updated_at', 'title',
-                                             'authors', 'keywords', 'meta_keywords', 'meta_description', 'tags', 'summary', 'source']
-
+             'authors', 'keywords', 'meta_keywords', 'meta_description', 'tags', 'summary', 'source']
+COL_SIZES = {'x': 300, 'id': 150, 'domain': 50, 'type': 50, 'url': 2000, 'content': 200000, 'scraped_at': 100, 'inserted_at': 100, 'updated_at': 100,
+             'title': 400, 'authors': 800, 'keywords': 5, 'meta_keywords': 40000, 'meta_description': 15000, 'tags': 30000, 'summary': 5, 'source': 5}
 ROWS = 216212648
 
-colssizes = {'x': 300, 'id': 150, 'domain': 50, 'type': 50, 'url': 2000, 'content': 200000, 'scraped_at': 100, 'inserted_at': 100, 'updated_at': 100,
-             'title': 400, 'authors': 800, 'keywords': 5, 'meta_keywords': 40000, 'meta_description': 15000, 'tags': 30000, 'summary': 5, 'source': 5}
 
 # Set the current directory one level up:
 os.chdir("..")
@@ -42,7 +41,7 @@ def num_rows_and_cols_csv(csv_file: str):
     return rows, cols
 
 
-def csv_to_hdf(csv_filename: str, hdf_filename: str, cols_sizes, chunk_size=CHUNK_SIZE, col_names=COL_NAMES):
+def csv_to_hdf(csv_filename: str, hdf_filename: str, cols_sizes=COL_SIZES, chunk_size=CHUNK_SIZE, col_names=COL_NAMES):
     # Remove exiting hdf file:
     if os.path.exists(hdf_filename):
         os.remove(hdf_filename)
@@ -60,10 +59,10 @@ def get_csv_header(csv_file: str):
 
 
 def read_hdf(filename: str, startIdx=0, stopIdx=0, columns_to_return=None):
-    return pd.read_hdf(filename, mode='r', start=startIdx, stop=stopIdx, columns=columns_to_return, iterator=False, chunksize=1000)
+    return pd.read_hdf(filename, mode='r', start=startIdx, stop=stopIdx, columns=columns_to_return, iterator=False, chunksize=CHUNK_SIZE)
 
 
-def create_train_vali_and_test_sets(split, data_filename: str, train_filename: str, vali_filename: str, test_filename: str, cols_sizes):
+def create_train_vali_and_test_sets(split, data_filename: str, train_filename: str, vali_filename: str, test_filename: str, cols_sizes=COL_SIZES):
     if os.path.exists(train_filename):
         os.remove(train_filename)
     if os.path.exists(vali_filename):
@@ -111,7 +110,7 @@ split = create_randomly_split_array(ROWS)
 csv_to_hdf(csv_file, hdf_file, colssizes)
 
 create_train_vali_and_test_sets(split, data_filename=hdf_file, train_filename=train_file,
-                                vali_filename=vali_file, test_filename=test_file, cols_sizes=colssizes)
+                                vali_filename=vali_file, test_filename=test_file)
 #df = read_hdf(hdf_file)
 #value = df.iloc[1, 'domain']
 # print(value)
