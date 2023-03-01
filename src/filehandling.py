@@ -42,7 +42,8 @@ def csv_to_hdf(csv_filename: str, hdf_filename: str, cols_sizes, chunk_size=500)
     with pd.HDFStore(hdf_filename, complib='blosc', complevel=9) as store:
         for chunk in tqdm(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=chunk_size,
                                       names=['x', 'id', 'domain', 'type', 'url', 'content', 'scraped_at', 'inserted_at', 'updated_at', 'title',
-                                             'authors', 'keywords', 'meta_keywords', 'meta_description', 'tags', 'summary', 'source']), total=ROWS/chunk_size):
+                                             'authors', 'keywords', 'meta_keywords', 'meta_description', 'tags', 'summary', 'source']),
+                          desc='csv to hdf format', total=ROWS/chunk_size):
             store.append(key='data', value=chunk,
                          index=False, min_itemsize=cols_sizes)
 
@@ -64,7 +65,8 @@ def create_train_vali_and_test_sets(split, data_filename: str, train_filename: s
     if os.path.exists(test_filename):
         os.remove(test_filename)
     with pd.HDFStore(train_filename, complib='blosc', complevel=9) as train, pd.HDFStore(vali_filename, complib='blosc', complevel=9) as vali, pd.HDFStore(test_filename, complib='blosc', complevel=9) as test:
-        for i in tqdm(range(0, len(split), 500), total=len(split)):
+        for i in tqdm(range(0, len(split), 500),
+                      desc='create train-, vali- and test sets', total=len(split)):
             for chunk in pd.read_hdf(data_filename, key='data', start=i, chunksize=min(500, len(split)-i)):
                 match split[i]:
                     case 0: train.append(key='train', value=chunk,
@@ -93,7 +95,7 @@ def create_randomly_split_array(size: int):
     return arr
 
 
-colssizes = {'x': 300, 'id': 150, 'domain': 40, 'type': 40, 'url': 700, 'content': 200000, 'scraped_at': 5, 'inserted_at': 5, 'updated_at': 5,
+colssizes = {'x': 300, 'id': 150, 'domain': 50, 'type': 50, 'url': 700, 'content': 200000, 'scraped_at': 100, 'inserted_at': 100, 'updated_at': 100,
              'title': 400, 'authors': 800, 'keywords': 5, 'meta_keywords': 40000, 'meta_description': 15000, 'tags': 30000, 'summary': 5, 'source': 5}
 #['', 'id', 'domain', 'type', 'url', 'content', 'scraped_at', 'inserted_at', 'updated_at', 'title', 'authors', 'keywords', 'meta_keywords', 'meta_description', 'tags', 'summary', 'source']
 #rows, cols = num_rows_and_cols_csv(csv_file)
