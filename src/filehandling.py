@@ -15,9 +15,9 @@ CHUNK_SIZE = 300
 COL_NAMES = ['x', 'id', 'domain', 'type', 'url', 'content', 'scraped_at', 'inserted_at', 'updated_at', 'title',
              'authors', 'keywords', 'meta_keywords', 'meta_description', 'tags', 'summary', 'source']
 COL_SIZES = {'x': 300, 'id': 150, 'domain': 50, 'type': 50, 'url': 2000, 'content': 200000, 'scraped_at': 100, 'inserted_at': 100, 'updated_at': 100,
-             'title': 400, 'authors': 800, 'keywords': 5, 'meta_keywords': 40000, 'meta_description': 15000, 'tags': 30000, 'summary': 5, 'source': 5}
+             'title': 400, 'authors': 1000, 'keywords': 5, 'meta_keywords': 40000, 'meta_description': 15000, 'tags': 30000, 'summary': 5, 'source': 5}
 ROWS = 216212648
-#TODO: 
+# TODO:
 
 # Set the current directory one level up:
 os.chdir("..")
