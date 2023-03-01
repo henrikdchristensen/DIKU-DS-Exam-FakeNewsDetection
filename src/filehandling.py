@@ -66,7 +66,7 @@ def create_train_vali_and_test_sets(split, data_filename: str, train_filename: s
         os.remove(test_filename)
     with pd.HDFStore(train_filename, complib='blosc', complevel=9) as train, pd.HDFStore(vali_filename, complib='blosc', complevel=9) as vali, pd.HDFStore(test_filename, complib='blosc', complevel=9) as test:
         for i in tqdm(range(0, len(split), 500), total=len(split)):
-            for j, chunk in pd.read_hdf(data_filename, key='data', start=i, chunksize=500):
+            for chunk in pd.read_hdf(data_filename, key='data', start=i, chunksize=min(500, len(split)-i)):
                 match split[i]:
                     case 0: train.append(key='train', value=chunk,
                                          index=False, min_itemsize=cols_sizes)
