@@ -1,3 +1,5 @@
+import subprocess
+from time import time
 import h5py
 import tables as tb
 from concurrent.futures import ThreadPoolExecutor
@@ -6,64 +8,61 @@ import csv
 import os
 import pandas as pd
 from tqdm import tqdm
+import re
 
-# csv_file = "datasets/news_sample.csv"
+csv_file = "datasets/news_sample.csv"
 # https://raw.githubusercontent.com/several27/FakeNewsCorpus/master/news_sample.csv
-csv_file = "datasets/news_cleaned_2018_02_13.csv"
+#csv_file = "datasets/news_cleaned_2018_02_13.csv"
+# ROWS = 8528956
+# COLS = 17
+ROWS = 250
+COLS = 16
 hdf_file = 'data.h5'
 train_file = 'train.h5'
 vali_file = 'vali.h5'
 test_file = 'test.h5'
-CHUNK_SIZE = 300
-COL_NAMES = ['x', 'id', 'domain', 'type', 'url', 'content', 'scraped_at', 'inserted_at', 'updated_at', 'title',
-             'authors', 'keywords', 'meta_keywords', 'meta_description', 'tags', 'summary', 'source']
+CHUNK_SIZE = 100
+COL_NAMES = ['', 'id', 'domain', 'type', 'url', 'content', 'scraped_at', 'inserted_at', 'updated_at', 'title',
+             'authors', 'keywords', 'meta_keywords', 'meta_description', 'tags', 'summary']  # , 'source']
 COL_SIZES = {'x': 300, 'id': 150, 'domain': 50, 'type': 50, 'url': 2000, 'content': 200000, 'scraped_at': 100, 'inserted_at': 100, 'updated_at': 100,
              'title': 400, 'authors': 1500, 'keywords': 5, 'meta_keywords': 40000, 'meta_description': 20000, 'tags': 30000, 'summary': 5, 'source': 5}
-ROWS = 216212648
-COLS = 17
+
 # TODO:
 
 # Set the current directory one level up:
 os.chdir("..")
 
 
-def blocks(files, size=65536):
-    # https://stackoverflow.com/questions/9629179/python-counting-lines-in-a-huge-10gb-file-as-fast-as-possible
-    while True:
-        b = files.read(size)
-        if not b:
-            break
-        yield b
+def num_rows_and_cols_csv(_csv_file: str):
+    cmd = 'Import-Csv ".\\' + _csv_file + '" | Measure-Object'
+    result = subprocess.run(
+        ['powershell', '-Command', cmd], capture_output=True, text=True)
+    if result.returncode == 0:
+        return result.stdout.strip()
+    else:
+        return result.stderr
 
 
-def num_rows_and_cols_csv(csv_file: str):
-    with open(csv_file, mode="rb") as f:
-        rows = sum(block.count(b"\n") for block in blocks(f))
-    with open(csv_file, mode="r", encoding='utf8') as f:
-        cols = len(next(csv.reader(f)))
-    return rows, cols
+# TODO: , lineterminator='\n')),
 
 
-def csv_to_hdf(csv_filename: str, hdf_filename: str, cols_sizes=COL_SIZES, chunk_size=CHUNK_SIZE, col_names=COL_NAMES):
+def csv_to_hdf(csv_filename: str, hdf_filename: str, chunk_size=CHUNK_SIZE, col_names=COL_NAMES):
     # Remove exiting hdf file:
     if os.path.exists(hdf_filename):
         os.remove(hdf_filename)
-
-    # Read csv as chunks so we don't run out of memory and append to hdf file:
     # Read csv as chunks so we don't run out of memory and append to hdf file:
     with h5py.File(hdf_filename, 'w') as store:
-        COL_NAMES = ['', 'id', 'domain', 'type', 'url', 'content', 'scraped_at', 'inserted_at', 'updated_at', 'title',
-                     'authors', 'keywords', 'meta_keywords', 'meta_description', 'tags', 'summary', 'source']
-        arr = np.zeros((1, len(COL_NAMES)), dtype=object)
-        arr[0] = COL_NAMES
-        dt = h5py.string_dtype(encoding='utf-8')
-        dset = store.create_dataset(
-            'data', data=arr, maxshape=(None, COLS), dtype=dt)
-        for i, chunk in tqdm(enumerate(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=chunk_size, names=col_names, lineterminator='\n')),
-                             desc='csv to hdf format', total=int(ROWS/chunk_size)):
-            dset.resize((dset.shape[0]+len(chunk), COLS))
-            for j, c in enumerate(chunk):
-                dset[dset.shape[0]-CHUNK_SIZE+j, :] = c
+        arr = np.zeros((1, len(col_names)), dtype=object)
+        arr[0] = col_names
+        dset = store.create_dataset('data', data=arr, maxshape=(
+            None, COLS), dtype=h5py.string_dtype(encoding='utf-8'))
+        row_length = 1
+        for chunk in tqdm(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=chunk_size),
+                          desc='csv to hdf format', total=int(ROWS/chunk_size)):
+            dset[0] = chunk.columns
+            row_length += len(chunk)
+            dset.resize((row_length, COLS))
+            dset[-len(chunk):] = chunk.astype(str).values
 
 
 def get_csv_header(csv_file: str):
@@ -71,9 +70,10 @@ def get_csv_header(csv_file: str):
     return df.columns.tolist()
 
 
-def read_hdf(filename: str, startIdx=0, stopIdx=0, columns_to_return=None):
-    # Return the pandas frame as requested:
-    return pd.read_hdf(filename, mode='r', start=startIdx, stop=stopIdx, columns=columns_to_return, iterator=False, chunksize=CHUNK_SIZE)
+def read_hdf(filename: str, startIdx=0, stopIdx=0):
+    with h5py.File(filename, 'r') as f:
+        # Access the dataset you want to read
+        return f['data'][startIdx:stopIdx+1, ]
 
 
 def create_train_vali_and_test_sets(split, data_filename: str, train_filename: str, vali_filename: str, test_filename: str, cols_sizes=COL_SIZES):
@@ -122,23 +122,28 @@ def create_randomly_split_array(size: int):
 
 
 # print(get_csv_header(csv_file))
-# split = create_randomly_split_array(ROWS)
+# print(num_rows_and_cols_csv(csv_file))
 csv_to_hdf(csv_file, hdf_file)
-with h5py.File(hdf_file, 'w') as store:
-    arr = np.zeros((1, len(COL_NAMES)), dtype=object)
-    COL_NAMES = ['', 'id', 'domain', 'type', 'url', 'content', 'scraped_at', 'inserted_at', 'updated_at', 'title',
-                     'authors', 'keywords', 'meta_keywords', 'meta_description', 'tags', 'summary', 'source']
-    arr[0] = COL_NAMES
-    dt = h5py.string_dtype(encoding='utf-8')
-    dset = store.create_dataset(
-        'data', data=arr, maxshape=(None, COLS), dtype=dt)
-    for i in range(0, 10):
-        dset.resize((dset.shape[0]+CHUNK_SIZE, COLS))
-        for j in range(0, CHUNK_SIZE):
-            dset[dset.shape[0]-CHUNK_SIZE+j, :] = ['1', '2', '3', '4', '5', '6', '7', '8', '9',
-                                                   '10', '11', '12', '13', '14', '15', '16', '17']
-    print(dset[100, 1])
+# , columns_to_return=None):
+rows = read_hdf(hdf_file, startIdx=0, stopIdx=256)
+print(rows[250, 1])
+
+# split = create_randomly_split_array(ROWS)
+#
+#
+
+# with h5py.File(hdf_file, 'w') as store:
+#     arr = np.zeros((1, len(COL_NAMES)), dtype=object)
+#     COL_NAMES = ['', 'id', 'domain', 'type', 'url', 'content', 'scraped_at', 'inserted_at', 'updated_at', 'title',
+#                      'authors', 'keywords', 'meta_keywords', 'meta_description', 'tags', 'summary', 'source']
+#     arr[0] = COL_NAMES
+#     dt = h5py.string_dtype(encoding='utf-8')
+#     dset = store.create_dataset(
+#         'data', data=arr, maxshape=(None, COLS), dtype=dt)
+#     for i in range(0, 10):
+#         dset.resize((dset.shape[0]+CHUNK_SIZE, COLS))
+#         for j in range(0, CHUNK_SIZE):
+#             dset[dset.shape[0]-CHUNK_SIZE+j, :] = ['1', '2', '3', '4', '5', '6', '7', '8', '9',
+#                                                    '10', '11', '12', '13', '14', '15', '16', '17']
+#     print(dset[100, 1])
 # create_train_vali_and_test_sets(split, data_filename=hdf_file, train_filename=train_file, vali_filename = vali_file, test_filename = test_file)
-# df = read_hdf(hdf_file)
-# value = df.iloc[1, 'domain']
-# print(value)
