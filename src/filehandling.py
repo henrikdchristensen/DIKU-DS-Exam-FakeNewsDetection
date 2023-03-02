@@ -74,12 +74,12 @@ def read_hdf_cols(filename: str, idx=0, num=0):
         return f['data'][:, idx:idx+num]
 
 
-def create_train_vali_and_test_sets(split, data_filename: str, train_filename: str, vali_filename: str, test_filename: str):
-    # Remove exiting hdf files:
+def create_train_vali_and_test_sets(split, data_filename: str, train_filename: str, vali_filename: str, test_filename: str, chunk_size: int = 10000):
+    # Remove existing hdf files:
     remove_file(train_filename)
     remove_file(vali_filename)
     remove_file(test_filename)
-    # Run through data file and match each row with the corresponding shuffled array:
+    # Open input and output files:
     with h5py.File(data_filename, 'r', ) as data,\
             h5py.File(train_filename, 'w', ) as train,\
             h5py.File(vali_filename, 'w', ) as vali,\
@@ -94,18 +94,20 @@ def create_train_vali_and_test_sets(split, data_filename: str, train_filename: s
             None, COLS), dtype=h5py.string_dtype(encoding='utf-8'))
         # Set header row:
         trainset[0] = valiset[0] = testset[0] = data[0, ]
-        # Loop through split array and append data to the right dataset:
-        for i in tqdm(range(0, len(split)), desc='split dataset', total=len(split), unit='rows', colour=TQDM_COLOR):
-            match split[i]:
-                case 0:
-                    trainset.resize((trainset.shape[0]+1, COLS))
-                    trainset[-1:] = data[i+1]
-                case 1:
-                    valiset.resize((valiset.shape[0]+1, COLS))
-                    valiset[-1:] = data[i+1]
-                case 2:
-                    testset.resize((testset.shape[0]+1, COLS))
-                    testset[-1:] = data[i+1]
+        # Loop through data in chunks and append to the right dataset:
+        for start in tqdm(range(1, data.shape[0], chunk_size), desc='split dataset', unit='rows', unit_scale=chunk_size, colour=TQDM_COLOR):
+            end = min(start + chunk_size, data.shape[0])
+            chunk = data[start:end]
+            chunk_split = split[start-1:end-1]
+            train_rows = chunk[chunk_split == 0]
+            vali_rows = chunk[chunk_split == 1]
+            test_rows = chunk[chunk_split == 2]
+            trainset.resize((trainset.shape[0]+train_rows.shape[0], COLS))
+            trainset[-train_rows.shape[0]:] = train_rows
+            valiset.resize((valiset.shape[0]+vali_rows.shape[0], COLS))
+            valiset[-vali_rows.shape[0]:] = vali_rows
+            testset.resize((testset.shape[0]+test_rows.shape[0], COLS))
+            testset[-test_rows.shape[0]:] = test_rows
 
 
 def create_randomly_split_array(size: int):
