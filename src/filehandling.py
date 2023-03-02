@@ -19,7 +19,6 @@ hdf_file = 'data.h5'
 train_file = 'datasets/train.h5'
 vali_file = 'datasets/vali.h5'
 test_file = 'datasets/test.h5'
-CHUNK_SIZE = 10
 
 # Set the current directory one level up:
 os.chdir("..")
@@ -47,7 +46,7 @@ def empty_string_array():
     return arr
 
 
-def csv_to_hdf(csv_filename: str, hdf_filename: str):
+def csv_to_hdf(csv_filename: str, hdf_filename: str, chunk_size: int = 10):
     remove_file(hdf_filename)
     with h5py.File(hdf_filename, 'w') as store:
         dset = store.create_dataset('data', data=empty_string_array(), maxshape=(
@@ -57,8 +56,8 @@ def csv_to_hdf(csv_filename: str, hdf_filename: str):
             dset[0] = next(csv.reader(f))
             # Read the rest of the rows and assign to dataset:
         rows = 1
-        for c in tqdm(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=CHUNK_SIZE),
-                      desc='.csv to .h5', total=int(ROWS/CHUNK_SIZE), unit='rows', unit_scale=CHUNK_SIZE, colour=TQDM_COLOR):
+        for c in tqdm(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=chunk_size),
+                      desc='.csv to .h5', total=int(ROWS/chunk_size), unit='rows', unit_scale=chunk_size, colour=TQDM_COLOR):
             rows += len(c)
             dset.resize((rows, COLS))
             dset[-len(c):] = c.astype(str).values
@@ -69,7 +68,7 @@ def read_hdf_rows(filename: str, idx=0, num=0):
         return f['data'][idx:idx+num, :]
 
 
-def read_hdf_cols(filename: str, idx=0, num=0):
+def read_hdf_cols(filename: str, idx=0, num=1):
     with h5py.File(filename, 'r') as f:
         return f['data'][:, idx:idx+num]
 
@@ -110,7 +109,7 @@ def create_train_vali_and_test_sets(split, data_filename: str, train_filename: s
             testset[-test_rows.shape[0]:] = test_rows
 
 
-def create_randomly_split_array(size: int):
+def create_randomly_split_array(size: int = 1):
     # 0: Training
     # 1: Validation
     # 2: Test
