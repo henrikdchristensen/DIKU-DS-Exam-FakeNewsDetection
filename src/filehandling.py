@@ -41,25 +41,22 @@ def remove_file(filename: str):
         os.remove(filename)
 
 
-def create_dataset(name: str):
-    arr = np.zeros((1, COLS), dtype=object)
-    arr[0] = ["" for x in range(COLS)]
-    return store.create_dataset(name, data=arr, maxshape=(
-        None, COLS), dtype=h5py.string_dtype(encoding='utf-8'))
+# def create_dataset(filename: str, dataset_name: str):
 
 
 def csv_to_hdf(csv_filename: str, hdf_filename: str):
     remove_file(hdf_filename)
-    # Read csv as chunks so we don't run out of memory and append to hdf file:
+    arr = np.zeros((1, COLS), dtype=object)
+    arr[0] = ["" for x in range(COLS)]
     with h5py.File(hdf_filename, 'w') as store:
-        dset = create_dataset('data')
+        dset = store.create_dataset('data', data=arr, maxshape=(
+            None, COLS), dtype=h5py.string_dtype(encoding='utf-8'))
         # Get and set the header row:
         with open(csv_filename, encoding='utf-8') as f:
             dset[0] = next(csv.reader(f))
-        # Read the rest of the rows and assign to dataset:
+            # Read the rest of the rows and assign to dataset:
         rows = 1
-        for c in tqdm(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=CHUNK_SIZE),
-                      desc='.csv to .h5', total=int(ROWS/CHUNK_SIZE)):
+        for c in tqdm(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=CHUNK_SIZE), desc='.csv to .h5', total=int(ROWS/CHUNK_SIZE)):
             rows += len(c)
             dset.resize((rows, COLS))
             dset[-len(c):] = c.astype(str).values
@@ -78,13 +75,16 @@ def create_train_vali_and_test_sets(split, data_filename: str, train_filename: s
 
     # Run through data file and match each row with the corresponding shuffled array:
     with h5py.File(data_filename, 'r', ) as data,\
-            h5py.File(train_filename, 'w') as train,\
-            h5py.File(vali_filename, 'w') as vali,\
-            h5py.File(test_filename, 'w') as test:
+            h5py.File(train_filename, 'r', ) as data,\
+            h5py.File(vali_filename, 'r', ) as data,\
+            h5py.File(test_filename, 'r', ) as data:
         data = data['data']
-        trainset = create_dataset('train')
-        valiset = create_dataset('vali')
-        testset = create_dataset('test')
+        trainset = store.create_dataset('train', data=arr, maxshape=(
+            None, COLS), dtype=h5py.string_dtype(encoding='utf-8'))
+        valiset = store.create_dataset('vali', data=arr, maxshape=(
+            None, COLS), dtype=h5py.string_dtype(encoding='utf-8'))
+        testset = store.create_dataset('test', data=arr, maxshape=(
+            None, COLS), dtype=h5py.string_dtype(encoding='utf-8'))
         # Set header row:
         trainset[0] = valiset[0] = testset[0] = data[0, ]
         # Loop through split array and append data to the right dataset:
