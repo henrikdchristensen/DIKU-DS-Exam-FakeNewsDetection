@@ -56,7 +56,8 @@ def csv_to_hdf(csv_filename: str, hdf_filename: str):
             dset[0] = next(csv.reader(f))
             # Read the rest of the rows and assign to dataset:
         rows = 1
-        for c in tqdm(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=CHUNK_SIZE), desc='.csv to .h5', total=int(ROWS/CHUNK_SIZE)):
+        for c in tqdm(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=CHUNK_SIZE),
+                      desc='.csv to .h5', total=int(ROWS/CHUNK_SIZE), unit='rows', unit_scale=CHUNK_SIZE):
             rows += len(c)
             dset.resize((rows, COLS))
             dset[-len(c):] = c.astype(str).values
