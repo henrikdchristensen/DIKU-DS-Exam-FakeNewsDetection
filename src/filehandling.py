@@ -1,14 +1,11 @@
 import subprocess
 from time import time
 import h5py
-import tables as tb
-from concurrent.futures import ThreadPoolExecutor
 import numpy as np
 import csv
 import os
 import pandas as pd
 from tqdm import tqdm
-import re
 
 
 # https://raw.githubusercontent.com/several27/FakeNewsCorpus/master/news_sample.csv
@@ -56,7 +53,7 @@ def csv_to_hdf(csv_filename: str, hdf_filename: str):
         # Read the rest of the rows and assign to dataset:
         rows = 1
         for c in tqdm(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=CHUNK_SIZE),
-                      desc='csv to hdf format', total=int(ROWS/CHUNK_SIZE)):
+                      desc='.csv to .h5', total=int(ROWS/CHUNK_SIZE)):
             rows += len(c)
             dset.resize((rows, COLS))
             dset[-len(c):] = c.astype(str).values
@@ -77,9 +74,13 @@ def create_train_vali_and_test_sets(split, data_filename: str, train_filename: s
     if os.path.exists(test_filename):
         os.remove(test_filename)
     # Run through data file and match each row with the corresponding shuffled array:
-    with h5py.File(train_filename, 'w') as train,\
+    with h5py.File(data_filename, 'r', ) as data,\
+            h5py.File(train_filename, 'w') as train,\
             h5py.File(vali_filename, 'w') as vali,\
             h5py.File(test_filename, 'w') as test:
+
+        data = data['data']
+
         arr = np.zeros((1, COLS), dtype=object)
         arr[0] = ["" for x in range(COLS)]
         trainset = train.create_dataset('train', data=arr, maxshape=(
@@ -88,21 +89,21 @@ def create_train_vali_and_test_sets(split, data_filename: str, train_filename: s
             None, COLS), dtype=h5py.string_dtype(encoding='utf-8'))
         testset = test.create_dataset('test', data=arr, maxshape=(
             None, COLS), dtype=h5py.string_dtype(encoding='utf-8'))
-        with h5py.File(data_filename, 'r', ) as f:
-            data = f['data']
-            # Set header row:
-            trainset[0] = valiset[0] = testset[0] = data[0, ]
-            for i in range(0, len(split)):
-                match split[i]:
-                    case 0:
-                        trainset.resize((trainset.shape[0]+1, COLS))
-                        trainset[-1:] = data[i+1]
-                    case 1:
-                        valiset.resize((valiset.shape[0]+1, COLS))
-                        valiset[-1:] = data[i+1]
-                    case 2:
-                        testset.resize((testset.shape[0]+1, COLS))
-                        testset[-1:] = data[i+1]
+
+        # Set header row:
+        trainset[0] = valiset[0] = testset[0] = data[0, ]
+        for i in tqdm(range(0, len(split)),
+                      desc='split dataset', total=len(split)):
+            match split[i]:
+                case 0:
+                    trainset.resize((trainset.shape[0]+1, COLS))
+                    trainset[-1:] = data[i+1]
+                case 1:
+                    valiset.resize((valiset.shape[0]+1, COLS))
+                    valiset[-1:] = data[i+1]
+                case 2:
+                    testset.resize((testset.shape[0]+1, COLS))
+                    testset[-1:] = data[i+1]
 
 
 def create_randomly_split_array(size: int):
