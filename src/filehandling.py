@@ -93,6 +93,8 @@ def create_train_vali_and_test_sets(split, data_filename: str, train_filename: s
 
         # Set header row:
         trainset[0] = valiset[0] = testset[0] = data[0, ]
+
+        # Loop through split array and append data to the right dataset:
         for i in tqdm(range(0, len(split)),
                       desc='split dataset', total=len(split)):
             match split[i]:
