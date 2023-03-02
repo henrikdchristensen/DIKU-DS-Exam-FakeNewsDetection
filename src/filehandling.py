@@ -19,7 +19,7 @@ hdf_file = 'data.h5'
 train_file = 'train.h5'
 vali_file = 'vali.h5'
 test_file = 'test.h5'
-CHUNK_SIZE = 50
+CHUNK_SIZE = 10
 
 # Set the current directory one level up:
 os.chdir("..")
@@ -36,10 +36,15 @@ def num_rows_and_cols_csv(_csv_file: str):
         return result.stderr
 
 
+def remove_file(filename: str):
+    if os.path.exists(filename):
+        os.remove(filename)
+
+
 def csv_to_hdf(csv_filename: str, hdf_filename: str):
-    # Remove exiting hdf file:
-    if os.path.exists(hdf_filename):
-        os.remove(hdf_filename)
+
+    remove_file(hdf_filename)
+
     # Read csv as chunks so we don't run out of memory and append to hdf file:
     with h5py.File(hdf_filename, 'w') as store:
         # Create dataset with one dummy string array:
@@ -61,18 +66,14 @@ def csv_to_hdf(csv_filename: str, hdf_filename: str):
 
 def read_hdf(filename: str, startIdx=0, stopIdx=0):
     with h5py.File(filename, 'r') as f:
-        # Access the dataset you want to read
         return f['data'][startIdx:stopIdx+1, ]
 
 
 def create_train_vali_and_test_sets(split, data_filename: str, train_filename: str, vali_filename: str, test_filename: str):
     # Remove exiting hdf files:
-    if os.path.exists(train_filename):
-        os.remove(train_filename)
-    if os.path.exists(vali_filename):
-        os.remove(vali_filename)
-    if os.path.exists(test_filename):
-        os.remove(test_filename)
+    remove_file(train_filename)
+    remove_file(vali_filename)
+    remove_file(test_filename)
     # Run through data file and match each row with the corresponding shuffled array:
     with h5py.File(data_filename, 'r', ) as data,\
             h5py.File(train_filename, 'w') as train,\
