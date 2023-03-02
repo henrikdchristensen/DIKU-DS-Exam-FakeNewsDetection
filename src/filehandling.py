@@ -9,10 +9,10 @@ from tqdm import tqdm
 
 TQDM_COLOR = 'magenta'
 # https://raw.githubusercontent.com/several27/FakeNewsCorpus/master/news_sample.csv
-#csv_file = "datasets/news_cleaned_2018_02_13.csv"
-ROWS = 8528956
+# csv_file = "datasets/news_cleaned_2018_02_13.csv"
+ROWS = 8529853
 COLS = 17
-#csv_file = "datasets/news_sample.csv"
+# csv_file = "datasets/news_sample.csv"
 #ROWS = 250
 #COLS = 16
 hdf_file = 'datasets/big/data.h5'
@@ -40,7 +40,7 @@ def remove_file(filename: str):
         os.remove(filename)
 
 
-def empty_string_array():
+def create_empty_string_array():
     arr = np.zeros((1, COLS), dtype=object)
     arr[0] = ["" for x in range(COLS)]
     return arr
@@ -49,7 +49,7 @@ def empty_string_array():
 def csv_to_hdf(csv_filename: str, hdf_filename: str, chunk_size: int = 10):
     remove_file(hdf_filename)
     with h5py.File(hdf_filename, 'w') as store:
-        dset = store.create_dataset('data', data=empty_string_array(), maxshape=(
+        dset = store.create_dataset('data', data=create_empty_string_array(), maxshape=(
             None, COLS), dtype=h5py.string_dtype(encoding='utf-8'))
         # Get and set the header row:
         with open(csv_filename, encoding='utf-8') as f:
@@ -84,7 +84,7 @@ def create_train_vali_and_test_sets(split, data_filename: str, train_filename: s
             h5py.File(vali_filename, 'w', ) as vali,\
             h5py.File(test_filename, 'w', ) as test:
         data = data['data']
-        arr = empty_string_array()
+        arr = create_empty_string_array()
         trainset = train.create_dataset('data', data=arr, maxshape=(
             None, COLS), dtype=h5py.string_dtype(encoding='utf-8'))
         valiset = vali.create_dataset('data', data=arr, maxshape=(
@@ -97,28 +97,15 @@ def create_train_vali_and_test_sets(split, data_filename: str, train_filename: s
         for start in tqdm(range(1, data.shape[0], chunk_size), desc='split dataset', unit='rows', unit_scale=chunk_size, colour=TQDM_COLOR):
             end = min(start + chunk_size, data.shape[0])
             chunk = data[start:end]
+            # split array doesn't have a header row therefore -1
             chunk_split = split[start-1:end-1]
             train_rows = chunk[chunk_split == 0]
-            vali_rows = chunk[chunk_split == 1]
-            test_rows = chunk[chunk_split == 2]
             trainset.resize((trainset.shape[0]+train_rows.shape[0], COLS))
             trainset[-train_rows.shape[0]:] = train_rows
-            valiset.resize((valiset.shape[0]+vali_rows.shape[0], COLS))
-            valiset[-vali_rows.shape[0]:] = vali_rows
-            testset.resize((testset.shape[0]+test_rows.shape[0], COLS))
-            testset[-test_rows.shape[0]:] = test_rows
-
-        # Handle last chunk separately:
-        if end < data.shape[0]:
-            chunk = data[end:]
-            chunk_split = split[end-1:]
-            train_rows = chunk[chunk_split == 0]
             vali_rows = chunk[chunk_split == 1]
-            test_rows = chunk[chunk_split == 2]
-            trainset.resize((trainset.shape[0]+train_rows.shape[0], COLS))
-            trainset[-train_rows.shape[0]:] = train_rows
             valiset.resize((valiset.shape[0]+vali_rows.shape[0], COLS))
             valiset[-vali_rows.shape[0]:] = vali_rows
+            test_rows = chunk[chunk_split == 2]
             testset.resize((testset.shape[0]+test_rows.shape[0], COLS))
             testset[-test_rows.shape[0]:] = test_rows
 
@@ -142,7 +129,7 @@ def create_randomly_split_array(size: int = 1):
 
 
 # print(num_rows_and_cols_csv(csv_file))
-#csv_to_hdf(csv_file, hdf_file)
+# csv_to_hdf(csv_file, hdf_file)
 
 rows = read_hdf_rows(filename=hdf_file, idx=0, num=256)
 print(rows[0, 2])
