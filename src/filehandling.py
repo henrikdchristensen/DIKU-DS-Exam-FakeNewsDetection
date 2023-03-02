@@ -101,8 +101,7 @@ def create_train_vali_and_test_sets(split, data_filename: str, train_filename: s
 
 def num_of_rows_and_cols_hdf(filename: str):
     with h5py.File(filename, 'r', ) as data:
-        data = data['data']
-        return data.shape
+        return data['data'].shape
 
 
 def create_randomly_split_array(size: int = 1):
