@@ -80,11 +80,11 @@ def create_train_vali_and_test_sets(split, data_filename: str, train_filename: s
             h5py.File(vali_filename, 'r', ) as data,\
             h5py.File(test_filename, 'r', ) as data:
         data = data['data']
-        trainset = store.create_dataset('train', data=arr, maxshape=(
+        trainset = store.create_dataset('data', data=arr, maxshape=(
             None, COLS), dtype=h5py.string_dtype(encoding='utf-8'))
-        valiset = store.create_dataset('vali', data=arr, maxshape=(
+        valiset = store.create_dataset('data', data=arr, maxshape=(
             None, COLS), dtype=h5py.string_dtype(encoding='utf-8'))
-        testset = store.create_dataset('test', data=arr, maxshape=(
+        testset = store.create_dataset('data', data=arr, maxshape=(
             None, COLS), dtype=h5py.string_dtype(encoding='utf-8'))
         # Set header row:
         trainset[0] = valiset[0] = testset[0] = data[0, ]
