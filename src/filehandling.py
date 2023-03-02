@@ -23,18 +23,6 @@ test_file = 'datasets/big/test.h5'
 # Set the current directory one level up:
 os.chdir("..")
 
-
-def num_rows_and_cols_csv(csv_file: str):
-    # On MacOS: Use another command:
-    cmd = 'Import-Csv ".\\' + csv_file + '" | Measure-Object'
-    result = subprocess.run(
-        ['powershell', '-Command', cmd], capture_output=True, text=True)
-    if result.returncode == 0:
-        return result.stdout.strip()
-    else:
-        return result.stderr
-
-
 def remove_file(filename: str):
     if os.path.exists(filename):
         os.remove(filename)
