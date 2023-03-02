@@ -76,15 +76,15 @@ def create_train_vali_and_test_sets(split, data_filename: str, train_filename: s
 
     # Run through data file and match each row with the corresponding shuffled array:
     with h5py.File(data_filename, 'r', ) as data,\
-            h5py.File(train_filename, 'r', ) as data,\
-            h5py.File(vali_filename, 'r', ) as data,\
-            h5py.File(test_filename, 'r', ) as data:
+            h5py.File(train_filename, 'r', ) as train,\
+            h5py.File(vali_filename, 'r', ) as vali,\
+            h5py.File(test_filename, 'r', ) as test:
         data = data['data']
-        trainset = store.create_dataset('data', data=arr, maxshape=(
+        trainset = train.create_dataset('data', data=arr, maxshape=(
             None, COLS), dtype=h5py.string_dtype(encoding='utf-8'))
-        valiset = store.create_dataset('data', data=arr, maxshape=(
+        valiset = vali.create_dataset('data', data=arr, maxshape=(
             None, COLS), dtype=h5py.string_dtype(encoding='utf-8'))
-        testset = store.create_dataset('data', data=arr, maxshape=(
+        testset = test.create_dataset('data', data=arr, maxshape=(
             None, COLS), dtype=h5py.string_dtype(encoding='utf-8'))
         # Set header row:
         trainset[0] = valiset[0] = testset[0] = data[0, ]
@@ -121,7 +121,7 @@ def create_randomly_split_array(size: int):
 
 
 # print(num_rows_and_cols_csv(csv_file))
-csv_to_hdf(csv_file, hdf_file)
+#csv_to_hdf(csv_file, hdf_file)
 
 rows = read_hdf(hdf_file, startIdx=0, stopIdx=256)
 print(rows[0, 2])
