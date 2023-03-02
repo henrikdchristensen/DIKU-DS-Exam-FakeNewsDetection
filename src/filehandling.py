@@ -23,6 +23,7 @@ test_file = 'datasets/big/test.h5'
 # Set the current directory one level up:
 os.chdir("..")
 
+
 def remove_file(filename: str):
     if os.path.exists(filename):
         os.remove(filename)
@@ -98,6 +99,12 @@ def create_train_vali_and_test_sets(split, data_filename: str, train_filename: s
             testset[-test_rows.shape[0]:] = test_rows
 
 
+def num_of_rows_and_cols_hdf(filename: str):
+    with h5py.File(filename, 'r', ) as data:
+        data = data['data']
+        return data.shape
+
+
 def create_randomly_split_array(size: int = 1):
     # 0: Training
     # 1: Validation
@@ -119,9 +126,10 @@ def create_randomly_split_array(size: int = 1):
 # print(num_rows_and_cols_csv(csv_file))
 # csv_to_hdf(csv_file, hdf_file)
 
-rows = read_hdf_rows(filename=hdf_file, idx=0, num=256)
-print(rows[0, 2])
+#rows = read_hdf_rows(filename=hdf_file, idx=0, num=ROWS)
+#print(rows[0, 2])
 
-split = create_randomly_split_array(size=ROWS)
-create_train_vali_and_test_sets(split, data_filename=hdf_file,
-                                train_filename=train_file, vali_filename=vali_file, test_filename=test_file)
+print(num_of_rows_and_cols_hdf(test_file))
+
+#split = create_randomly_split_array(size=ROWS)
+#create_train_vali_and_test_sets(split, data_filename=hdf_file, train_filename=train_file, vali_filename=vali_file, test_filename=test_file)
