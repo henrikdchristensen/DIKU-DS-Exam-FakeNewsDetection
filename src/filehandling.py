@@ -19,7 +19,7 @@ hdf_file = 'data.h5'
 train_file = 'train.h5'
 vali_file = 'vali.h5'
 test_file = 'test.h5'
-CHUNK_SIZE = 100
+CHUNK_SIZE = 50
 
 # Set the current directory one level up:
 os.chdir("..")
