@@ -57,7 +57,7 @@ def csv_to_hdf(csv_filename: str, hdf_filename: str):
             # Read the rest of the rows and assign to dataset:
         rows = 1
         for c in tqdm(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=CHUNK_SIZE),
-                      desc='.csv to .h5', total=int(ROWS/CHUNK_SIZE), unit='rows', unit_scale=CHUNK_SIZE):
+                      desc='.csv to .h5', total=int(ROWS/CHUNK_SIZE), unit='rows', unit_scale=CHUNK_SIZE, colour='magenta'):
             rows += len(c)
             dset.resize((rows, COLS))
             dset[-len(c):] = c.astype(str).values
@@ -89,7 +89,7 @@ def create_train_vali_and_test_sets(split, data_filename: str, train_filename: s
         # Set header row:
         trainset[0] = valiset[0] = testset[0] = data[0, ]
         # Loop through split array and append data to the right dataset:
-        for i in tqdm(range(0, len(split)), desc='split dataset', total=len(split)):
+        for i in tqdm(range(0, len(split)), desc='split dataset', total=len(split), unit='rows', colour='magenta'):
             match split[i]:
                 case 0:
                     trainset.resize((trainset.shape[0]+1, COLS))
