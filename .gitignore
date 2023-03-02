@@ -1,3 +1,8 @@
+# FakeNews
+*.h5
+news_cleaned_2018_02_13.csv
+*csv.z*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
