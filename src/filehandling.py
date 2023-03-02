@@ -9,16 +9,16 @@ from tqdm import tqdm
 
 TQDM_COLOR = 'magenta'
 # https://raw.githubusercontent.com/several27/FakeNewsCorpus/master/news_sample.csv
-csv_file = "datasets/news_cleaned_2018_02_13.csv"
+#csv_file = "datasets/news_cleaned_2018_02_13.csv"
 ROWS = 8528956
 COLS = 17
 #csv_file = "datasets/news_sample.csv"
 #ROWS = 250
 #COLS = 16
-hdf_file = 'datasets/data.h5'
-train_file = 'datasets/train.h5'
-vali_file = 'datasets/vali.h5'
-test_file = 'datasets/test.h5'
+hdf_file = 'datasets/big/data.h5'
+train_file = 'datasets/big/train.h5'
+vali_file = 'datasets/big/vali.h5'
+test_file = 'datasets/big/test.h5'
 
 # Set the current directory one level up:
 os.chdir("..")
@@ -98,6 +98,20 @@ def create_train_vali_and_test_sets(split, data_filename: str, train_filename: s
             end = min(start + chunk_size, data.shape[0])
             chunk = data[start:end]
             chunk_split = split[start-1:end-1]
+            train_rows = chunk[chunk_split == 0]
+            vali_rows = chunk[chunk_split == 1]
+            test_rows = chunk[chunk_split == 2]
+            trainset.resize((trainset.shape[0]+train_rows.shape[0], COLS))
+            trainset[-train_rows.shape[0]:] = train_rows
+            valiset.resize((valiset.shape[0]+vali_rows.shape[0], COLS))
+            valiset[-vali_rows.shape[0]:] = vali_rows
+            testset.resize((testset.shape[0]+test_rows.shape[0], COLS))
+            testset[-test_rows.shape[0]:] = test_rows
+
+        # Handle last chunk separately:
+        if end < data.shape[0]:
+            chunk = data[end:]
+            chunk_split = split[end-1:]
             train_rows = chunk[chunk_split == 0]
             vali_rows = chunk[chunk_split == 1]
             test_rows = chunk[chunk_split == 2]
