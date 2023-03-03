@@ -74,6 +74,31 @@ def csv_to_hdf(csv_filename: str, hdf_filename: str, cols: int, chunk_size: int 
             dset[-len(c):] = c.astype(str).values
 
 
+def csv_split(csv_filename: str, rows: int, chunk_size: int = 10):
+    # Get header row:
+    with open(csv_filename, encoding='utf-8') as f:
+        header = next(csv.reader(f))
+
+    # Read the rest of the rows and assign to dataset:
+    df = pd.DataFrame(columns=header)
+    r = i = 0
+    for c in tqdm(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=chunk_size),
+                  desc='.csv to .h5', total=int(rows/chunk_size), unit='rows', unit_scale=chunk_size, colour='green'):
+        r += len(c)
+        df = pd.concat([df, c], ignore_index=True)
+        if r >= rows:
+            r = 0
+            i += 1
+            df.to_csv(f'chunk{i}.csv', index=False)
+            df = pd.DataFrame(columns=header)
+    if len(df) > 0:
+        i += 1
+        df.to_csv(f'chunk{i}.csv', index=False)
+
+
+csv_split(csv_file, 50)
+
+
 def read_hdf_rows(filename: str, idx: int = 0, num: int = 0) -> np.ndarray:
     with h5py.File(filename, 'r') as f:
         return f['data'][idx:idx+num, :]
@@ -130,11 +155,11 @@ def num_of_rows_and_cols_hdf(filename: str) -> tuple:
         return data['data'].shape
 
 
-cols = num_of_cols_csv(filename=csv_file)
-csv_to_hdf(csv_filename=csv_file, hdf_filename=hdf_file, cols=cols)
-split = create_randomly_split_array(size=ROWS)
-create_train_vali_and_test_sets(split=split, cols=cols, data_filename=hdf_file,
-                                train_filename=train_file, vali_filename=vali_file, test_filename=test_file)
+#cols = num_of_cols_csv(filename=csv_file)
+#csv_to_hdf(csv_filename=csv_file, hdf_filename=hdf_file, cols=cols)
+#split = create_randomly_split_array(size=ROWS)
+# create_train_vali_and_test_sets(split=split, cols=cols, data_filename=hdf_file,
+#                                train_filename=train_file, vali_filename=vali_file, test_filename=test_file)
 
 #rows = read_hdf_rows(filename=hdf_file, idx=0, num=ROWS)
 #print(rows[0, 2])
