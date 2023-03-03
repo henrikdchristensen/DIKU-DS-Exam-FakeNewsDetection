@@ -1,4 +1,3 @@
-from time import time
 import h5py
 import numpy as np
 import csv
@@ -7,11 +6,15 @@ import pandas as pd
 from tqdm import tqdm
 
 TQDM_COLOR = 'magenta'
+
 # https://raw.githubusercontent.com/several27/FakeNewsCorpus/master/news_sample.csv
-# csv_file = "datasets/big/news_cleaned_2018_02_13.csv"
-ROWS = 8529853
+
 csv_file = "datasets/sample/news_sample.csv"
+# csv_file = "datasets/big/news_cleaned_2018_02_13.csv"
+
 #ROWS = 250
+ROWS = 8529853
+
 hdf_file = 'datasets/big/data.h5'
 train_file = 'datasets/big/train.h5'
 vali_file = 'datasets/big/vali.h5'
