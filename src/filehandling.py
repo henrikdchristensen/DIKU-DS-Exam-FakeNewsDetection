@@ -91,15 +91,13 @@ def csv_split(csv_filename: str, dirname: str = 'csv-chunks', chunksize: int = 1
     # Get header row:
     with open(csv_filename, encoding='utf-8') as f:
         header = next(csv.reader(f))
-    i = 0
     remove_directory(dirname)
     create_directory(dirname)
-    for c in tqdm(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=chunksize, lineterminator='\n'),
-                  desc='csv split', total=int(ROWS/chunksize), unit='splits', colour=TQDM_COLOR):
-        i += 1
+    for i, c in tqdm(enumerate(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=chunksize, lineterminator='\n')),
+                     desc='csv split', total=int(ROWS/chunksize), unit='splits', colour=TQDM_COLOR):
         df = pd.DataFrame(columns=header)
         pd.concat([df, c], ignore_index=True).to_csv(
-            f'{dirname}/{i:0{padding}}.csv', index=False)
+            f'{dirname}/{i+1:0{padding}}.csv', index=False)
 
 
 def read_hdf_rows(filename: str, idx: int = 0, num: int = 0) -> np.ndarray:
