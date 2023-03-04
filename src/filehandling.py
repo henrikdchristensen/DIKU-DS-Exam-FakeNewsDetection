@@ -84,18 +84,18 @@ def create_randomly_split_array(size: int = 10, split: Tuple[float, float, float
 def csv_to_hdf(csv_filename: str, hdf_filename: str, cols: int, rows_pr_iteration: int = ROWS_PR_ITERATION):
     remove_file(hdf_filename)
     with h5py.File(hdf_filename, 'w') as store:
-        dset = store.create_dataset('data', data=create_empty_string_array(cols), maxshape=(
+        data_set = store.create_dataset('data', data=create_empty_string_array(cols), maxshape=(
             None, cols), dtype=h5py.string_dtype(encoding='utf-8'))
         # Get and set the header row:
         with open(csv_filename, encoding='utf-8') as f:
-            dset[0] = next(csv.reader(f))
+            data_set[0] = next(csv.reader(f))
             # Read the rest of the rows and assign to dataset:
         rows = 1
         for c in tqdm(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=rows_pr_iteration, lineterminator='\n'),
                       desc='csv to hdf', total=int(ROWS/rows_pr_iteration), unit='rows', unit_scale=rows_pr_iteration, colour=TQDM_COLOR):
             rows += len(c)
-            dset.resize((rows, cols))
-            dset[-len(c):] = c.astype(str).values
+            data_set.resize((rows, cols))
+            data_set[-len(c):] = c.astype(str).values
 
 
 def csv_split(csv_filename: str, dirname: str = 'csv-chunks', rows_pr_iteration: int = ROWS_PR_ITERATION, padding: int = 4):
@@ -131,20 +131,20 @@ def create_train_vali_and_test_sets(split: np.ndarray, cols: int, data_filename:
             h5py.File(train_filename, 'w', ) as train,\
             h5py.File(vali_filename, 'w', ) as vali,\
             h5py.File(test_filename, 'w', ) as test:
-        data = data['data']
+        data_set = data['data']
         arr = create_empty_string_array(cols)
-        trainset = train.create_dataset('data', data=arr, maxshape=(
+        train_set = train.create_dataset('data', data=arr, maxshape=(
             None, cols), dtype=h5py.string_dtype(encoding='utf-8'))
-        valiset = vali.create_dataset('data', data=arr, maxshape=(
+        vali_set = vali.create_dataset('data', data=arr, maxshape=(
             None, cols), dtype=h5py.string_dtype(encoding='utf-8'))
-        testset = test.create_dataset('data', data=arr, maxshape=(
+        test_set = test.create_dataset('data', data=arr, maxshape=(
             None, cols), dtype=h5py.string_dtype(encoding='utf-8'))
         # Set header row:
-        trainset[0] = valiset[0] = testset[0] = data[0, ]
+        train_set[0] = vali_set[0] = test_set[0] = data_set[0, ]
         # Loop through data in chunks and append to the right dataset:
-        for start in tqdm(range(1, data.shape[0], rows_pr_iteration), desc='create train, vali, and test set', unit='rows', unit_scale=rows_pr_iteration, colour=TQDM_COLOR):
-            end = min(start + rows_pr_iteration, data.shape[0])
-            chunk_data = data[start:end]
+        for start in tqdm(range(1, data_set.shape[0], rows_pr_iteration), desc='create train, vali, and test set', unit='rows', unit_scale=rows_pr_iteration, colour=TQDM_COLOR):
+            end = min(start + rows_pr_iteration, data_set.shape[0])
+            chunk_data = data_set[start:end]
             # Get the amount of the split array so it matches the size of the chunk.
             # Split array doesn't have a header row therefore -1.
             chunk_split = split[start-1:end-1]
@@ -152,14 +152,14 @@ def create_train_vali_and_test_sets(split: np.ndarray, cols: int, data_filename:
             # Select the values from the chunk for the train- or vali- or test dataset
             # from the chunk if it matches the shuffled split array:
             train_rows = chunk_data[chunk_split == Set.TRAIN]
-            trainset.resize((trainset.shape[0]+train_rows.shape[0], cols))
-            trainset[-train_rows.shape[0]:] = train_rows
+            train_set.resize((train_set.shape[0]+train_rows.shape[0], cols))
+            train_set[-train_rows.shape[0]:] = train_rows
             vali_rows = chunk_data[chunk_split == Set.VALI]
-            valiset.resize((valiset.shape[0]+vali_rows.shape[0], cols))
-            valiset[-vali_rows.shape[0]:] = vali_rows
+            vali_set.resize((vali_set.shape[0]+vali_rows.shape[0], cols))
+            vali_set[-vali_rows.shape[0]:] = vali_rows
             test_rows = chunk_data[chunk_split == Set.TEST]
-            testset.resize((testset.shape[0]+test_rows.shape[0], cols))
-            testset[-test_rows.shape[0]:] = test_rows
+            test_set.resize((test_set.shape[0]+test_rows.shape[0], cols))
+            test_set[-test_rows.shape[0]:] = test_rows
 
 
 def num_of_rows_and_cols_hdf(filename: str) -> tuple:
