@@ -1,3 +1,5 @@
+from typing import Tuple
+from enum import Enum
 import shutil
 import h5py
 import numpy as np
@@ -13,9 +15,11 @@ TQDM_COLOR = 'magenta'
 #csv_file = "datasets/sample/news_sample.csv"
 csv_file = "datasets/big/news_cleaned_2018_02_13.csv"
 
-# Only used for estimating finish time
+# Only used for estimating finish time for converting csv to hdf
 #ROWS = 250
 ROWS = 8529853
+
+ROWS_PR_EXEC = 200000
 
 hdf_file = 'datasets/big/data.h5'
 train_file = 'datasets/big/train.h5'
@@ -52,7 +56,13 @@ def create_empty_string_array(cols: int) -> np.ndarray:
     return arr
 
 
-def create_randomly_split_array(size: int = 10, split: tuple = (0.8, 0.1, 0.1)) -> np.ndarray:
+class Set(Enum):
+    TRAIN = 0
+    VALI = 1
+    TEST = 2
+
+
+def create_randomly_split_array(size: int = 10, split: Tuple[float, float, float] = (0.8, 0.1, 0.1)) -> np.ndarray:
     # 0: Train
     # 1: Vali
     # 2: Test
@@ -63,14 +73,14 @@ def create_randomly_split_array(size: int = 10, split: tuple = (0.8, 0.1, 0.1)) 
     split1 = int(size * split[0])
     split2 = int(size * (split[0] + split[1]))
     # Set the values for the three splits
-    arr[split1:split2] = 1
-    arr[split2:] = 2
+    arr[split1:split2] = Set.VALI
+    arr[split2:] = Set.TEST
     # Shuffle the indexes of the array and return
     np.random.shuffle(arr)
     return arr
 
 
-def csv_to_hdf(csv_filename: str, hdf_filename: str, cols: int, chunksize: int = 100000):
+def csv_to_hdf(csv_filename: str, hdf_filename: str, cols: int, chunksize: int = ROWS_PR_EXEC):
     remove_file(hdf_filename)
     with h5py.File(hdf_filename, 'w') as store:
         dset = store.create_dataset('data', data=create_empty_string_array(cols), maxshape=(
@@ -87,7 +97,7 @@ def csv_to_hdf(csv_filename: str, hdf_filename: str, cols: int, chunksize: int =
             dset[-len(c):] = c.astype(str).values
 
 
-def csv_split(csv_filename: str, dirname: str = 'csv-chunks', chunksize: int = 100000, padding: int = 4):
+def csv_split(csv_filename: str, dirname: str = 'csv-chunks', chunksize: int = ROWS_PR_EXEC, padding: int = 4):
     # Get header row:
     with open(csv_filename, encoding='utf-8') as f:
         header = next(csv.reader(f))
@@ -110,7 +120,7 @@ def read_hdf_cols(filename: str, idx: int = 0, num: int = 1) -> np.ndarray:
         return f['data'][:, idx:idx+num]
 
 
-def create_train_vali_and_test_sets(split: np.ndarray, cols: int, data_filename: str, train_filename: str, vali_filename: str, test_filename: str, chunksize: int = 100000):
+def create_train_vali_and_test_sets(split: np.ndarray, cols: int, data_filename: str, train_filename: str, vali_filename: str, test_filename: str, chunksize: int = ROWS_PR_EXEC):
     # Remove existing hdf files:
     remove_file(train_filename)
     remove_file(vali_filename)
@@ -140,13 +150,13 @@ def create_train_vali_and_test_sets(split: np.ndarray, cols: int, data_filename:
 
             # Select the values from the chunk for the train- or vali- or test dataset
             # from the chunk if it matches the shuffled split array:
-            train_rows = chunk_data[chunk_split == 0]
+            train_rows = chunk_data[chunk_split == Set.TRAIN]
             trainset.resize((trainset.shape[0]+train_rows.shape[0], cols))
             trainset[-train_rows.shape[0]:] = train_rows
-            vali_rows = chunk_data[chunk_split == 1]
+            vali_rows = chunk_data[chunk_split == Set.VALI]
             valiset.resize((valiset.shape[0]+vali_rows.shape[0], cols))
             valiset[-vali_rows.shape[0]:] = vali_rows
-            test_rows = chunk_data[chunk_split == 2]
+            test_rows = chunk_data[chunk_split == Set.TEST]
             testset.resize((testset.shape[0]+test_rows.shape[0], cols))
             testset[-test_rows.shape[0]:] = test_rows
 
@@ -156,7 +166,7 @@ def num_of_rows_and_cols_hdf(filename: str) -> tuple:
         return data['data'].shape
 
 
-#csv_split(csv_filename=csv_file, chunksize=1000000)
+# csv_split(csv_filename=csv_file)
 cols = num_of_cols_csv(filename=csv_file)
 csv_to_hdf(csv_filename=csv_file, hdf_filename=hdf_file, cols=cols)
 rows_cols = num_of_rows_and_cols_hdf(filename=hdf_file)
