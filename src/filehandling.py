@@ -1,3 +1,4 @@
+import shutil
 import h5py
 import numpy as np
 import csv
@@ -9,11 +10,8 @@ TQDM_COLOR = 'magenta'
 
 # https://raw.githubusercontent.com/several27/FakeNewsCorpus/master/news_sample.csv
 
-csv_file = "datasets/sample/news_sample.csv"
-# csv_file = "datasets/big/news_cleaned_2018_02_13.csv"
-
-#ROWS = 250
-ROWS = 8529853
+#csv_file = "datasets/sample/news_sample.csv"
+csv_file = "datasets/big/news_cleaned_2018_02_13.csv"
 
 hdf_file = 'datasets/big/data.h5'
 train_file = 'datasets/big/train.h5'
@@ -32,6 +30,16 @@ def num_of_cols_csv(filename: str) -> int:
 def remove_file(filename: str):
     if os.path.exists(filename):
         os.remove(filename)
+
+
+def create_directory(dirname: str):
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+
+
+def remove_directory(dirname: str):
+    if os.path.exists(dirname):
+        shutil.rmtree(dirname)
 
 
 def create_empty_string_array(cols: int) -> np.ndarray:
@@ -54,10 +62,11 @@ def create_randomly_split_array(size: int = 10, split: tuple = (0.8, 0.1, 0.1)) 
     arr[split1:split2] = 1
     arr[split2:] = 2
     # Shuffle the indexes of the array and return
-    return np.random.shuffle(arr)
+    np.random.shuffle(arr)
+    return arr
 
 
-def csv_to_hdf(csv_filename: str, hdf_filename: str, cols: int, chunk_size: int = 10):
+def csv_to_hdf(csv_filename: str, hdf_filename: str, cols: int, chunk_size: int = 1000):
     remove_file(hdf_filename)
     with h5py.File(hdf_filename, 'w') as store:
         dset = store.create_dataset('data', data=create_empty_string_array(cols), maxshape=(
@@ -67,36 +76,25 @@ def csv_to_hdf(csv_filename: str, hdf_filename: str, cols: int, chunk_size: int 
             dset[0] = next(csv.reader(f))
             # Read the rest of the rows and assign to dataset:
         rows = 1
-        for c in tqdm(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=chunk_size),
+        for c in tqdm(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=chunk_size, lineterminator='\n'),
                       desc='.csv to .h5', total=int(ROWS/chunk_size), unit='rows', unit_scale=chunk_size, colour=TQDM_COLOR):
             rows += len(c)
             dset.resize((rows, cols))
             dset[-len(c):] = c.astype(str).values
 
 
-def csv_split(csv_filename: str, rows: int, chunk_size: int = 10):
+def csv_split(csv_filename: str, dirname: str = 'csv-chunks', chunk_size: int = 1000, padding: int = 4):
     # Get header row:
     with open(csv_filename, encoding='utf-8') as f:
         header = next(csv.reader(f))
-
-    # Read the rest of the rows and assign to dataset:
-    df = pd.DataFrame(columns=header)
-    r = i = 0
-    for c in tqdm(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=chunk_size),
-                  desc='.csv to .h5', total=int(rows/chunk_size), unit='rows', unit_scale=chunk_size, colour='green'):
-        r += len(c)
-        df = pd.concat([df, c], ignore_index=True)
-        if r >= rows:
-            r = 0
-            i += 1
-            df.to_csv(f'chunk{i}.csv', index=False)
-            df = pd.DataFrame(columns=header)
-    if len(df) > 0:
+    i = 0
+    remove_directory(dirname)
+    create_directory(dirname)
+    for c in pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=chunk_size, lineterminator='\n'):
         i += 1
-        df.to_csv(f'chunk{i}.csv', index=False)
-
-
-csv_split(csv_file, 50)
+        df = pd.DataFrame(columns=header)
+        pd.concat([df, c], ignore_index=True).to_csv(
+            f'{dirname}/{i:0{padding}}.csv', index=False)
 
 
 def read_hdf_rows(filename: str, idx: int = 0, num: int = 0) -> np.ndarray:
@@ -109,7 +107,7 @@ def read_hdf_cols(filename: str, idx: int = 0, num: int = 1) -> np.ndarray:
         return f['data'][:, idx:idx+num]
 
 
-def create_train_vali_and_test_sets(split, cols: int, data_filename: str, train_filename: str, vali_filename: str, test_filename: str, chunk_size: int = 10000):
+def create_train_vali_and_test_sets(split: np.ndarray, cols: int, data_filename: str, train_filename: str, vali_filename: str, test_filename: str, chunk_size: int = 10000):
     # Remove existing hdf files:
     remove_file(train_filename)
     remove_file(vali_filename)
@@ -120,7 +118,7 @@ def create_train_vali_and_test_sets(split, cols: int, data_filename: str, train_
             h5py.File(vali_filename, 'w', ) as vali,\
             h5py.File(test_filename, 'w', ) as test:
         data = data['data']
-        arr = create_empty_string_array()
+        arr = create_empty_string_array(cols)
         trainset = train.create_dataset('data', data=arr, maxshape=(
             None, cols), dtype=h5py.string_dtype(encoding='utf-8'))
         valiset = vali.create_dataset('data', data=arr, maxshape=(
@@ -155,13 +153,14 @@ def num_of_rows_and_cols_hdf(filename: str) -> tuple:
         return data['data'].shape
 
 
+csv_split(csv_filename=csv_file, chunk_size=1000000)
 #cols = num_of_cols_csv(filename=csv_file)
 #csv_to_hdf(csv_filename=csv_file, hdf_filename=hdf_file, cols=cols)
-#split = create_randomly_split_array(size=ROWS)
+#rows_cols = num_of_rows_and_cols_hdf(filename=hdf_file)
+# rows = rows_cols[0]-1  # minus header
+#split = create_randomly_split_array(size=rows)
 # create_train_vali_and_test_sets(split=split, cols=cols, data_filename=hdf_file,
 #                                train_filename=train_file, vali_filename=vali_file, test_filename=test_file)
 
-#rows = read_hdf_rows(filename=hdf_file, idx=0, num=ROWS)
+#row_data = read_hdf_rows(filename=hdf_file, idx=0, num=rows)
 #print(rows[0, 2])
-
-# print(num_of_rows_and_cols_hdf(test_file))
