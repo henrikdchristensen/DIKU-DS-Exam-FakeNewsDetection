@@ -19,7 +19,8 @@ csv_file = "datasets/big/news_cleaned_2018_02_13.csv"
 #ROWS = 250
 ROWS = 8529853
 
-ROWS_PR_EXEC = 200000
+# Number of rows hold in memory pr. iteration - decrease if running out of memory or PC running slow:
+ROWS_PR_ITERATION = 200000
 
 hdf_file = 'datasets/big/data.h5'
 train_file = 'datasets/big/train.h5'
@@ -80,7 +81,7 @@ def create_randomly_split_array(size: int = 10, split: Tuple[float, float, float
     return arr
 
 
-def csv_to_hdf(csv_filename: str, hdf_filename: str, cols: int, chunksize: int = ROWS_PR_EXEC):
+def csv_to_hdf(csv_filename: str, hdf_filename: str, cols: int, rows_pr_iteration: int = ROWS_PR_ITERATION):
     remove_file(hdf_filename)
     with h5py.File(hdf_filename, 'w') as store:
         dset = store.create_dataset('data', data=create_empty_string_array(cols), maxshape=(
@@ -90,21 +91,21 @@ def csv_to_hdf(csv_filename: str, hdf_filename: str, cols: int, chunksize: int =
             dset[0] = next(csv.reader(f))
             # Read the rest of the rows and assign to dataset:
         rows = 1
-        for c in tqdm(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=chunksize, lineterminator='\n'),
-                      desc='csv to hdf', total=int(ROWS/chunksize), unit='rows', unit_scale=chunksize, colour=TQDM_COLOR):
+        for c in tqdm(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=rows_pr_iteration, lineterminator='\n'),
+                      desc='csv to hdf', total=int(ROWS/rows_pr_iteration), unit='rows', unit_scale=rows_pr_iteration, colour=TQDM_COLOR):
             rows += len(c)
             dset.resize((rows, cols))
             dset[-len(c):] = c.astype(str).values
 
 
-def csv_split(csv_filename: str, dirname: str = 'csv-chunks', chunksize: int = ROWS_PR_EXEC, padding: int = 4):
+def csv_split(csv_filename: str, dirname: str = 'csv-chunks', rows_pr_iteration: int = ROWS_PR_ITERATION, padding: int = 4):
     # Get header row:
     with open(csv_filename, encoding='utf-8') as f:
         header = next(csv.reader(f))
     remove_directory(dirname)
     create_directory(dirname)
-    for i, c in tqdm(enumerate(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=chunksize, lineterminator='\n')),
-                     desc='csv split', total=int(ROWS/chunksize), unit='splits', colour=TQDM_COLOR):
+    for i, c in tqdm(enumerate(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=rows_pr_iteration, lineterminator='\n')),
+                     desc='csv split', total=int(ROWS/rows_pr_iteration), unit='splits', colour=TQDM_COLOR):
         df = pd.DataFrame(columns=header)
         pd.concat([df, c], ignore_index=True).to_csv(
             f'{dirname}/{i+1:0{padding}}.csv', index=False)
@@ -120,7 +121,7 @@ def read_hdf_cols(filename: str, idx: int = 0, num: int = 1) -> np.ndarray:
         return f['data'][:, idx:idx+num]
 
 
-def create_train_vali_and_test_sets(split: np.ndarray, cols: int, data_filename: str, train_filename: str, vali_filename: str, test_filename: str, chunksize: int = ROWS_PR_EXEC):
+def create_train_vali_and_test_sets(split: np.ndarray, cols: int, data_filename: str, train_filename: str, vali_filename: str, test_filename: str, rows_pr_iteration: int = ROWS_PR_ITERATION):
     # Remove existing hdf files:
     remove_file(train_filename)
     remove_file(vali_filename)
@@ -141,8 +142,8 @@ def create_train_vali_and_test_sets(split: np.ndarray, cols: int, data_filename:
         # Set header row:
         trainset[0] = valiset[0] = testset[0] = data[0, ]
         # Loop through data in chunks and append to the right dataset:
-        for start in tqdm(range(1, data.shape[0], chunksize), desc='create train, vali, and test set', unit='rows', unit_scale=chunksize, colour=TQDM_COLOR):
-            end = min(start + chunksize, data.shape[0])
+        for start in tqdm(range(1, data.shape[0], rows_pr_iteration), desc='create train, vali, and test set', unit='rows', unit_scale=rows_pr_iteration, colour=TQDM_COLOR):
+            end = min(start + rows_pr_iteration, data.shape[0])
             chunk_data = data[start:end]
             # Get the amount of the split array so it matches the size of the chunk.
             # Split array doesn't have a header row therefore -1.
