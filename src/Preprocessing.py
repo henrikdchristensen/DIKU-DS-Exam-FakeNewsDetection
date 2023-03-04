@@ -36,11 +36,14 @@ def clean_text(df: pd.DataFrame):
 def tokenize_text(df: pd.DataFrame):
     return df.applymap(lambda x: x.split())
 
-def remove_stopwords(words):
+def remove_stopwords_nltk(words):
     # Remove stopwords
     stop_words = stopwords.words("english")
 
     # Loop through all elements and remove stopwords
+    return [word for word in words if word not in stop_words]  # Remove stopwords from the list
+
+def remove_stopwords_freq(words, stop_words):
     return [word for word in words if word not in stop_words]  # Remove stopwords from the list
 
 
@@ -169,11 +172,11 @@ class Exploration:
         words = re.findall("(?:\w+[’'.-]?)+", content)
         return words
 
-    def get_word_info(df: pd.DataFrame):
+    def get_word_info(df: pd.DataFrame, column_name = 'content'):
         """Returns dict witht the etries:  word:(count, frequency)"""
         total_word_count = {}
         for index, row in df.iterrows():
-            word_count = Counter(row['content'])
+            word_count = Counter(row[column_name])
             for word, count in word_count.items():
                 if word in total_word_count:
                     total_word_count[word] += count

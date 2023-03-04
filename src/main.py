@@ -21,43 +21,51 @@ def main():
     pipeline = pd.read_csv(file, usecols=['id'])
     content = pd.read_csv(file, usecols=['content'])
     pd.set_option('display.max_colwidth', None)
-    cleaned = preprocessing.clean_text(content)
-    tokenized = preprocessing.tokenize_text(cleaned)
-    without_stopwords = tokenized.applymap(lambda x: preprocessing.remove_stopwords(x))
-    stemmed = without_stopwords.applymap(lambda x: preprocessing.stem(x))
-    pipeline = pipeline.assign(content = content, cleaned = cleaned, tokenized = tokenized, without_stopwords = without_stopwords, stemmed = stemmed)
+    cleaned = ps.clean_text(content)
+    tokenized = ps.tokenize_text(cleaned)
+    without_stopwords_nltk = tokenized.applymap(lambda x: ps.remove_stopwords_nltk(x))
+
+    stop_words_tail = ps.Exploration.get_stopwords(tokenized, 0, 2e-3)
+    stop_words_notail = ps.Exploration.get_stopwords(tokenized, 3e-5, 2e-3)
+    without_stopwords_freq_tail = tokenized.applymap(lambda x: ps.remove_stopwords_freq(x, stop_words_tail))
+    without_stopwords_freq_notail = tokenized.applymap(lambda x: ps.remove_stopwords_freq(x, stop_words_notail))
+    
+    stemmed = without_stopwords_nltk.applymap(lambda x: ps.stem(x))
+    pipeline = pipeline.assign(content = content, cleaned = cleaned, tokenized = tokenized, without_stopwords = without_stopwords_nltk, stemmed = stemmed)
 
 #Compute the reduction rate of the vocabulary size after removing stopwords.
 #Compute the reduction rate of the vocabulary size after stemming.
 
-    preprocessor = preprocessing.Preprocessing()
-    word_count_with_stopwords = preprocessor.get_word_count(tokenized)
-    word_count_without_stopwords = preprocessor.get_word_count(without_stopwords)
-    print("wc before removing stopwords: " + word_count_with_stopwords)
-    print("wc after removing stopwords: " + word_count_without_stopwords)
+    
+    word_count_with_stopwords = ps.Exploration.get_word_info(tokenized)
+    word_count_without_stopwords = ps.Exploration.get_word_info(without_stopwords_nltk)
+    word_count_without_stopwords_freq_tail = ps.Exploration.get_word_info(without_stopwords_freq_tail)
+    word_count_without_stopwords_freq_notail = ps.Exploration.get_word_info(without_stopwords_freq_notail)
+    print(f"vocab before removing stopwords: {len(word_count_with_stopwords)}")
+    print(f"vocab after nltk stopwords: {len(word_count_without_stopwords)}")
+    print(f"vocab after freq stopwords tail: {len(word_count_without_stopwords_freq_tail)}")
+    print(f"vocab after freq stopwords no tail: {len(word_count_without_stopwords_freq_notail)}")
 
-    word_count_after_stemming = preprocessor.get_word_count(stemmed)
-    print("wc after stemming: " + word_count_after_stemming)
+    word_count_after_stemming = ps.Exploration.get_word_info(stemmed)
+    print(f"wc after stemming: {len(word_count_after_stemming)}")
 
-    reduction_rate_stopwords = 1 - word_count_without_stopwords/word_count_with_stopwords
-    reduction_rate_stemming = 1 - word_count_after_stemming/word_count_without_stopwords
-    print("red. rate stopwords: " + reduction_rate_stopwords)
-    print("red. rate stemming: " +reduction_rate_stemming)
+    reduction_rate_stopwords = 1 - len(word_count_without_stopwords)/len(word_count_with_stopwords)
+    #reduction_rate_stopwords_freq_tail = 1 - len(word_count_without_stopwords)/len(word_count_with_stopwords)
+    #reduction_rate_stopwords_freq_notail = 1 - len(word_count_without_stopwords)/len(word_count_with_stopwords)
+    reduction_rate_stemming = 1 - len(word_count_after_stemming)/len(word_count_without_stopwords)
+    print(f"red. rate stopwords: {reduction_rate_stopwords}")
+    print(f"red. rate stemming: {reduction_rate_stemming}")
+    
+    url_count = ps.Exploration.countItems(cleaned)
+    #source_dist = ps.Exploration.sourceDistribution(cleaned)
 
-
-    url_count = ps.Exploration.countItems(df)
-    source_dist = ps.Exploration.sourceDistribution(df)
-
-    print(source_dist)
+    #print(source_dist)
     # date_count = ps.Exploration.countDates(df)
     # number_count = ps.Exploration.countNumbers(df)
 
     # print("URLs: ", url_count, "Dates: ", date_count, "Numbers: ", number_count)
 
     print("URLs: ", url_count)
-
-
-# def exploreData() 
 
 
 if __name__ == '__main__':
