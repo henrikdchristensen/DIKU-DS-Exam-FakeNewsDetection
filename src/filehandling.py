@@ -1,5 +1,5 @@
 from typing import Tuple
-from enum import Enum
+from enum import IntEnum
 import shutil
 import h5py
 import numpy as np
@@ -12,23 +12,23 @@ TQDM_COLOR = 'magenta'
 
 # https://raw.githubusercontent.com/several27/FakeNewsCorpus/master/news_sample.csv
 
-#csv_file = "datasets/sample/news_sample.csv"
-csv_file = "datasets/big/news_cleaned_2018_02_13.csv"
+# csv_file = "datasets/sample/news_sample.csv"
+# csv_file = "datasets/big/news_cleaned_2018_02_13.csv"
 
 # Only used for estimating finish time for converting csv to hdf
-#ROWS = 250
+# ROWS = 250
 ROWS = 8529853
 
 # Number of rows hold in memory pr. iteration - decrease if running out of memory or PC running slow:
 ROWS_PR_ITERATION = 200000
 
-hdf_file = 'datasets/big/data.h5'
-train_file = 'datasets/big/train.h5'
-vali_file = 'datasets/big/vali.h5'
-test_file = 'datasets/big/test.h5'
+# hdf_file = 'datasets/big/data.h5'
+# train_file = 'datasets/big/train.h5'
+# vali_file = 'datasets/big/vali.h5'
+# test_file = 'datasets/big/test.h5'
 
 # Set the current directory one level up:
-os.chdir("..")
+# os.chdir("..")
 
 
 def num_of_cols_csv(filename: str) -> int:
@@ -57,7 +57,7 @@ def create_empty_string_array(cols: int) -> np.ndarray:
     return arr
 
 
-class Set(Enum):
+class Set(IntEnum):
     TRAIN = 0
     VALI = 1
     TEST = 2
@@ -69,7 +69,7 @@ def create_randomly_split_array(size: int = 10, split: Tuple[float, float, float
     # 2: Test
 
     # Create a numpy array of the given size and set all to zeroes
-    arr = np.zeros(size, dtype=int)
+    arr = np.zeros(size, dtype=Set)
     # Determine the indices for the three splits
     split1 = int(size * split[0])
     split2 = int(size * (split[0] + split[1]))
@@ -111,9 +111,9 @@ def csv_split(csv_filename: str, dirname: str = 'csv-chunks', rows_pr_iteration:
             f'{dirname}/{i+1:0{padding}}.csv', index=False)
 
 
-def read_hdf_rows(filename: str, idx: int = 0, num: int = 0) -> np.ndarray:
+def read_hdf_rows(filename: str, idx: int = 0, num: int = 0):
     with h5py.File(filename, 'r') as f:
-        return f['data'][idx:idx+num, :]
+        return f['data'][idx:idx+num, ]
 
 
 def read_hdf_cols(filename: str, idx: int = 0, num: int = 1) -> np.ndarray:
@@ -168,13 +168,13 @@ def num_of_rows_and_cols_hdf(filename: str) -> tuple:
 
 
 # csv_split(csv_filename=csv_file)
-cols = num_of_cols_csv(filename=csv_file)
-csv_to_hdf(csv_filename=csv_file, hdf_filename=hdf_file, cols=cols)
-rows_cols = num_of_rows_and_cols_hdf(filename=hdf_file)
-rows = rows_cols[0]-1  # minus header
-split = create_randomly_split_array(size=rows)
-create_train_vali_and_test_sets(split=split, cols=cols, data_filename=hdf_file,
-                                train_filename=train_file, vali_filename=vali_file, test_filename=test_file)
+# cols = num_of_cols_csv(filename=csv_file)
+# csv_to_hdf(csv_filename=csv_file, hdf_filename=hdf_file, cols=cols)
+# rows_cols = num_of_rows_and_cols_hdf(filename=hdf_file)
+# rows = rows_cols[0]-1  # minus header
+# split = create_randomly_split_array(size=rows)
+# create_train_vali_and_test_sets(split=split, cols=cols, data_filename=hdf_file,
+#                                train_filename = train_file, vali_filename = vali_file, test_filename = test_file)
 
-#row_data = read_hdf_rows(filename=hdf_file, idx=0, num=rows)
-#print(rows[0, 2])
+# row_data = read_hdf_rows(filename=hdf_file, idx=0, num=rows)
+# print(rows[0, 2])
