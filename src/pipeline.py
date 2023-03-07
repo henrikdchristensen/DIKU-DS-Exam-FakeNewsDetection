@@ -1,7 +1,6 @@
 import h5py
 import filehandling as fh
-import preprocessing
-
+import preprocessing as pp
 
 class FunctionApplier:
     def function_to_apply(self, row):
@@ -18,12 +17,25 @@ class Count_rows(FunctionApplier):
         return row
 
 class Clean_data(FunctionApplier):
-
     def __init__(self):
-        pass
+        self.has_printed = False
 
     def function_to_apply(self, row):
-        clean
+        if not self.has_printed:
+            self.has_printed = True
+            #print("cleaning: ", row[5])
+        row[5] = pp.clean_text(row[5])
+        return row
+    
+class Print_content(FunctionApplier):
+    def __init__(self):
+        self.has_printed = False
+
+    def function_to_apply(self, row):
+        if not self.has_printed:
+            print("PRINTING CONTENT")
+            self.has_printed = True
+            print(row)
         return row
 
 def apply_pipeline(old_file, functions, new_file=""):
@@ -38,14 +50,14 @@ def apply_pipeline(old_file, functions, new_file=""):
                 None, data_set.shape[1]), dtype=h5py.string_dtype(encoding='utf-8'))
             save_to[0] = data_set[0, ]
 
-        for i in range(data_set.shape[0]):
+        for i in range(1, data_set.shape[0]):
             output = data_set[i, ]
             for func in functions:
                 output = func.function_to_apply(output)
 
             if new_file != "":
                 save_to.resize((i+2, data_set.shape[1]))
-                data_set[-len(output):] = output
+                save_to[-len(output):] = output
 
         try:
             save_to.close()
@@ -53,6 +65,9 @@ def apply_pipeline(old_file, functions, new_file=""):
             pass
 
 
-func = Count_rows()
-apply_pipeline("../datasets/sample/data.h5", [func])
-print(func.rows)
+print("INITIAL FILE")
+#apply_pipeline("../datasets/sample/data.h5", [Print_content(), Clean_data()], "../datasets/sample/data_cleaned.h5")
+apply_pipeline("../datasets/sample/data.h5", [Print_content(), Clean_data()],"../datasets/sample/data_cleaned.h5")
+print("CLEANED FILE")
+apply_pipeline("../datasets/sample/data_cleaned.h5", [Print_content()])
+

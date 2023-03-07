@@ -23,6 +23,7 @@ def clean_text(text):
 
     # TODO: Check if escaping special characters is needed.
     # Convert all to text and lowercase all characters
+    text = text.decode('utf-8')
     text = text.lower()
 
     # Loop through each pattern and apply the pattern to each row and do replacement if needed
@@ -208,3 +209,37 @@ def splitDataSet(pd: pd.DataFrame):
     train, val = train_test_split(train_val, test_size=0.5, random_state=42)
 
     return train, val, test
+def numCountPerLabel(df: pd.DataFrame):
+        keys = df['type'].unique()
+        typeDict = {k: 0 for k in keys}
+        countDict = {k: 0 for k in keys}
+
+        for type, text in zip(df.type, df.cleaned):
+            countDict[type] += text.count("<NUM>")
+            typeDict[type] += 1
+
+        perTypeDict = {}
+        for k, v in countDict.items():
+            perTypeDict[k] = v/typeDict[k]
+
+        print(perTypeDict)
+def numCountPerLabel(df: pd.DataFrame):
+    keys = df['type'].unique()
+    typeDict = {k: 0 for k in keys}
+    countDict = {k: 0 for k in keys}
+
+    for type, text in zip(df.type, df.cleaned):
+        countDict[type] += text.count("<NUM>")
+        typeDict[type] += 1
+
+    perTypeDict = {}
+    for k, v in countDict.items():
+        perTypeDict[k] = v/typeDict[k]
+
+    print(perTypeDict)
+    return perTypeDict
+def plotNumCount(dict):
+    types = list(dict.keys())
+    counts = list(dic.values())
+    plt.bar(range(len(numCountDict)), counts, tick_label=types)
+    plt.show()

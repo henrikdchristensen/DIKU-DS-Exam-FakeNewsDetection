@@ -80,3 +80,8 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+    """content["cleaned"] = cleaned
+    numCountDict = ps.Exploration.numCountPerLabel(content)
+    plotNumCount(numCountDict)
+    """
