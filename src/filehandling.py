@@ -7,12 +7,13 @@ import csv
 import os
 import pandas as pd
 from tqdm import tqdm
+import preprocessing as pp
 
 TQDM_COLOR = 'magenta'
 
 # https://raw.githubusercontent.com/several27/FakeNewsCorpus/master/news_sample.csv
 
-# csv_file = "datasets/sample/news_sample.csv"
+csv_file = "datasets/sample/news_sample.csv"
 # csv_file = "datasets/big/news_cleaned_2018_02_13.csv"
 
 # Only used for estimating finish time for converting csv to hdf
@@ -22,13 +23,13 @@ ROWS = 8529853
 # Number of rows hold in memory pr. iteration - decrease if running out of memory or PC running slow:
 ROWS_PR_ITERATION = 200000
 
-# hdf_file = 'datasets/big/data.h5'
-# train_file = 'datasets/big/train.h5'
-# vali_file = 'datasets/big/vali.h5'
-# test_file = 'datasets/big/test.h5'
+hdf_file = 'datasets/sample/data.h5'
+train_file = 'datasets/sample/train.h5'
+vali_file = 'datasets/sample/vali.h5'
+test_file = 'datasets/sample/test.h5'
 
 # Set the current directory one level up:
-# os.chdir("..")
+os.chdir("..")
 
 
 def num_of_cols_csv(filename: str) -> int:
@@ -81,7 +82,7 @@ def create_randomly_split_array(size: int = 10, split: Tuple[float, float, float
     return arr
 
 
-def csv_to_hdf(csv_filename: str, hdf_filename: str, cols: int, rows_pr_iteration: int = ROWS_PR_ITERATION):
+def csv_to_hdf(csv_filename: str, hdf_filename: str, clean_text: bool = True, cols: int = 0, rows_pr_iteration: int = ROWS_PR_ITERATION):
     remove_file(hdf_filename)
     with h5py.File(hdf_filename, 'w') as store:
         data_set = store.create_dataset('data', data=create_empty_string_array(cols), maxshape=(
@@ -95,7 +96,8 @@ def csv_to_hdf(csv_filename: str, hdf_filename: str, cols: int, rows_pr_iteratio
                       desc='csv to hdf', total=int(ROWS/rows_pr_iteration), unit='rows', unit_scale=rows_pr_iteration, colour=TQDM_COLOR):
             rows += len(c)
             data_set.resize((rows, cols))
-            data_set[-len(c):] = c.astype(str).values
+            data_set[-len(c):] = pp.clean_text(c).astype(
+                str).values if clean_text else c.astype(str).values
 
 
 def csv_split(csv_filename: str, dirname: str = 'csv-chunks', rows_pr_iteration: int = ROWS_PR_ITERATION, padding: int = 4):
@@ -168,9 +170,10 @@ def num_of_rows_and_cols_hdf(filename: str) -> tuple:
 
 
 # csv_split(csv_filename=csv_file)
-# cols = num_of_cols_csv(filename=csv_file)
-# csv_to_hdf(csv_filename=csv_file, hdf_filename=hdf_file, cols=cols)
-# rows_cols = num_of_rows_and_cols_hdf(filename=hdf_file)
+cols = num_of_cols_csv(filename=csv_file)
+csv_to_hdf(csv_filename=csv_file, hdf_filename=hdf_file,
+           clean_text=True, cols=cols)
+rows_cols = num_of_rows_and_cols_hdf(filename=hdf_file)
 # rows = rows_cols[0]-1  # minus header
 # split = create_randomly_split_array(size=rows)
 # create_train_vali_and_test_sets(split=split, cols=cols, data_filename=hdf_file,
