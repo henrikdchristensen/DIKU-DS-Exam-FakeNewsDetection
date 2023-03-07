@@ -7,7 +7,7 @@ import re
 from sklearn.model_selection import train_test_split
 
 
-def clean_text(df: pd.DataFrame):
+def clean_text(text):
     # List of patterns and their appropriate replacements
     patterns = {
         r'(\s{2,})': ' ',
@@ -23,13 +23,13 @@ def clean_text(df: pd.DataFrame):
 
     # TODO: Check if escaping special characters is needed.
     # Convert all to text and lowercase all characters
-    df = df.applymap(lambda x: str(x).lower())
+    text = text.lower()
 
     # Loop through each pattern and apply the pattern to each row and do replacement if needed
     for pattern, replacement in patterns.items():
-        df = df.applymap(lambda x: re.sub(pattern, replacement, x))
+        text = re.sub(pattern, replacement, text)
 
-    return df
+    return text
 
 
 def tokenize_text(df: pd.DataFrame):

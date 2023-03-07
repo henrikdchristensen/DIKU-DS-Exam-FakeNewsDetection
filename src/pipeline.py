@@ -1,5 +1,6 @@
 import h5py
 import filehandling as fh
+import preprocessing
 
 
 class FunctionApplier:
@@ -16,16 +17,14 @@ class Count_rows(FunctionApplier):
         self.rows += 1
         return row
 
-
-class Count_rows(FunctionApplier):
+class Clean_data(FunctionApplier):
 
     def __init__(self):
-        self.rows = 0
+        pass
 
     def function_to_apply(self, row):
-        self.rows += 1
+        clean
         return row
-
 
 def apply_pipeline(old_file, functions, new_file=""):
     with h5py.File(old_file, 'r') as f:
