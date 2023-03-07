@@ -154,5 +154,6 @@ def run(csv_file: str, hdf_file: str, train_file: str, vali_file: str, test_file
                                     vali_filename=vali_file, test_filename=test_file, rows_pr_iteration=rows_pr_iteration)
 
 
-run(csv_file="../datasets/big/news_cleaned_2018_02_13.csv", hdf_file='../datasets/big/data.h5',
-    train_file='../datasets/big/train.h5', vali_file='../datasets/big/vali.h5', test_file='../datasets/big/test.h5')
+if __name__ == '__main__':
+    run(csv_file="../datasets/big/news_cleaned_2018_02_13.csv", hdf_file='../datasets/big/data.h5',
+        train_file='../datasets/big/train.h5', vali_file='../datasets/big/vali.h5', test_file='../datasets/big/test.h5')

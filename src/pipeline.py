@@ -1,20 +1,59 @@
 import h5py
+import filehandling as fh
 
 
 class FunctionApplier:
-    def printname(self):
-        print(self.firstname, self.lastname)
+    def function_to_apply(self, row):
+        pass
 
 
-class Student(Person):
-    def __init__(self, fname, lname):
-        Person.__init__(self, fname, lname)
+class Count_rows(FunctionApplier):
+
+    def __init__(self):
+        self.rows = 0
+
+    def function_to_apply(self, row):
+        self.rows += 1
+        return row
+
+
+class Count_rows(FunctionApplier):
+
+    def __init__(self):
+        self.rows = 0
+
+    def function_to_apply(self, row):
+        self.rows += 1
+        return row
 
 
 def apply_pipeline(old_file, functions, new_file=""):
-    pass
+    with h5py.File(old_file, 'r') as f:
+        data_set = f['data']
+        if new_file != "":
+
+            save_to = h5py.File(new_file, 'w')
+
+            arr = fh.create_empty_string_array(data_set.shape[1])
+            save_to = save_to.create_dataset('data', data=arr, maxshape=(
+                None, data_set.shape[1]), dtype=h5py.string_dtype(encoding='utf-8'))
+            save_to[0] = data_set[0, ]
+
+        for i in range(data_set.shape[0]):
+            output = data_set[i, ]
+            for func in functions:
+                output = func.function_to_apply(output)
+
+            if new_file != "":
+                save_to.resize((i+2, data_set.shape[1]))
+                data_set[-len(output):] = output
+
+        try:
+            save_to.close()
+        except:
+            pass
 
 
-def write_hdf_cols(filename: str, idx: int = 0, num: int = 1) -> np.ndarray:
-    with h5py.File(filename, 'r') as f:
-        return f['data'][:, idx:idx+num]
+func = Count_rows()
+apply_pipeline("../datasets/sample/data.h5", [func])
+print(func.rows)
