@@ -10,26 +10,10 @@ from tqdm import tqdm
 import preprocessing as pp
 
 TQDM_COLOR = 'magenta'
-
-# https://raw.githubusercontent.com/several27/FakeNewsCorpus/master/news_sample.csv
-
-csv_file = "datasets/sample/news_sample.csv"
-# csv_file = "datasets/big/news_cleaned_2018_02_13.csv"
-
-# Only used for estimating finish time for converting csv to hdf
-# ROWS = 250
+ROWS_PR_ITERATION = 20000
 ROWS = 8529853
 
-# Number of rows hold in memory pr. iteration - decrease if running out of memory or PC running slow:
-ROWS_PR_ITERATION = 200000
-
-hdf_file = 'datasets/sample/data.h5'
-train_file = 'datasets/sample/train.h5'
-vali_file = 'datasets/sample/vali.h5'
-test_file = 'datasets/sample/test.h5'
-
-# Set the current directory one level up:
-os.chdir("..")
+# https://raw.githubusercontent.com/several27/FakeNewsCorpus/master/news_sample.csv
 
 
 def num_of_cols_csv(filename: str) -> int:
@@ -65,10 +49,6 @@ class Set(IntEnum):
 
 
 def create_randomly_split_array(size: int = 10, split: Tuple[float, float, float] = (0.8, 0.1, 0.1)) -> np.ndarray:
-    # 0: Train
-    # 1: Vali
-    # 2: Test
-
     # Create a numpy array of the given size and set all to zeroes
     arr = np.zeros(size, dtype=Set)
     # Determine the indices for the three splits
@@ -82,8 +62,7 @@ def create_randomly_split_array(size: int = 10, split: Tuple[float, float, float
     return arr
 
 
-def csv_to_hdf(csv_filename: str, hdf_filename: str, clean_text: bool = True, cols: int = 0, rows_pr_iteration: int = ROWS_PR_ITERATION):
-    remove_file(hdf_filename)
+def csv_to_hdf(csv_filename: str, hdf_filename: str, cols: int = 0, rows_pr_iteration: int = ROWS_PR_ITERATION):
     with h5py.File(hdf_filename, 'w') as store:
         data_set = store.create_dataset('data', data=create_empty_string_array(cols), maxshape=(
             None, cols), dtype=h5py.string_dtype(encoding='utf-8'))
@@ -96,8 +75,7 @@ def csv_to_hdf(csv_filename: str, hdf_filename: str, clean_text: bool = True, co
                       desc='csv to hdf', total=int(ROWS/rows_pr_iteration), unit='rows', unit_scale=rows_pr_iteration, colour=TQDM_COLOR):
             rows += len(c)
             data_set.resize((rows, cols))
-            data_set[-len(c):] = pp.clean_text(c).astype(
-                str).values if clean_text else c.astype(str).values
+            data_set[-len(c):] = c.astype(str).values
 
 
 def csv_split(csv_filename: str, dirname: str = 'csv-chunks', rows_pr_iteration: int = ROWS_PR_ITERATION, padding: int = 4):
@@ -113,22 +91,7 @@ def csv_split(csv_filename: str, dirname: str = 'csv-chunks', rows_pr_iteration:
             f'{dirname}/{i+1:0{padding}}.csv', index=False)
 
 
-def read_hdf_rows(filename: str, idx: int = 0, num: int = 0):
-    with h5py.File(filename, 'r') as f:
-        return f['data'][idx:idx+num, ]
-
-
-def read_hdf_cols(filename: str, idx: int = 0, num: int = 1) -> np.ndarray:
-    with h5py.File(filename, 'r') as f:
-        return f['data'][:, idx:idx+num]
-
-
 def create_train_vali_and_test_sets(split: np.ndarray, cols: int, data_filename: str, train_filename: str, vali_filename: str, test_filename: str, rows_pr_iteration: int = ROWS_PR_ITERATION):
-    # Remove existing hdf files:
-    remove_file(train_filename)
-    remove_file(vali_filename)
-    remove_file(test_filename)
-    # Open input and output files:
     with h5py.File(data_filename, 'r', ) as data,\
             h5py.File(train_filename, 'w', ) as train,\
             h5py.File(vali_filename, 'w', ) as vali,\
@@ -144,7 +107,8 @@ def create_train_vali_and_test_sets(split: np.ndarray, cols: int, data_filename:
         # Set header row:
         train_set[0] = vali_set[0] = test_set[0] = data_set[0, ]
         # Loop through data in chunks and append to the right dataset:
-        for start in tqdm(range(1, data_set.shape[0], rows_pr_iteration), desc='create train, vali, and test set', unit='rows', unit_scale=rows_pr_iteration, colour=TQDM_COLOR):
+        for start in tqdm(range(1, data_set.shape[0], rows_pr_iteration),
+                          desc='create train, vali, and test set', unit='rows', unit_scale=rows_pr_iteration, colour=TQDM_COLOR):
             end = min(start + rows_pr_iteration, data_set.shape[0])
             chunk_data = data_set[start:end]
             # Get the amount of the split array so it matches the size of the chunk.
@@ -164,20 +128,31 @@ def create_train_vali_and_test_sets(split: np.ndarray, cols: int, data_filename:
             test_set[-test_rows.shape[0]:] = test_rows
 
 
+def read_hdf_rows(filename: str, idx: int = 0, num: int = 0):
+    with h5py.File(filename, 'r') as f:
+        return f['data'][idx:idx+num, ]
+
+
+def read_hdf_cols(filename: str, idx: int = 0, num: int = 1) -> np.ndarray:
+    with h5py.File(filename, 'r') as f:
+        return f['data'][:, idx:idx+num]
+
+
 def num_of_rows_and_cols_hdf(filename: str) -> tuple:
     with h5py.File(filename, 'r', ) as data:
         return data['data'].shape
 
 
-# csv_split(csv_filename=csv_file)
-cols = num_of_cols_csv(filename=csv_file)
-csv_to_hdf(csv_filename=csv_file, hdf_filename=hdf_file,
-           clean_text=True, cols=cols)
-rows_cols = num_of_rows_and_cols_hdf(filename=hdf_file)
-# rows = rows_cols[0]-1  # minus header
-# split = create_randomly_split_array(size=rows)
-# create_train_vali_and_test_sets(split=split, cols=cols, data_filename=hdf_file,
-#                                train_filename = train_file, vali_filename = vali_file, test_filename = test_file)
+def run(csv_file: str, hdf_file: str, train_file: str, vali_file: str, test_file: str, rows_pr_iteration: int = ROWS_PR_ITERATION):
+    cols = num_of_cols_csv(filename=csv_file)
+    csv_to_hdf(csv_filename=csv_file, hdf_filename=hdf_file,
+               cols=cols, rows_pr_iteration=rows_pr_iteration)
+    rows = num_of_rows_and_cols_hdf(filename=hdf_file)[
+        0] - 1  # only rows minus header
+    split = create_randomly_split_array(size=rows)
+    create_train_vali_and_test_sets(split=split, cols=cols, data_filename=hdf_file, train_filename=train_file,
+                                    vali_filename=vali_file, test_filename=test_file, rows_pr_iteration=rows_pr_iteration)
 
-# row_data = read_hdf_rows(filename=hdf_file, idx=0, num=rows)
-# print(rows[0, 2])
+
+run(csv_file="../datasets/big/news_cleaned_2018_02_13.csv", hdf_file='../datasets/big/data.h5',
+    train_file='../datasets/big/train.h5', vali_file='../datasets/big/vali.h5', test_file='../datasets/big/test.h5')
