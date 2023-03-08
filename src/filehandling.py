@@ -74,7 +74,7 @@ def csv_to_hdf(csv_filename: str, hdf_filename: str, cols: int = 0, rows_pr_iter
                       desc='csv to hdf', total=int(ROWS/rows_pr_iteration), unit='rows', unit_scale=rows_pr_iteration, colour=TQDM_COLOR):
             rows += len(c)
             data_set.resize((rows, cols))
-            data_set[-len(c):] = c.astype(str).values
+            data_set[-len(c):] = c.astype(str)
 
 
 def csv_split(csv_filename: str, dirname: str = 'csv-chunks', rows_pr_iteration: int = ROWS_PR_ITERATION, padding: int = 4):
@@ -148,8 +148,10 @@ def num_of_rows_and_cols_hdf(filename: str) -> tuple:
 
 def run(csv_file: str, hdf_file: str, train_file: str, vali_file: str, test_file: str, rows_pr_iteration: int = ROWS_PR_ITERATION):
     cols = num_of_cols_csv(filename=csv_file)
-    csv_to_hdf(csv_filename=csv_file, hdf_filename=hdf_file, cols=cols, rows_pr_iteration=rows_pr_iteration)
-    rows = num_of_rows_and_cols_hdf(filename=hdf_file)[0] - 1  # only rows minus header
+    csv_to_hdf(csv_filename=csv_file, hdf_filename=hdf_file,
+               cols=cols, rows_pr_iteration=rows_pr_iteration)
+    rows = num_of_rows_and_cols_hdf(filename=hdf_file)[
+        0] - 1  # only rows minus header
     split = create_randomly_split_array(size=rows)
     create_train_vali_and_test_sets(split=split, cols=cols, data_filename=hdf_file, train_filename=train_file,
                                     vali_filename=vali_file, test_filename=test_file, rows_pr_iteration=rows_pr_iteration)
@@ -160,4 +162,3 @@ if __name__ == '__main__':
         train_file='../datasets/big/train.h5', vali_file='../datasets/big/vali.h5', test_file='../datasets/big/test.h5')
     #cols = num_of_cols_csv(filename="../datasets/sample/news_sample.csv")
     #csv_to_hdf(csv_filename="../datasets/sample/news_sample.csv", hdf_filename="../datasets/sample/news_sample.h5", cols=cols, rows_pr_iteration=ROWS_PR_ITERATION)
-
