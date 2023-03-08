@@ -1,8 +1,0 @@
-vocab before removing stopwords: 18057
-vocab after nltk stopwords: 17913
-vocab after freq stopwords tail: 18004
-vocab after freq stopwords no tail: 3367
-wc after stemming: 12759
-red. rate stopwords: 0.007974746635653784
-red. rate stemming: 0.2877239993300955
-URLs:  {'Urls': 824, 'Dates': 137, 'Numbers': 2278}

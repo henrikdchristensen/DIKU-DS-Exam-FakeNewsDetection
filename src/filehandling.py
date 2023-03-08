@@ -148,10 +148,8 @@ def num_of_rows_and_cols_hdf(filename: str) -> tuple:
 
 def run(csv_file: str, hdf_file: str, train_file: str, vali_file: str, test_file: str, rows_pr_iteration: int = ROWS_PR_ITERATION):
     cols = num_of_cols_csv(filename=csv_file)
-    csv_to_hdf(csv_filename=csv_file, hdf_filename=hdf_file,
-               cols=cols, rows_pr_iteration=rows_pr_iteration)
-    rows = num_of_rows_and_cols_hdf(filename=hdf_file)[
-        0] - 1  # only rows minus header
+    csv_to_hdf(csv_filename=csv_file, hdf_filename=hdf_file, cols=cols, rows_pr_iteration=rows_pr_iteration)
+    rows = num_of_rows_and_cols_hdf(filename=hdf_file)[0] - 1  # only rows minus header
     split = create_randomly_split_array(size=rows)
     create_train_vali_and_test_sets(split=split, cols=cols, data_filename=hdf_file, train_filename=train_file,
                                     vali_filename=vali_file, test_filename=test_file, rows_pr_iteration=rows_pr_iteration)
@@ -160,3 +158,6 @@ def run(csv_file: str, hdf_file: str, train_file: str, vali_file: str, test_file
 if __name__ == '__main__':
     run(csv_file="../datasets/big/news_cleaned_2018_02_13.csv", hdf_file='../datasets/big/data.h5',
         train_file='../datasets/big/train.h5', vali_file='../datasets/big/vali.h5', test_file='../datasets/big/test.h5')
+    #cols = num_of_cols_csv(filename="../datasets/sample/news_sample.csv")
+    #csv_to_hdf(csv_filename="../datasets/sample/news_sample.csv", hdf_filename="../datasets/sample/news_sample.h5", cols=cols, rows_pr_iteration=ROWS_PR_ITERATION)
+
