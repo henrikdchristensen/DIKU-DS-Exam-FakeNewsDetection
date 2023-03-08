@@ -7,7 +7,6 @@ import csv
 import os
 import pandas as pd
 from tqdm import tqdm
-import preprocessing as pp
 
 TQDM_COLOR = 'magenta'
 ROWS_PR_ITERATION = 20000
@@ -69,7 +68,7 @@ def csv_to_hdf(csv_filename: str, hdf_filename: str, cols: int = 0, rows_pr_iter
         # Get and set the header row:
         with open(csv_filename, encoding='utf-8') as f:
             data_set[0] = next(csv.reader(f))
-            # Read the rest of the rows and assign to dataset:
+        # Read the rest of the rows and assign to dataset:
         rows = 1
         for c in tqdm(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=rows_pr_iteration, lineterminator='\n'),
                       desc='csv to hdf', total=int(ROWS/rows_pr_iteration), unit='rows', unit_scale=rows_pr_iteration, colour=TQDM_COLOR):
@@ -118,14 +117,18 @@ def create_train_vali_and_test_sets(split: np.ndarray, cols: int, data_filename:
             # Select the values from the chunk for the train- or vali- or test dataset
             # from the chunk if it matches the shuffled split array:
             train_rows = chunk_data[chunk_split == Set.TRAIN]
-            train_set.resize((train_set.shape[0]+train_rows.shape[0], cols))
-            train_set[-train_rows.shape[0]:] = train_rows
+            if train_rows.shape[0] > 0:
+                train_set.resize(
+                    (train_set.shape[0]+train_rows.shape[0], cols))
+                train_set[-train_rows.shape[0]:] = train_rows
             vali_rows = chunk_data[chunk_split == Set.VALI]
-            vali_set.resize((vali_set.shape[0]+vali_rows.shape[0], cols))
-            vali_set[-vali_rows.shape[0]:] = vali_rows
+            if vali_rows.shape[0] > 0:
+                vali_set.resize((vali_set.shape[0]+vali_rows.shape[0], cols))
+                vali_set[-vali_rows.shape[0]:] = vali_rows
             test_rows = chunk_data[chunk_split == Set.TEST]
-            test_set.resize((test_set.shape[0]+test_rows.shape[0], cols))
-            test_set[-test_rows.shape[0]:] = test_rows
+            if test_rows.shape[0] > 0:
+                test_set.resize((test_set.shape[0]+test_rows.shape[0], cols))
+                test_set[-test_rows.shape[0]:] = test_rows
 
 
 def read_hdf_rows(filename: str, idx: int = 0, num: int = 0):
