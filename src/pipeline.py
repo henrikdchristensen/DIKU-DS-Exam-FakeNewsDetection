@@ -3,6 +3,9 @@ import filehandling as fh
 import preprocessing as pp
 import pandas as pd
 import re
+from nltk.corpus import stopwords
+from nltk.stem import PorterStemmer
+import json
 
 headers = {
     'row': 0,
@@ -28,8 +31,30 @@ class FunctionApplier:
         pass
 
 
+class Tokenizer(FunctionApplier):
+    def function_to_apply(self, cell):
+        return cell.split()
+
+
+class RemoveStopwords(FunctionApplier):
+    def __init__(self, swords):
+        self.swords = swords
+
+    def function_to_apply(self, words):
+        return [w for w in words if not w in self.swords]
+
+
+class Stem(FunctionApplier):
+    def function_to_apply(self, words: list[str]):
+        ps = PorterStemmer()
+        stemmed_words = []
+        for w in words:
+            stemmed_words.append(ps.stem(w))
+        return stemmed_words
+
+
 class Clean_data(FunctionApplier):
-    def function_to_apply(self, row):
+    def function_to_apply(self, cell):
         # List of patterns and their appropriate replacements
         patterns = {
             r'(\s{2,})': ' ',
@@ -42,17 +67,35 @@ class Clean_data(FunctionApplier):
             r'(\d+)': '<NUM>',
             r'(\.|\,|\?|\–|\&|\—|\”|\“|\%|\:|\-)': ''
         }
-
         # Convert all to text and lowercase all characters
-        row[headers['content']] = row[headers['content']].decode(
-            'utf-8').lower()
+        cell = cell.lower()
 
         # Loop through each pattern and apply the pattern to each row and do replacement if needed
         for pattern, replacement in patterns.items():
-            row[headers['content']] = re.sub(
-                pattern, replacement, row[headers['content']].decode('utf-8'))
+            cell = re.sub(pattern, replacement, cell)
 
-        return row
+        return cell
+
+class Decode_to_str(FunctionApplier):
+    def function_to_apply(self, row):
+        return row.decode("utf-8")
+
+class Decode_from_json(FunctionApplier):
+    def function_to_apply(self, row):
+        return json.loads(row)
+
+class Encode_to_json(FunctionApplier):
+    def function_to_apply(self, row):
+        return json.dumps(row)
+
+class Print_first_row(FunctionApplier):
+    def __init__(self):
+        self.has_printed = False
+
+    def function_to_apply(self, row):
+        if not self.has_printed:
+            print(row)
+            self.has_printed = True
 
 
 class Print_content_to_csv(FunctionApplier):
@@ -79,7 +122,7 @@ class Print_content_to_csv(FunctionApplier):
         return row
 
 
-def apply_pipeline(old_file, functions, new_file=None):
+def apply_pipeline(old_file, functions, column=None, new_file=None):
     with h5py.File(old_file, 'r') as f:
         data_set = f['data']
         if new_file is not None:
@@ -91,8 +134,17 @@ def apply_pipeline(old_file, functions, new_file=None):
         for i in range(0, data_set.shape[0]):
             output = data_set[i, ]
             if i > 0:
-                for func in functions:
-                    output = func.function_to_apply(output)
+                for j, func in enumerate(functions):
+                    if column == None:
+                        output = func.function_to_apply(output)
+                    else:
+                        if j == 0:
+                            acc_out = output[column]
+                        acc_out = func.function_to_apply(acc_out)
+                        if j == len(functions)-1:
+                            output[column] = acc_out
+                if column != None:
+                    acc_out = output[column]
             if new_file is not None:
                 save_set[i,] = output
         try:
@@ -101,11 +153,18 @@ def apply_pipeline(old_file, functions, new_file=None):
             pass
 
 
-#print("INITIAL FILE")
-#apply_pipeline("../datasets/sample/data.h5", [Print_content(), Clean_data()], "../datasets/sample/data_cleaned.h5")
-#apply_pipeline("../datasets/sample/data.h5", [Print_content(), Clean_data()],"../datasets/sample/data_cleaned.h5")
-#print("CLEANED FILE")
-apply_pipeline("../datasets/sample/data.h5",
-               [Clean_data()], new_file="../datasets/sample/news_sample_cleaned.h5")
+# print("INITIAL FILE")
+# apply_pipeline("../datasets/sample/data.h5", [Print_content(), Clean_data()], "../datasets/sample/data_cleaned.h5")
+# apply_pipeline("../datasets/sample/data.h5", [Print_content(), Clean_data()],"../datasets/sample/data_cleaned.h5")
+# print("CLEANED FILE")
+apply_pipeline("../datasets/sample/data.h5",[
+    Decode_to_str(), 
+    Clean_data(),
+    Tokenizer(),
+    RemoveStopwords(stopwords.words('english')),
+    Stem(),
+    Encode_to_json()
+], column=headers["content"], new_file="../datasets/sample/news_sample_cleaned.h5")
+#apply_pipeline("../datasets/sample/news_sample_cleaned.h5",[Print_first_row()], column=headers["content"])
 # apply_pipeline("../datasets/sample/news_sample_cleaned.h5", [Print_content_to_csv(
 #    100, "../datasets/sample/out_cleaned.csv")], "../datasets/sample/out_cleaned.h5")

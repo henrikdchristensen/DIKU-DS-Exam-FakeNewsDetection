@@ -7,46 +7,6 @@ import re
 from sklearn.model_selection import train_test_split
 
 
-def clean_text(text):
-    # List of patterns and their appropriate replacements
-    patterns = {
-        r'(\s{2,})': ' ',
-        r'(\t+)': '(\t)',
-        r'(\n+)': '(\n)',
-        r'(\!|\[|\])': '',
-        r'(\d{1,2}[-/\\]\d{1,2}[-/\\]\d{2,4}|\d{2,4}[-/\\]\d{1,2}[-/\\]\d{1,2})|\w{3}\s\d{1,2}\S\d{4}|\d{1,2}\s\w{3}\s\d{4}|(?:jan(?:uary)?|feb(?:ruary)|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?),? \d{2,4},? \d{2,4}|\d{2,4},? (?:jan(?:uary)?|feb(?:ruary)|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?),? \d{2,4}': ' <DATE> ',
-        r'([\w.\-]+@(?:[\w-]+\.)+[\w-]{2,4})': '<EMAIL>',
-        r'((https?:\/\/)?(?:www\.)?[a-zA-Z0-9-_\+=.:~@#%]+\.[a-zA-Z0-9()]{1,6}\b(?:[a-zA-Z0-9-_.:\\/@#$%&()=+~?]*))': '<URL>',
-        r'(\d+)': '<NUM>',
-        r'(\.|\,|\?|\–|\&|\—|\”|\“|\%|\:|\-)': ''
-    }
-    # Convert all to text and lowercase all characters
-    text = text.decode('utf-8')
-    text = text.lower()
-
-    # Loop through each pattern and apply the pattern to each row and do replacement if needed
-    for pattern, replacement in patterns.items():
-        text = re.sub(pattern, replacement, text)
-
-    return text
-
-
-def tokenize_text(df: pd.DataFrame):
-    return df.applymap(lambda x: x.split())
-
-
-def remove_stopwords(df: pd.DataFrame, stopwords: list[str]):
-    df = df.applymap(lambda x: ' '.join(
-        [word for word in str(x).split() if word not in stopwords]))
-
-
-def stem(words: list[str]):
-    ps = PorterStemmer()
-    stemmed_words = []
-    for w in words:
-        stemmed_words.append(ps.stem(w))
-    return stemmed_words
-
 
 # def vocabulary_size(words: list[str]):
 # return len(set(words))
