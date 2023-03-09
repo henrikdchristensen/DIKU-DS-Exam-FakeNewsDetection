@@ -8,6 +8,8 @@ from nltk.stem import PorterStemmer
 import json
 from collections import Counter
 import matplotlib.pyplot as plt
+from tqdm import tqdm
+from time import time
 
 headers = {
     'row': 0,
@@ -149,20 +151,23 @@ class Print_content_to_csv(FunctionApplier):
 
         return row
 
-ROWS_PR_ITERATION = 
-TEST_NUM = 1000000
+ROWS_PR_ITERATION = 20000
+TEST_NUM = 100000
+ROWS = 8529853
+TQDM_COLOR = 'magenta'
 
 def apply_pipeline(old_file, functions, column=None, new_file=None, rows_pr_iteration=ROWS_PR_ITERATION):
     with h5py.File(old_file, 'r') as f:
         data_set = f['data']
-        if new_file is n'ot None:
+        if new_file is not None:
             save_to = h5py.File(new_file, 'w')
             arr = fh.create_empty_string_array(data_set.shape[1]) 
             save_set = save_to.create_dataset('data', data=arr, maxshape=(data_set.shape), dtype=h5py.string_dtype(encoding='utf-8'))
             save_set.resize((TEST_NUM+1,data_set.shape[1]))#save_set.resize(data_set.shape)
             save_set[0] = data_set[0]
-        for start in range(1, TEST_NUM, rows_pr_iteration):#for start in range(1, data_set.shape[0], rows_pr_iteration):
-            print("processing new rows")
+        start_time = time()
+        for start in tqdm(range(1, TEST_NUM, rows_pr_iteration),
+                      desc='csv to hdf', total=int(ROWS/rows_pr_iteration), unit='rows', unit_scale=rows_pr_iteration, colour=TQDM_COLOR):#data_set.shape[0]
             end = min(start + rows_pr_iteration, data_set.shape[0])
             rows = data_set[start:end]
             for i in range(len(rows)):
@@ -176,8 +181,8 @@ def apply_pipeline(old_file, functions, column=None, new_file=None, rows_pr_iter
                         if j == len(functions)-1:
                             rows[i,column] = acc_out
             if new_file is not None:
-                print("saving")
                 save_set[start:end] = rows
+        print(f'finish time: {time()-start_time}')
         try:
             save_to.close()
         except:
@@ -192,8 +197,8 @@ def apply_pipeline(old_file, functions, column=None, new_file=None, rows_pr_iter
 stopwords_lst = stopwords.words('english') + ["<NUM>","<DATE>","<URL>"]
 
 apply_pipeline("../datasets/big/data.h5",[
-#    Decode_to_str(), 
-#    Clean_data(),
+    Decode_to_str(), 
+    Clean_data(),
 #    Tokenizer(),
 #    Remove_stopwords(stopwords_lst),
 #    Stem(),
