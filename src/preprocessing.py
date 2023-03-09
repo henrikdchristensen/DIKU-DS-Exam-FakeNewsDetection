@@ -7,45 +7,6 @@ import re
 from sklearn.model_selection import train_test_split
 
 
-
-# def vocabulary_size(words: list[str]):
-# return len(set(words))
-
-
-def word_frequency(words):
-    # Create a Counter list
-    frequency = Counter()
-    # Update/add list of words
-    frequency.update(words)
-
-    # Return the sorted dictionary based on the frequency of each word
-    return sorted(frequency.items(), key=lambda x: x[1], reverse=True)
-
-
-def plot_word_frequency(sorted_frequency):
-    # Number of words to list of frequency
-    nwords = 50
-
-    # Extract the words and their frequency from the sorted list
-    words = [x[0] for x in sorted_frequency[:nwords]]
-    frequency = [x[1] for x in sorted_frequency[:nwords]]
-
-    # Plot a barplot using matplotlib
-    plt.bar(words, frequency)
-    plt.ylabel('Frequency')
-    plt.title('Frequency of the 50 most frequent words')
-    plt.xticks(rotation=90)
-    plt.show()
-
-
-# Compute the reduction : list[str]rate of the voc: list[str]abulary size after stemming.
-# def oldCount = vocabulary_size(words)reduction_rate(words, stemmed_words):
-
-
-# oldCountvooldCountoldCount return (vocabulary_size(words) - vocabulary_size(stemmed_words)) / vocabulary_size(words)
-
-# kf counting the number of URLs in the content
-
 """ 
 1. counting the number of URLs in the content
 2. counting the number of dates in the content
@@ -54,8 +15,6 @@ def plot_word_frequency(sorted_frequency):
 5. plot the frequency of the 10000 most frequent words (any interesting patterns?)
 6. run the analysis in point 4 and 5 both before and after removing stopwords and applying stemming: do you see any difference?
 """
-
-
 class Exploration:
 
     def countItems(df: pd.DataFrame):
