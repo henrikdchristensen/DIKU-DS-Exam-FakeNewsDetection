@@ -158,7 +158,9 @@ def run(csv_file: str, hdf_file: str, train_file: str, vali_file: str, test_file
 
 
 if __name__ == '__main__':
-    run(csv_file="../datasets/big/news_cleaned_2018_02_13.csv", hdf_file='../datasets/big/data.h5',
-        train_file='../datasets/big/train.h5', vali_file='../datasets/big/vali.h5', test_file='../datasets/big/test.h5')
+    #run(csv_file="../datasets/sample/news_min.csv", hdf_file='../datasets/sample/data_min.h5',
+    #    train_file='../datasets/sample/train_min.h5', vali_file='../datasets/sample/vali_min.h5', test_file='../datasets/sample/test_min.h5')
+    #print(num_of_rows_and_cols_hdf(filename="../datasets/big/data_cleaned.h5"))
+    print(read_hdf_rows(filename="../datasets/big/data_cleaned.h5", idx=1, num=1))
     #cols = num_of_cols_csv(filename="../datasets/sample/news_sample.csv")
     #csv_to_hdf(csv_filename="../datasets/sample/news_sample.csv", hdf_filename="../datasets/sample/news_sample.h5", cols=cols, rows_pr_iteration=ROWS_PR_ITERATION)

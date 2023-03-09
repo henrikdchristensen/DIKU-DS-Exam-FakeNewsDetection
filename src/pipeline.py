@@ -6,6 +6,8 @@ import re
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
 import json
+from collections import Counter
+import matplotlib.pyplot as plt
 
 headers = {
     'row': 0,
@@ -30,13 +32,38 @@ class FunctionApplier:
     def function_to_apply(self, row):
         pass
 
+class Word_frequency(FunctionApplier):
+    def __init__(self, nwords = 50):
+        self.swords = nwords
+        self.words = []
+        self.frequency = Counter()
+        self.sorted_frequency = []
+
+    def function_to_apply(self, content):
+        # Update/add list of word
+        self.frequency.update(content)
+        # Return the sorted dictionary based on the frequency of each word
+        self.sorted_frequency = sorted(self.frequency.items(), key=lambda x: x[1], reverse=True)
+        return content
+    
+    def plot(self):
+        # Extract the words and their frequency from the sorted list
+        words = [x[0] for x in self.sorted_frequency[:self.swords]]
+        frequency = [x[1] for x in self.sorted_frequency[:self.swords]]
+        # Plot a barplot using matplotlib
+        plt.bar(words, frequency)
+        plt.ylabel('Frequency')
+        plt.title(f'Frequency of the {self.swords} most frequent words')
+        plt.xticks(rotation=90)
+        plt.tight_layout()
+        plt.show()
 
 class Tokenizer(FunctionApplier):
     def function_to_apply(self, cell):
         return cell.split()
 
 
-class RemoveStopwords(FunctionApplier):
+class Remove_stopwords(FunctionApplier):
     def __init__(self, swords):
         self.swords = swords
 
@@ -57,19 +84,20 @@ class Clean_data(FunctionApplier):
     def function_to_apply(self, cell):
         # List of patterns and their appropriate replacements
         patterns = {
-            r'(\s{2,})': ' ',
+            r'(\r\n|\n|\r)+': '(\n)',
+            r'( +)': ' ',
             r'(\t+)': '(\t)',
-            r'(\n+)': '(\n)',
             r'(\!|\[|\])': '',
-            r'(\d{1,2}[-/\\]\d{1,2}[-/\\]\d{2,4}|\d{2,4}[-/\\]\d{1,2}[-/\\]\d{1,2})|\w{3}\s\d{1,2}\S\d{4}|\d{1,2}\s\w{3}\s\d{4}|(?:jan(?:uary)?|feb(?:ruary)|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?),? \d{2,4},? \d{2,4}|\d{2,4},? (?:jan(?:uary)?|feb(?:ruary)|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?),? \d{2,4}': ' <DATE> ',
+            r'(\d{1,2}[-/\\]\d{1,2}[-/\\]\d{2,4}|\d{2,4}[-/\\]\d{1,2}[-/\\]\d{1,2})|\w{3}\s\d{1,2}\S\d{4}|\d{1,2}\s\w{3}\s\d{4}|(?:jan(?:uary)?|feb(?:ruary)|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?),? \d{2,4},? \d{2,4}|\d{2,4},? (?:jan(?:uary)?|feb(?:ruary)|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?),? \d{2,4}': '<DATE>',
             r'([\w.\-]+@(?:[\w-]+\.)+[\w-]{2,4})': '<EMAIL>',
             r'((https?:\/\/)?(?:www\.)?[a-zA-Z0-9-_\+=.:~@#%]+\.[a-zA-Z0-9()]{1,6}\b(?:[a-zA-Z0-9-_.:\\/@#$%&()=+~?]*))': '<URL>',
-            r'(\d+)': '<NUM>',
-            r'(\.|\,|\?|\–|\&|\—|\”|\“|\%|\:|\-)': ''
+            r'(\.|\,|\?|\&|\"|\”|\“|\%|\:|\-|\(|\)|\´|\`|\’|\$|\'|\|)': '',
+            r'(\–|\—)': ' ',
+            r'(\d+)(th)?': '<NUM>',
         }
+        #print(cell)
         # Convert all to text and lowercase all characters
         cell = cell.lower()
-
         # Loop through each pattern and apply the pattern to each row and do replacement if needed
         for pattern, replacement in patterns.items():
             cell = re.sub(pattern, replacement, cell)
@@ -79,6 +107,7 @@ class Clean_data(FunctionApplier):
 class Decode_to_str(FunctionApplier):
     def function_to_apply(self, row):
         return row.decode("utf-8")
+        
 
 class Decode_from_json(FunctionApplier):
     def function_to_apply(self, row):
@@ -94,7 +123,6 @@ class Print_first_row(FunctionApplier):
 
     def function_to_apply(self, row):
         if not self.has_printed:
-            print(row)
             self.has_printed = True
 
 
@@ -121,32 +149,35 @@ class Print_content_to_csv(FunctionApplier):
 
         return row
 
+ROWS_PR_ITERATION = 
+TEST_NUM = 1000000
 
-def apply_pipeline(old_file, functions, column=None, new_file=None):
+def apply_pipeline(old_file, functions, column=None, new_file=None, rows_pr_iteration=ROWS_PR_ITERATION):
     with h5py.File(old_file, 'r') as f:
         data_set = f['data']
-        if new_file is not None:
+        if new_file is n'ot None:
             save_to = h5py.File(new_file, 'w')
-            arr = fh.create_empty_string_array(data_set.shape[1])
-            save_set = save_to.create_dataset('data', data=arr, maxshape=(
-                data_set.shape), dtype=h5py.string_dtype(encoding='utf-8'))
-            save_set.resize(data_set.shape)
-        for i in range(0, data_set.shape[0]):
-            output = data_set[i, ]
-            if i > 0:
+            arr = fh.create_empty_string_array(data_set.shape[1]) 
+            save_set = save_to.create_dataset('data', data=arr, maxshape=(data_set.shape), dtype=h5py.string_dtype(encoding='utf-8'))
+            save_set.resize((TEST_NUM+1,data_set.shape[1]))#save_set.resize(data_set.shape)
+            save_set[0] = data_set[0]
+        for start in range(1, TEST_NUM, rows_pr_iteration):#for start in range(1, data_set.shape[0], rows_pr_iteration):
+            print("processing new rows")
+            end = min(start + rows_pr_iteration, data_set.shape[0])
+            rows = data_set[start:end]
+            for i in range(len(rows)):
                 for j, func in enumerate(functions):
                     if column == None:
-                        output = func.function_to_apply(output)
+                        rows[i,column] = func.function_to_apply(rows[i,column])
                     else:
                         if j == 0:
-                            acc_out = output[column]
+                            acc_out = rows[i,column]
                         acc_out = func.function_to_apply(acc_out)
                         if j == len(functions)-1:
-                            output[column] = acc_out
-                if column != None:
-                    acc_out = output[column]
+                            rows[i,column] = acc_out
             if new_file is not None:
-                save_set[i,] = output
+                print("saving")
+                save_set[start:end] = rows
         try:
             save_to.close()
         except:
@@ -157,14 +188,26 @@ def apply_pipeline(old_file, functions, column=None, new_file=None):
 # apply_pipeline("../datasets/sample/data.h5", [Print_content(), Clean_data()], "../datasets/sample/data_cleaned.h5")
 # apply_pipeline("../datasets/sample/data.h5", [Print_content(), Clean_data()],"../datasets/sample/data_cleaned.h5")
 # print("CLEANED FILE")
-apply_pipeline("../datasets/sample/data.h5",[
-    Decode_to_str(), 
-    Clean_data(),
-    Tokenizer(),
-    RemoveStopwords(stopwords.words('english')),
-    Stem(),
-    Encode_to_json()
-], column=headers["content"], new_file="../datasets/sample/news_sample_cleaned.h5")
+
+stopwords_lst = stopwords.words('english') + ["<NUM>","<DATE>","<URL>"]
+
+apply_pipeline("../datasets/big/data.h5",[
+#    Decode_to_str(), 
+#    Clean_data(),
+#    Tokenizer(),
+#    Remove_stopwords(stopwords_lst),
+#    Stem(),
+#    Encode_to_json(),
+], column=headers["content"], new_file="../datasets/big/data_cleaned.h5")
 #apply_pipeline("../datasets/sample/news_sample_cleaned.h5",[Print_first_row()], column=headers["content"])
 # apply_pipeline("../datasets/sample/news_sample_cleaned.h5", [Print_content_to_csv(
 #    100, "../datasets/sample/out_cleaned.csv")], "../datasets/sample/out_cleaned.h5")
+
+"""
+wf = Word_frequency()
+apply_pipeline("../datasets/big/data_cleaned.h5",[
+    Decode_from_json(), 
+    wf
+], column=headers["content"])
+wf.plot()
+"""
