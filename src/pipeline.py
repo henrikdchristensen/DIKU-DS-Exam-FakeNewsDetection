@@ -81,24 +81,22 @@ class Stem(FunctionApplier):
             stemmed_words.append(ps.stem(w))
         return stemmed_words
 
-
+patterns = {
+            re.compile(r'(\r\n|\n|\r)+'): '(\n)',
+            re.compile(r'( +)'): ' ',
+            re.compile(r'(\t+)'): '(\t)',
+            re.compile(r'(\!|\[|\])'): '',
+            re.compile(r'(\d{1,2}[-/\\]\d{1,2}[-/\\]\d{2,4}|\d{2,4}[-/\\]\d{1,2}[-/\\]\d{1,2})|\w{3}\s\d{1,2}\S\d{4}|\d{1,2}\s\w{3}\s\d{4}|(?:jan(?:uary)?|feb(?:ruary)|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?),? \d{2,4},? \d{2,4}|\d{2,4},? (?:jan(?:uary)?|feb(?:ruary)|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?),? \d{2,4}'): '<DATE>',
+            re.compile(r'([\w.\-]+@(?:[\w-]+\.)+[\w-]{2,4})'): '<EMAIL>',
+            re.compile(r'((https?:\/\/)?(?:www\.)?[a-zA-Z0-9-_\+=.:~@#%]+\.[a-zA-Z0-9()]{1,6}\b(?:[a-zA-Z0-9-_.:\\/@#$%&()=+~?]*))'): '<URL>',
+            re.compile(r'(\.|\,|\?|\&|\"|\”|\“|\%|\:|\-|\(|\)|\´|\`|\’|\$|\'|\|)'): '',
+            re.compile(r'(\–|\—)'): ' ',
+            re.compile(r'(\d+)(th)?'): '<NUM>',
+        }
 class Clean_data(FunctionApplier):
     def function_to_apply(self, cell):
-        # List of patterns and their appropriate replacements
-        patterns = {
-            r'(\r\n|\n|\r)+': '(\n)',
-            r'( +)': ' ',
-            r'(\t+)': '(\t)',
-            r'(\!|\[|\])': '',
-            r'(\d{1,2}[-/\\]\d{1,2}[-/\\]\d{2,4}|\d{2,4}[-/\\]\d{1,2}[-/\\]\d{1,2})|\w{3}\s\d{1,2}\S\d{4}|\d{1,2}\s\w{3}\s\d{4}|(?:jan(?:uary)?|feb(?:ruary)|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?),? \d{2,4},? \d{2,4}|\d{2,4},? (?:jan(?:uary)?|feb(?:ruary)|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?),? \d{2,4}': '<DATE>',
-            r'([\w.\-]+@(?:[\w-]+\.)+[\w-]{2,4})': '<EMAIL>',
-            r'((https?:\/\/)?(?:www\.)?[a-zA-Z0-9-_\+=.:~@#%]+\.[a-zA-Z0-9()]{1,6}\b(?:[a-zA-Z0-9-_.:\\/@#$%&()=+~?]*))': '<URL>',
-            r'(\.|\,|\?|\&|\"|\”|\“|\%|\:|\-|\(|\)|\´|\`|\’|\$|\'|\|)': '',
-            r'(\–|\—)': ' ',
-            r'(\d+)(th)?': '<NUM>',
-        }
-        #print(cell)
-        # Convert all to text and lowercase all characters
+        # Apply patterns using list comprehension
+        cell = str(cell)
         cell = cell.lower()
         # Loop through each pattern and apply the pattern to each row and do replacement if needed
         for pattern, replacement in patterns.items():
@@ -151,10 +149,36 @@ class Print_content_to_csv(FunctionApplier):
 
         return row
 
-ROWS_PR_ITERATION = 20000
-TEST_NUM = 100000
+ROWS_PR_ITERATION = 10
+TEST_NUM = 1000
 ROWS = 8529853
 TQDM_COLOR = 'magenta'
+
+def applier(functions, x):
+    acc_out = x
+    for function in functions:
+        acc_out = function.function_to_apply(acc_out)
+    return acc_out
+
+
+def apply_pipeline1(old_file, functions, column=None, new_file=None, rows_pr_iteration=ROWS_PR_ITERATION):
+    i = 0
+    start_time = time()
+    for chunk in pd.read_csv(old_file, chunksize=ROWS_PR_ITERATION):
+        if i >= TEST_NUM:
+            break
+        
+        chunk["content"] = chunk["content"].apply(lambda x: applier(functions, x))
+
+        if new_file != None:
+            if i == 0:
+                chunk.to_csv(new_file)
+            else:
+                chunk.to_csv(new_file, mode='a', index=False, header=False)
+
+        i += ROWS_PR_ITERATION
+    print(f'finish time: {time()-start_time}')
+
 
 def apply_pipeline(old_file, functions, column=None, new_file=None, rows_pr_iteration=ROWS_PR_ITERATION):
     with h5py.File(old_file, 'r') as f:
@@ -167,7 +191,7 @@ def apply_pipeline(old_file, functions, column=None, new_file=None, rows_pr_iter
             save_set[0] = data_set[0]
         start_time = time()
         for start in tqdm(range(1, TEST_NUM, rows_pr_iteration),
-                      desc='csv to hdf', total=int(ROWS/rows_pr_iteration), unit='rows', unit_scale=rows_pr_iteration, colour=TQDM_COLOR):#data_set.shape[0]
+                      desc='csv to hdf', total=int(TEST_NUM/rows_pr_iteration), unit='rows', unit_scale=rows_pr_iteration, colour=TQDM_COLOR):#data_set.shape[0]
             end = min(start + rows_pr_iteration, data_set.shape[0])
             rows = data_set[start:end]
             for i in range(len(rows)):
@@ -196,17 +220,27 @@ def apply_pipeline(old_file, functions, column=None, new_file=None, rows_pr_iter
 
 stopwords_lst = stopwords.words('english') + ["<NUM>","<DATE>","<URL>"]
 
+apply_pipeline1("../datasets/big/news_cleaned_2018_02_13.csv",[ 
+    Clean_data(),
+    #Tokenizer(),
+    #Remove_stopwords(stopwords_lst),
+    #Stem(),
+    #Encode_to_json(),
+], column=headers["content"], new_file="../datasets/big/data_cleaned.csv")
+
 apply_pipeline("../datasets/big/data.h5",[
     Decode_to_str(), 
     Clean_data(),
-#    Tokenizer(),
-#    Remove_stopwords(stopwords_lst),
-#    Stem(),
-#    Encode_to_json(),
+    #Tokenizer(),
+    #Remove_stopwords(stopwords_lst),
+    #Stem(),
+    #Encode_to_json(),
 ], column=headers["content"], new_file="../datasets/big/data_cleaned.h5")
 #apply_pipeline("../datasets/sample/news_sample_cleaned.h5",[Print_first_row()], column=headers["content"])
 # apply_pipeline("../datasets/sample/news_sample_cleaned.h5", [Print_content_to_csv(
 #    100, "../datasets/sample/out_cleaned.csv")], "../datasets/sample/out_cleaned.h5")
+
+
 
 """
 wf = Word_frequency()
