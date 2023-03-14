@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 TQDM_COLOR = 'magenta'
 ROWS_PR_ITERATION = 20000
-ROWS = 8529853
+ROWS = 8528956
 
 #ROWS_PR_ITERATION = 20
 #ROWS = 250
@@ -52,19 +52,24 @@ def create_randomly_split_array(size: int = 10, split: Tuple[float, float, float
     return arr
 
 
-
 def csv_split(csv_filename: str, dirname: str = 'csv-chunks', rows_pr_iteration: int = ROWS_PR_ITERATION, padding: int = 4):
     # Get header row:
     with open(csv_filename, encoding='utf-8') as f:
-        header = next(csv.reader(f))
+        colnames = pd.DataFrame(columns=next(csv.reader(f)))
     remove_directory(dirname)
     create_directory(dirname)
-    for i, c in tqdm(enumerate(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=rows_pr_iteration, lineterminator='\n')),
+    for i, c in tqdm(enumerate(pd.read_csv(csv_filename, encoding='utf-8', chunksize=rows_pr_iteration, lineterminator='\n')),
                      desc='csv split', total=int(ROWS/rows_pr_iteration), unit='splits', colour=TQDM_COLOR):
-        df = pd.DataFrame(columns=header)
-        pd.concat([df, c], ignore_index=True).to_csv(
+        pd.concat([colnames, c], ignore_index=True).to_csv(
             f'{dirname}/{i+1:0{padding}}.csv', index=False)
 
+
+def number_of_rows(filename: str, rows_pr_iteration: int) -> int:
+    rows = 0
+    with pd.read_csv(filename, encoding='utf-8', chunksize=rows_pr_iteration, lineterminator='\n') as reader:
+        for chunk in tqdm(reader, desc='counting rows', total=ROWS/rows_pr_iteration, unit='rows', unit_scale=rows_pr_iteration, colour=TQDM_COLOR):
+            rows += chunk.shape[0]
+    return rows
 
 def create_train_vali_and_test_sets(split: np.array, rows: int, data_filename: str, train_filename: str, vali_filename: str, test_filename: str, rows_pr_iteration: int):
     with open(data_filename, encoding='utf-8') as f:
@@ -75,8 +80,8 @@ def create_train_vali_and_test_sets(split: np.array, rows: int, data_filename: s
     
     # Loop through data in chunks and append to the right dataset:
     start = 0
-    with pd.read_csv(data_filename, chunksize=rows_pr_iteration, encoding='utf-8', lineterminator='\n') as reader:
-        for chunk in tqdm(reader, desc='create train, vali, and test set', total=rows/rows_pr_iteration, unit='rows', unit_scale=rows_pr_iteration, colour=TQDM_COLOR):
+    with pd.read_csv(data_filename, encoding='utf-8', chunksize=rows_pr_iteration, lineterminator='\n') as reader:
+        for chunk in tqdm(reader, desc='splitting data into: train-, vali-, and test set', total=rows/rows_pr_iteration, unit='rows', unit_scale=rows_pr_iteration, colour=TQDM_COLOR):
             
             end = min(start + rows_pr_iteration, rows)
             # Get the amount of the split array so it matches the size of the chunk.
@@ -113,10 +118,7 @@ def run(csv_file: str, hdf_file: str, train_file: str, vali_file: str, test_file
 if __name__ == '__main__':
     #run(csv_file="../datasets/sample/news_min.csv", hdf_file='../datasets/sample/data_min.h5',
     #    train_file='../datasets/sample/train_min.h5', vali_file='../datasets/sample/vali_min.h5', test_file='../datasets/sample/test_min.h5')
-    #print(num_of_rows_and_cols_hdf(filename="../datasets/big/data_cleaned.h5"))
-    #print(read_hdf_rows(filename="../datasets/big/data_cleaned.h5", idx=1, num=1))
-    #cols = num_of_cols_csv(filename="../datasets/sample/news_sample.csv")
-    #csv_to_hdf(csv_filename="../datasets/sample/news_sample.csv", hdf_filename="../datasets/sample/news_sample.h5", cols=cols, rows_pr_iteration=ROWS_PR_ITERATION)
-    arr = create_randomly_split_array(size=ROWS, split=(0.8, 0.1, 0.1))
-    create_train_vali_and_test_sets(split=arr, rows=ROWS, data_filename="../datasets/big/news_cleaned_2018_02_13.csv", train_filename="../datasets/big/train.csv", vali_filename="../datasets/big/vali.csv", test_filename="../datasets/big/test.csv", rows_pr_iteration=ROWS_PR_ITERATION)
     #df = read_rows(filename="../datasets/big/data_cleaned.csv", idx=ROWS, num=1)
+    arr = create_randomly_split_array(size=ROWS, split=(0.8, 0.1, 0.1))#ROWS
+    create_train_vali_and_test_sets(split=arr, rows=ROWS, data_filename="../datasets/big/news_cleaned_2018_02_13.csv", train_filename="../datasets/big/train.csv", vali_filename="../datasets/big/vali.csv", test_filename="../datasets/big/test.csv", rows_pr_iteration=ROWS_PR_ITERATION)
+    #print(number_of_rows(filename="../datasets/big/news_cleaned_2018_02_13.csv", rows_pr_iteration=ROWS_PR_ITERATION))
