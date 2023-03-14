@@ -194,37 +194,42 @@ TEST_NUM = 1000
 ROWS = 8529853
 TQDM_COLOR = 'magenta'
 
-def applier(functions, x):
-    acc_out = x
-    for function in functions:
-        acc_out = function.function_to_apply(acc_out)
-    return acc_out
+def applier(function_cols, row):
+    for function, col in function_cols:
+        if col == None:
+            row = function.function_to_apply(row)
+        else:
+            row[col] = function.function_to_apply(row[col])
+    return row
 
 
-def apply_pipeline(old_file, functions, column=None, new_file=None, rows_pr_iteration=ROWS_PR_ITERATION):
+def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False):
     i = 0
     start_time = time()
-    with pd.read_csv(old_file, chunksize=rows_pr_iteration, encoding='utf-8', lineterminator='\n') as reader:
+    with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8', lineterminator='\n') as reader:
         for chunk in reader:
             if i >= TEST_NUM:
                 break
             
-            if column != None:
-                chunk[column] = chunk[column].apply(lambda x: applier(functions, x))
-            else:
-                for index, row in chunk.iterrows():
-                    chunk.loc[index]= applier(functions, row)
+            for index, row in chunk.iterrows():
+                chunk.loc[index]= applier(function_cols, row)
 
             if new_file != None:
                 if i == 0:
-                    chunk.to_csv(new_file, mode='w')
+                    chunk.to_csv(new_file, mode='w', index=False)
                 else:
                     # append to csv file pd
-                    chunk.to_csv(new_file, mode='a', header=False)
-
-            i += rows_pr_iteration
+                    chunk.to_csv(new_file, mode='a', header=False, index=False)
+            
+            if get_batch:
+                return chunk
+            
+            i += batch_size
         print(f'finish time: {time()-start_time}')
 
+
+def get_csv_batch(file, n):
+    return pd.read_csv(file, nrows=n)
 
 def read_rows_of_csv(file, n = None):
     if n != None:
@@ -244,32 +249,29 @@ def create_test_file():
 def ist_pipeline():
     stopwords_lst = stopwords.words('english') + ["<NUM>","<DATE>","<URL>"]
     apply_pipeline("../datasets/big/news_sample.csv", [ 
-        Clean_data(),
-        Tokenizer(),
-        Remove_stopwords(stopwords_lst),
-        Stem(),
-    ], column="content", new_file="../datasets/big/news_sample_cleaned.csv")
+        (Clean_data(), "content"),
+        (Tokenizer(), "content"),
+        (Remove_stopwords(stopwords_lst), "content"),
+        (Stem(), "content"),
+    ], new_file="../datasets/big/news_sample_cleaned.csv")
 
 def word_freq_pipeline():
     wf = Word_frequency()
     apply_pipeline("../datasets/big/news_sample_cleaned.csv",[
-        wf
-    ], column="content")
+        (wf, "content")
+    ])
     wf.plot()
 
 def simple_model_test():
     sm = Simple_model()
     apply_pipeline("../datasets/big/news_sample_cleaned.csv", [
-        sm
+        (sm, None)
     ])
     sm.get_metrics()
 
-def translate_labels():
-    
-    apply_pipeline("../datasets/big/news_sample_cleaned.csv", [
-        binary_labels()
-    ], column='type', new_file="../datasets/big/news_sample_cleaned_binary.csv")
-    print(read_rows_of_csv("../datasets/big/news_sample_cleaned_binary.csv"))
+
+
+
 
 # translate_labels()
 
