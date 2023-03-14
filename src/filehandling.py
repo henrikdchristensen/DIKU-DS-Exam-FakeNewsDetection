@@ -68,8 +68,8 @@ def number_of_rows(filename: str, rows_pr_iteration: int) -> int:
     return rows
 
 def create_train_vali_and_test_sets(old_size: int = 10, new_size: int = 5, split: Tuple[float, float, float] = (0.8, 0.1, 0.1), data_filename: str = '', train_filename: str = '', vali_filename: str = '', test_filename: str = '', rows_pr_iteration: int = 20000):
-    if rows_pr_iteration > old_size:
-        rows_pr_iteration = old_size
+    rows_pr_iteration = min(rows_pr_iteration, old_size)
+    new_size = min(new_size, old_size)
     split = create_randomly_split_array(old_size=old_size, new_size=new_size, split=split)
     with open(data_filename, encoding='utf-8') as f:
         colnames = pd.DataFrame(columns=next(csv.reader(f)))
