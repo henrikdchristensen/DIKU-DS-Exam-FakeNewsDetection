@@ -271,7 +271,7 @@ def translate_labels():
     ], column='type', new_file="../datasets/big/news_sample_cleaned_binary.csv")
     print(read_rows_of_csv("../datasets/big/news_sample_cleaned_binary.csv"))
 
-translate_labels()
+# translate_labels()
 
 """
 
