@@ -49,8 +49,6 @@ class Exploration:
         print(keys)
         # return
 
-        # print(keys)
-
         # make dict of sources and fake label count
         sourceDict = {}
         typeDict = {k: 0 for k in keys}
@@ -126,23 +124,6 @@ def splitDataSet(pd: pd.DataFrame):
     train, val = train_test_split(train_val, test_size=0.5, random_state=42)
 
     return train, val, test
-
-
-def numCountPerLabel(df: pd.DataFrame):
-    keys = df['type'].unique()
-    typeDict = {k: 0 for k in keys}
-    countDict = {k: 0 for k in keys}
-
-    for type, text in zip(df.type, df.cleaned):
-        countDict[type] += text.count("<NUM>")
-        typeDict[type] += 1
-
-    perTypeDict = {}
-    for k, v in countDict.items():
-        perTypeDict[k] = v/typeDict[k]
-
-    print(perTypeDict)
-
 
 def numCountPerLabel(df: pd.DataFrame):
     keys = df['type'].unique()

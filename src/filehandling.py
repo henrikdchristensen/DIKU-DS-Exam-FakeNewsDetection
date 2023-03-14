@@ -72,13 +72,14 @@ def create_train_vali_and_test_sets(split: np.array, rows: int, data_filename: s
     colnames.to_csv(train_filename, mode='w')
     colnames.to_csv(vali_filename, mode='w')
     colnames.to_csv(test_filename, mode='w')
+    
+    # Loop through data in chunks and append to the right dataset:
     start = 0
     with pd.read_csv(data_filename, chunksize=rows_pr_iteration, encoding='utf-8', lineterminator='\n') as reader:
         for chunk in tqdm(reader, desc='create train, vali, and test set', total=rows/rows_pr_iteration, unit='rows', unit_scale=rows_pr_iteration, colour=TQDM_COLOR):
-            # Loop through data in chunks and append to the right dataset:
+            
             end = min(start + rows_pr_iteration, rows)
             # Get the amount of the split array so it matches the size of the chunk.
-            # Split array doesn't have a header row therefore -1.
             chunk_split = split[start:end]
             start += chunk.shape[0]
             # Select the values from the chunk for the train- or vali- or test dataset
@@ -86,10 +87,10 @@ def create_train_vali_and_test_sets(split: np.array, rows: int, data_filename: s
             train_rows = chunk[chunk_split == Set.TRAIN]
             if train_rows.shape[0] > 0:
                 train_rows.to_csv(train_filename, mode='a', header=None)
-            vali_rows = chunk.loc[chunk_split == Set.VALI]
+            vali_rows = chunk[chunk_split == Set.VALI]
             if vali_rows.shape[0] > 0:
                 vali_rows.to_csv(vali_filename, mode='a', header=None)
-            test_rows = chunk.loc[chunk_split == Set.TEST]
+            test_rows = chunk[chunk_split == Set.TEST]
             if test_rows.shape[0] > 0:
                 test_rows.to_csv(test_filename, mode='a', header=None)
 

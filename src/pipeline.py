@@ -1,5 +1,5 @@
 import h5py
-import filehandling as fh
+#import filehandling as fh
 import preprocessing as pp
 import pandas as pd
 import re
@@ -10,6 +10,7 @@ from collections import Counter
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from time import time
+from ast import literal_eval
 
 headers = {
     'row': 0,
@@ -43,6 +44,7 @@ class Word_frequency(FunctionApplier):
 
     def function_to_apply(self, content):
         # Update/add list of word
+        content = literal_eval(content)
         self.frequency.update(content)
         # Return the sorted dictionary based on the frequency of each word
         self.sorted_frequency = sorted(self.frequency.items(), key=lambda x: x[1], reverse=True)
@@ -149,7 +151,45 @@ class Print_content_to_csv(FunctionApplier):
 
         return row
 
-ROWS_PR_ITERATION = 10
+class binary_labels(FunctionApplier):
+    def __init__(self):
+        self.binary_labels: dict = {
+            'fake':False,
+            'conspiracy':False,
+            'junksci':False,
+            'hate':False,
+            'unreliable':False,
+            'bias':False,
+            'satire':False,
+            'state':False,
+            'reliable':True,
+            'clickbait':True,
+            'political':True,
+
+            # extra
+            'rumor':False,
+        }
+    def function_to_apply(self, cell):
+        try:
+            binary_label = self.binary_labels[cell]
+        except:
+            print("Key error:", cell)
+            binary_label = None
+        return binary_label
+class Simple_model(FunctionApplier):
+    def __init__(self):
+        self.dict_domains = {}
+
+    def function_to_apply(self, row):
+        # ASKE DO YOUR THING
+        
+
+        return row
+
+    def get_metrics(self):
+        pass
+
+ROWS_PR_ITERATION = 98
 TEST_NUM = 1000
 ROWS = 8529853
 TQDM_COLOR = 'magenta'
@@ -161,24 +201,115 @@ def applier(functions, x):
     return acc_out
 
 
-def apply_pipeline1(old_file, functions, column=None, new_file=None, rows_pr_iteration=ROWS_PR_ITERATION):
+def apply_pipeline(old_file, functions, column=None, new_file=None, rows_pr_iteration=ROWS_PR_ITERATION):
     i = 0
     start_time = time()
-    for chunk in pd.read_csv(old_file, chunksize=ROWS_PR_ITERATION):
-        if i >= TEST_NUM:
-            break
-        
-        chunk["content"] = chunk["content"].apply(lambda x: applier(functions, x))
-
-        if new_file != None:
-            if i == 0:
-                chunk.to_csv(new_file)
+    with pd.read_csv(old_file, chunksize=rows_pr_iteration, encoding='utf-8', lineterminator='\n') as reader:
+        for chunk in reader:
+            if i >= TEST_NUM:
+                break
+            
+            if column != None:
+                chunk[column] = chunk[column].apply(lambda x: applier(functions, x))
             else:
-                chunk.to_csv(new_file, mode='a', index=False, header=False)
+                for index, row in chunk.iterrows():
+                    chunk.loc[index]= applier(functions, row)
 
-        i += ROWS_PR_ITERATION
-    print(f'finish time: {time()-start_time}')
+            if new_file != None:
+                if i == 0:
+                    chunk.to_csv(new_file, mode='w')
+                else:
+                    # append to csv file pd
+                    chunk.to_csv(new_file, mode='a', header=False)
 
+            i += rows_pr_iteration
+        print(f'finish time: {time()-start_time}')
+
+
+def read_rows_of_csv(file, n = None):
+    if n != None:
+        return pd.read_csv(file, nrows=n)
+    else:
+        return pd.read_csv(file)
+
+def create_csv_from_existing_with_n_rows(file, new_file, n):
+    df = read_rows_of_csv(file, n)
+    df.to_csv(new_file)
+
+def create_test_file():
+    create_csv_from_existing_with_n_rows("../datasets/big/news_cleaned_2018_02_13.csv", "../datasets/big/news_sample.csv", 100)
+    print(read_rows_of_csv("../datasets/big/news_sample.csv")["content"])
+
+
+def ist_pipeline():
+    stopwords_lst = stopwords.words('english') + ["<NUM>","<DATE>","<URL>"]
+    apply_pipeline("../datasets/big/news_sample.csv", [ 
+        Clean_data(),
+        Tokenizer(),
+        Remove_stopwords(stopwords_lst),
+        Stem(),
+    ], column="content", new_file="../datasets/big/news_sample_cleaned.csv")
+
+def word_freq_pipeline():
+    wf = Word_frequency()
+    apply_pipeline("../datasets/big/news_sample_cleaned.csv",[
+        wf
+    ], column="content")
+    wf.plot()
+
+def simple_model_test():
+    sm = Simple_model()
+    apply_pipeline("../datasets/big/news_sample_cleaned.csv", [
+        sm
+    ])
+    sm.get_metrics()
+
+def translate_labels():
+    
+    apply_pipeline("../datasets/big/news_sample_cleaned.csv", [
+        binary_labels()
+    ], column='type', new_file="../datasets/big/news_sample_cleaned_binary.csv")
+    print(read_rows_of_csv("../datasets/big/news_sample_cleaned_binary.csv"))
+
+translate_labels()
+
+"""
+
+# print("INITIAL FILE")
+# apply_pipeline("../datasets/sample/data.h5", [Print_content(), Clean_data()], "../datasets/sample/data_cleaned.h5")
+# apply_pipeline("../datasets/sample/data.h5", [Print_content(), Clean_data()],"../datasets/sample/data_cleaned.h5")
+# print("CLEANED FILE")
+
+stopwords_lst = stopwords.words('english') + ["<NUM>","<DATE>","<URL>"]
+
+apply_pipeline1("../datasets/big/news_cleaned_2018_02_13.csv",[ 
+    Clean_data(),
+    #Tokenizer(),
+    #Remove_stopwords(stopwords_lst),
+    #Stem(),
+    #Encode_to_json(),
+], column=headers["content"], new_file="../datasets/big/data_cleaned.csv")
+
+apply_pipeline("../datasets/big/data.h5",[
+    Decode_to_str(), 
+    Clean_data(),
+    #Tokenizer(),
+    #Remove_stopwords(stopwords_lst),
+    #Stem(),
+    #Encode_to_json(),
+], column=headers["content"], new_file="../datasets/big/data_cleaned.h5")
+#apply_pipeline("../datasets/sample/news_sample_cleaned.h5",[Print_first_row()], column=headers["content"])
+# apply_pipeline("../datasets/sample/news_sample_cleaned.h5", [Print_content_to_csv(
+#    100, "../datasets/sample/out_cleaned.csv")], "../datasets/sample/out_cleaned.h5")
+
+
+
+wf = Word_frequency()
+apply_pipeline("../datasets/big/data_cleaned.h5",[
+    Decode_from_json(), 
+    wf
+], column=headers["content"])
+wf.plot()
 
 def apply_pipeline(old_file, functions, column=None, new_file=None, rows_pr_iteration=ROWS_PR_ITERATION):
     with h5py.File(old_file, 'r') as f:
@@ -212,41 +343,4 @@ def apply_pipeline(old_file, functions, column=None, new_file=None, rows_pr_iter
         except:
             pass
 
-
-# print("INITIAL FILE")
-# apply_pipeline("../datasets/sample/data.h5", [Print_content(), Clean_data()], "../datasets/sample/data_cleaned.h5")
-# apply_pipeline("../datasets/sample/data.h5", [Print_content(), Clean_data()],"../datasets/sample/data_cleaned.h5")
-# print("CLEANED FILE")
-
-stopwords_lst = stopwords.words('english') + ["<NUM>","<DATE>","<URL>"]
-
-apply_pipeline1("../datasets/big/news_cleaned_2018_02_13.csv",[ 
-    Clean_data(),
-    #Tokenizer(),
-    #Remove_stopwords(stopwords_lst),
-    #Stem(),
-    #Encode_to_json(),
-], column=headers["content"], new_file="../datasets/big/data_cleaned.csv")
-
-apply_pipeline("../datasets/big/data.h5",[
-    Decode_to_str(), 
-    Clean_data(),
-    #Tokenizer(),
-    #Remove_stopwords(stopwords_lst),
-    #Stem(),
-    #Encode_to_json(),
-], column=headers["content"], new_file="../datasets/big/data_cleaned.h5")
-#apply_pipeline("../datasets/sample/news_sample_cleaned.h5",[Print_first_row()], column=headers["content"])
-# apply_pipeline("../datasets/sample/news_sample_cleaned.h5", [Print_content_to_csv(
-#    100, "../datasets/sample/out_cleaned.csv")], "../datasets/sample/out_cleaned.h5")
-
-
-
-"""
-wf = Word_frequency()
-apply_pipeline("../datasets/big/data_cleaned.h5",[
-    Decode_from_json(), 
-    wf
-], column=headers["content"])
-wf.plot()
 """
