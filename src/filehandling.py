@@ -42,7 +42,7 @@ def create_randomly_split_array(old_size: int, new_size: int, split: Tuple[float
     split2 = int(new_size * (split[0] + split[1]))
     split3 = int(new_size * (split[0] + split[1] + split[2]))
     # Set the values for the three splits
-    arr[0:split1]      = Set.TRAIN
+    arr[0:split1]      = Set.TRAIN # index 0 (inclusive) up to index "split1" (exclusive)
     arr[split1:split2] = Set.VALI
     arr[split2:split3] = Set.TEST
     # Shuffle the indexes of the array and return
@@ -53,7 +53,9 @@ def csv_split(filename: str, dirname: str = 'csv-chunks', rows_pr_iteration: int
     # Get header row:
     with open(filename, encoding='utf-8') as f:
         colnames = pd.DataFrame(columns=next(csv.reader(f)))
+    # Remove existing directory and create new:
     remove_directory(dirname)
+    # Add each chunk to a file in the directory:
     create_directory(dirname)
     for i, c in tqdm(enumerate(pd.read_csv(filename, encoding='utf-8', chunksize=rows_pr_iteration, lineterminator='\n')),
                      desc='csv split', unit='splits', colour=TQDM_COLOR):
@@ -62,16 +64,19 @@ def csv_split(filename: str, dirname: str = 'csv-chunks', rows_pr_iteration: int
 
 
 def number_of_rows(filename: str, rows_pr_iteration: int) -> int:
+    # Count the number of rows in the file:
     rows = 0
     with pd.read_csv(filename, encoding='utf-8', chunksize=rows_pr_iteration, lineterminator='\n') as reader:
         for chunk in tqdm(reader, desc='counting rows', unit='chunks', colour=TQDM_COLOR):
             rows += chunk.shape[0]
+    print(f"rows: {rows}")
     return rows
 
 def create_train_vali_and_test_sets(old_size: int, new_size: int, split: Tuple[float, float, float], data_filename: str, train_filename: str, vali_filename: str, test_filename: str, rows_pr_iteration: int = 20000):
     rows_pr_iteration = min(rows_pr_iteration, old_size)
     new_size = min(new_size, old_size)
     split = create_randomly_split_array(old_size=old_size, new_size=new_size, split=split)
+    # Write the header row to the new files:
     with open(data_filename, encoding='utf-8') as f:
         colnames = pd.DataFrame(columns=next(csv.reader(f)))
     colnames.to_csv(train_filename, mode='w')
@@ -81,8 +86,8 @@ def create_train_vali_and_test_sets(old_size: int, new_size: int, split: Tuple[f
     start = 0
     with pd.read_csv(data_filename, encoding='utf-8', chunksize=rows_pr_iteration, lineterminator='\n', nrows=old_size) as reader:
         for chunk in tqdm(reader, desc='splitting data into: train-, vali-, and test set', total=int(old_size/rows_pr_iteration), unit='rows encountered in orig. dataset', unit_scale=rows_pr_iteration, colour=TQDM_COLOR):
-            end = min(start + rows_pr_iteration, old_size)
             # Get the amount of the split array so it matches the size of the chunk.
+            end = min(start + rows_pr_iteration, old_size)
             chunk_split = split[start:end]
             start += chunk.shape[0]
             # Select the values from the chunk for the train- or vali- or test dataset
@@ -103,9 +108,10 @@ def read_rows(filename: str, idx: int, num: int = 1) -> int:
 
 
 def run(size: int, split: Tuple[float, float, float], data_filename: str, train_filename: str, vali_filename: str, test_filename: str, rows_pr_iteration: int = 20000):
-    rows = number_of_rows(filename=data_filename, rows_pr_iteration=rows_pr_iteration)
+    rows = 8528956#number_of_rows(filename=data_filename, rows_pr_iteration=rows_pr_iteration)
     create_train_vali_and_test_sets(old_size=rows, new_size=size, split=split, data_filename=data_filename, train_filename=train_filename, vali_filename=vali_filename, test_filename=test_filename, rows_pr_iteration=rows_pr_iteration)
-
+#8528956
 if __name__ == '__main__':
-    run(size=200, split=(0.8, 0.1, 0.1), data_filename="../datasets/sample/news_sample.csv", train_filename='../datasets/sample/train.csv', vali_filename='../datasets/sample/vali.csv', test_filename='../datasets/sample/test.csv', rows_pr_iteration=20000)
-    #run(size=200, csv_file="../datasets/big/news_cleaned_2018_02_13.csv", train_file='../datasets/big/train.csv', vali_file='../datasets/big/vali.csv', test_file='../datasets/big/test.csv', rows_pr_iteration=20000)
+    run(size=100000, split=(0.8, 0.1, 0.1), data_filename="../datasets/big/news_cleaned_2018_02_13.csv", train_filename='../datasets/big/train.csv', vali_filename='../datasets/big/vali.csv', test_filename='../datasets/big/test.csv', rows_pr_iteration=20000)
+    #run(size=200, split=(0.8, 0.1, 0.1), data_filename="../datasets/sample/news_sample.csv", train_filename='../datasets/sample/train.csv', vali_filename='../datasets/sample/vali.csv', test_filename='../datasets/sample/test.csv', rows_pr_iteration=20000)
+   
