@@ -173,9 +173,11 @@ class binary_labels(FunctionApplier):
         try:
             binary_label = self.binary_labels[cell]
         except:
-            print("Key error:", cell)
-            binary_label = None
+            #TODO: what to do when no labels
+            print("Key error in binary_labels class:", cell)
+            binary_label = True
         return binary_label
+    
 class Simple_model(FunctionApplier):
     def __init__(self):
         self.dict_domains = {}

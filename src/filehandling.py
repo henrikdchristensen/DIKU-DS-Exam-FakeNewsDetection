@@ -71,6 +71,8 @@ def number_of_rows(filename: str, rows_pr_iteration: int) -> int:
 def create_train_vali_and_test_sets(old_size: int, new_size: int, split: Tuple[float, float, float], data_filename: str, train_filename: str, vali_filename: str, test_filename: str, rows_pr_iteration: int = 20000):
     rows_pr_iteration = min(rows_pr_iteration, old_size)
     new_size = min(new_size, old_size)
+    print("new_size:", new_size)
+    print("old_size:", old_size)
     split = create_randomly_split_array(old_size=old_size, new_size=new_size, split=split)
     with open(data_filename, encoding='utf-8') as f:
         colnames = pd.DataFrame(columns=next(csv.reader(f)))
@@ -103,9 +105,9 @@ def read_rows(filename: str, idx: int, num: int = 1) -> int:
 
 
 def run(size: int, split: Tuple[float, float, float], data_filename: str, train_filename: str, vali_filename: str, test_filename: str, rows_pr_iteration: int = 20000):
-    rows = number_of_rows(filename=data_filename, rows_pr_iteration=rows_pr_iteration)
+    rows = size#rows = number_of_rows(filename=data_filename, rows_pr_iteration=rows_pr_iteration)
     create_train_vali_and_test_sets(old_size=rows, new_size=size, split=split, data_filename=data_filename, train_filename=train_filename, vali_filename=vali_filename, test_filename=test_filename, rows_pr_iteration=rows_pr_iteration)
 
 if __name__ == '__main__':
-    run(size=200, split=(0.8, 0.1, 0.1), data_filename="../datasets/sample/news_sample.csv", train_filename='../datasets/sample/train.csv', vali_filename='../datasets/sample/vali.csv', test_filename='../datasets/sample/test.csv', rows_pr_iteration=20000)
+    run(size=10000, split=(0.8, 0.1, 0.1), data_filename="../datasets/sample/news_cleaned_2018_02_13.csv", train_filename='../datasets/sample/train.csv', vali_filename='../datasets/sample/vali.csv', test_filename='../datasets/sample/test.csv', rows_pr_iteration=20000)
     #run(size=200, csv_file="../datasets/big/news_cleaned_2018_02_13.csv", train_file='../datasets/big/train.csv', vali_file='../datasets/big/vali.csv', test_file='../datasets/big/test.csv', rows_pr_iteration=20000)
