@@ -60,7 +60,6 @@ def csv_split(filename: str, dirname: str = 'csv-chunks', rows_pr_iteration: int
         pd.concat([colnames, c], ignore_index=True).to_csv(
             f'{dirname}/{i+1:0{padding}}.csv', index=False)
 
-
 def number_of_rows(filename: str, rows_pr_iteration: int) -> int:
     rows = 0
     with pd.read_csv(filename, encoding='utf-8', chunksize=rows_pr_iteration, lineterminator='\n') as reader:
@@ -79,7 +78,7 @@ def create_train_vali_and_test_sets(old_size: int, new_size: int, split: Tuple[f
     colnames.to_csv(test_filename, mode='w')
     # Loop through data in chunks and append to the right dataset:
     start = 0
-    with pd.read_csv(data_filename, encoding='utf-8', chunksize=rows_pr_iteration, lineterminator='\n', nrows=old_size) as reader:
+    with pd.read_csv(data_filename, encoding='utf-8', chunksize=rows_pr_iteration, lineterminator='\n') as reader:
         for chunk in tqdm(reader, desc='splitting data into: train-, vali-, and test set', total=int(old_size/rows_pr_iteration), unit='rows encountered in orig. dataset', unit_scale=rows_pr_iteration, colour=TQDM_COLOR):
             end = min(start + rows_pr_iteration, old_size)
             # Get the amount of the split array so it matches the size of the chunk.
