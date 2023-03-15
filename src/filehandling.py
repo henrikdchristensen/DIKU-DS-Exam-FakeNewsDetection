@@ -106,5 +106,5 @@ def run(size: int, split: Tuple[float, float, float], data_filename: str, train_
     create_train_vali_and_test_sets(old_size=rows, new_size=size, split=split, data_filename=data_filename, train_filename=train_filename, vali_filename=vali_filename, test_filename=test_filename, rows_pr_iteration=rows_pr_iteration)
 
 if __name__ == '__main__':
-    run(size=200, split=(0.8, 0.1, 0.1), data_filename="../datasets/sample/news_sample.csv", train_filename='../datasets/sample/train.csv', vali_filename='../datasets/sample/vali.csv', test_filename='../datasets/sample/test.csv', rows_pr_iteration=20000)
-    #run(size=200, csv_file="../datasets/big/news_cleaned_2018_02_13.csv", train_file='../datasets/big/train.csv', vali_file='../datasets/big/vali.csv', test_file='../datasets/big/test.csv', rows_pr_iteration=20000)
+    #run(size=200, split=(0.8, 0.1, 0.1), data_filename="../datasets/sample/news_sample.csv", train_filename='../datasets/sample/train.csv', vali_filename='../datasets/sample/vali.csv', test_filename='../datasets/sample/test.csv', rows_pr_iteration=20000)
+    run(size=100000, split=(0.8, 0.1, 0.1), data_filename="../datasets/big/news_cleaned_2018_02_13.csv", train_file='../datasets/big/train.csv', vali_file='../datasets/big/vali.csv', test_file='../datasets/big/test.csv', rows_pr_iteration=20000)
