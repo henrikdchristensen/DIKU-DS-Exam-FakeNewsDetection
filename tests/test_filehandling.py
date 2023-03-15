@@ -20,6 +20,7 @@ def test_read_rows():
 def test_create_randomly_split_array():
     arr = fh.create_randomly_split_array(old_size=OLD_SIZE, new_size=NEW_SIZE, split=SPLIT)
     assert len(arr) == OLD_SIZE
+    assert np.sum(arr != 0) == NEW_SIZE
     assert np.sum(arr == fh.Set.TRAIN) == NEW_SIZE*0.8
     assert np.sum(arr == fh.Set.VALI) == NEW_SIZE*0.1
     assert np.sum(arr == fh.Set.TEST) == NEW_SIZE*0.1
