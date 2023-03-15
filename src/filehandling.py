@@ -42,7 +42,7 @@ def create_randomly_split_array(old_size: int, new_size: int, split: Tuple[float
     split2 = int(new_size * (split[0] + split[1]))
     split3 = int(new_size * (split[0] + split[1] + split[2]))
     # Set the values for the three splits
-    arr[0:split1]      = Set.TRAIN
+    arr[0:split1]      = Set.TRAIN # index 0 (inclusive) to split1 (exclusive)
     arr[split1:split2] = Set.VALI
     arr[split2:split3] = Set.TEST
     # Shuffle the indexes of the array and return
