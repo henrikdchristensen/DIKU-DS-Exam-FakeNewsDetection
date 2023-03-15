@@ -11,27 +11,22 @@ TQDM_COLOR = 'magenta'
 
 # https://raw.githubusercontent.com/several27/FakeNewsCorpus/master/news_sample.csv
 
-
 def remove_file(filename: str):
     if os.path.exists(filename):
         os.remove(filename)
-
 
 def create_directory(dirname: str):
     if not os.path.exists(dirname):
         os.makedirs(dirname)
 
-
 def remove_directory(dirname: str):
     if os.path.exists(dirname):
         shutil.rmtree(dirname)
-
 
 class Set(IntEnum):
     TRAIN = 1
     VALI = 2
     TEST = 3
-
 
 def create_randomly_split_array(old_size: int, new_size: int, split: Tuple[float, float, float]) -> np.ndarray:
     assert sum(split) == 1.0, "split values must add up to 1.0"
@@ -101,15 +96,13 @@ def create_train_vali_and_test_sets(old_size: int, new_size: int, split: Tuple[f
             if test_rows.shape[0] > 0:
                 test_rows.to_csv(test_filename, mode='a', header=None)
 
-
 def read_rows(filename: str, idx: int, num: int = 1) -> int:
     return pd.read_csv(filename, encoding='utf-8', lineterminator='\n', skiprows=idx, nrows=num)
-
 
 def run(size: int, split: Tuple[float, float, float], data_filename: str, train_filename: str, vali_filename: str, test_filename: str, rows_pr_iteration: int = 20000):
     rows = 8528956#number_of_rows(filename=data_filename, rows_pr_iteration=rows_pr_iteration)
     create_train_vali_and_test_sets(old_size=rows, new_size=size, split=split, data_filename=data_filename, train_filename=train_filename, vali_filename=vali_filename, test_filename=test_filename, rows_pr_iteration=rows_pr_iteration)
-#8528956
+#8528956 rows in original big dataset
 if __name__ == '__main__':
     run(size=100000, split=(0.8, 0.1, 0.1), data_filename="../datasets/big/news_cleaned_2018_02_13.csv", train_filename='../datasets/big/train.csv', vali_filename='../datasets/big/vali.csv', test_filename='../datasets/big/test.csv', rows_pr_iteration=20000)
     #run(size=200, split=(0.8, 0.1, 0.1), data_filename="../datasets/sample/news_sample.csv", train_filename='../datasets/sample/train.csv', vali_filename='../datasets/sample/vali.csv', test_filename='../datasets/sample/test.csv', rows_pr_iteration=20000)
