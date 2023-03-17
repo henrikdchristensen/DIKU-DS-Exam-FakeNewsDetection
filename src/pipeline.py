@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from time import time
 from ast import literal_eval
+import numpy as np
 
 headers = {
     'row': 0,
@@ -34,6 +35,38 @@ headers = {
 class FunctionApplier:
     def function_to_apply(self, row):
         pass
+
+class Create_word_vector(FunctionApplier):
+    def __init__(self, unique_words):
+        self.unique_words = unique_words
+
+    def function_to_apply(self, words):
+        vector = [0] * len(self.unique_words)
+
+        words = sorted(words)
+        i = 0
+        j = 0
+        while i < len(words) and j < len(self.unique_words):
+            if words[i] == self.unique_words[j]:
+                vector[j] += 1
+                i += 1
+            elif words[i] > self.unique_words[j]:
+                j += 1
+            else: # should never happen
+                i += 1
+        return np.array(vector)
+
+
+class Generate_unique_word_list(FunctionApplier):
+    def __init__(self):
+        self.unique_words = set()
+
+    def function_to_apply(self, words):
+        self.unique_words.update(words)
+        return words
+
+    def get_unique_words(self):
+        return sorted(list(self.unique_words))
 
 class Word_frequency(FunctionApplier):
     def __init__(self, nwords = 50):
@@ -84,16 +117,19 @@ class Stem(FunctionApplier):
         return stemmed_words
 
 patterns = {
-            re.compile(r'(\r\n|\n|\r)+'): '(\n)',
-            re.compile(r'( +)'): ' ',
-            re.compile(r'(\t+)'): '(\t)',
+            re.compile(r'((https?:\/\/)?(?:www\.)?[a-zA-Z0-9-_\+=.:~@#%]+\.[a-zA-Z0-9()]{1,6}\b(?:[a-zA-Z0-9-_.:\\/@#$%&()=+~?]*))'): ' <URL> ',
+            re.compile(r'(https?:\/\/)?w{0,3}\.?[a-z]+\.[a-z]\w*[\w\/-]*'): ' <URL> ',
+            re.compile(r'(\d{1,2}([\:\-/\\]|(,\s)?)){2}\d{2,4}|\d{2,4}(([\:\-/\\]|(,\s)?)\d{1,2}){2}'): ' <DATE> ',
+            re.compile(r'([Jj]an(uary)?|[Ff]eb(ruary)?|[Mm]ar(ch)?|[Aa]pr(il)?|[Mm]ay|[Jj]un(e)?|[Jj]ul(y)?|[Aa]ug(ust)?|[Ss]ep(tember)?|[Oo]ct(ober)?|[Nn]ov(ember)?|[Dd]ec(ember)?)([\:\-/\\]|(,\s)?)\d{1,2}([\:\-/\\]|(,\s)?)\d{1,4}'): ' <DATE> ',
+            re.compile(r'([\w.\-]+@(?:[\w-]+\.)+[\w-]{2,4})|@[\w\d]+'): ' <EMAIL> ',
+            re.compile(r'(\r\n|\n|\r)+'): ' ',
+            re.compile(r'(\t+)'): ' ',
             re.compile(r'(\!|\[|\])'): '',
-            re.compile(r'(\d{1,2}[-/\\]\d{1,2}[-/\\]\d{2,4}|\d{2,4}[-/\\]\d{1,2}[-/\\]\d{1,2})|\w{3}\s\d{1,2}\S\d{4}|\d{1,2}\s\w{3}\s\d{4}|(?:jan(?:uary)?|feb(?:ruary)|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?),? \d{2,4},? \d{2,4}|\d{2,4},? (?:jan(?:uary)?|feb(?:ruary)|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?),? \d{2,4}'): '<DATE>',
-            re.compile(r'([\w.\-]+@(?:[\w-]+\.)+[\w-]{2,4})'): '<EMAIL>',
-            re.compile(r'((https?:\/\/)?(?:www\.)?[a-zA-Z0-9-_\+=.:~@#%]+\.[a-zA-Z0-9()]{1,6}\b(?:[a-zA-Z0-9-_.:\\/@#$%&()=+~?]*))'): '<URL>',
-            re.compile(r'(\.|\,|\?|\&|\"|\”|\“|\%|\:|\-|\(|\)|\´|\`|\’|\$|\'|\|)'): '',
-            re.compile(r'(\–|\—)'): ' ',
-            re.compile(r'(\d+)(th)?'): '<NUM>',
+            #re.compile(r'(\=|\~|\u2018|\t|\;|\@|\″|\^|\…|\<|\>|\+|\/|\.|\*|\#|\,|\?|\&|\"|\”|\“|\%|\:|\-|\(|\)|\´|\`|\’|\$|\'|\|)'): '',
+            #re.compile(r'(\–|\—)'): ' ',
+            re.compile(r'[^A-Za-z0-9\s]'): '',
+            re.compile(r'(\d+)(th)?'): ' <NUM> ',
+            re.compile(r'( +)'): ' ',
         }
 class Clean_data(FunctionApplier):
     def function_to_apply(self, cell):
@@ -164,17 +200,14 @@ class binary_labels(FunctionApplier):
             'state':False,
             'reliable':True,
             'clickbait':True,
-            'political':True,
-
-            # extra
-            'rumor':False,
+            'political':True
         }
     def function_to_apply(self, cell):
         try:
             binary_label = self.binary_labels[cell]
         except:
             #TODO: what to do when no labels
-            print("Key error in binary_labels class:", cell)
+            #print("Key error in binary_labels class:", cell)
             binary_label = True
         return binary_label
     
@@ -203,6 +236,18 @@ def applier(function_cols, row):
         else:
             row[col] = function.function_to_apply(row[col])
     return row
+
+def apply_pipeline_pd(df, function_cols):
+    df = df.copy()
+    for index, row in df.iterrows():
+        df.loc[index]= applier(function_cols, row)
+    return df
+
+def apply_pipeline_pd_tqdm(df, function_cols):
+    df = df.copy()
+    for index, row in tqdm(df.iterrows(), total=df.shape[0]):
+        df.loc[index]= applier(function_cols, row)
+    return df
 
 
 def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False):
@@ -272,7 +317,7 @@ def simple_model_test():
     sm.get_metrics()
 
 
-
+unique_words = Generate_unique_word_list()
 
 
 # translate_labels()

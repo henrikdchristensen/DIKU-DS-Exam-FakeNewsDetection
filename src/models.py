@@ -84,7 +84,7 @@ def distilBERT():
     #Tokenizer and model input
     pretrained_weights = 'distilbert-base-uncased'
     tokenizer = ppb.DistilBertTokenizer.from_pretrained(pretrained_weights)
-    model = ppb.DistilBertModel.from_pretrained(pretrained_weights)
+    model = ppb.DistilBertModel.from_pretrained(pretrained_weights, from_tf=True)
 
     #Tokenize input
     tokenized = content.apply((lambda x: tokenizer.encode(x, add_special_tokens=True)))
@@ -157,4 +157,4 @@ def word_embeddings_model(word_embeddings):
 #vectorized_data = Vectorize()
 #k_neighbors_classifier(vectorized_data)
 #support_vector_classifier(vectorized_data)
-word_embeddings = distilBERT()
+
