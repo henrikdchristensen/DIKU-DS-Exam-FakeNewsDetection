@@ -163,7 +163,7 @@ SAMPLE = False
 SPLIT = False
 ROWS_CLEANED = True
 CLEANED_ROWS_BIG = 7273069
-CLEANED_ROWS_SAMPLE = 7273069
+CLEANED_ROWS_SAMPLE = 232
 NEW_SIZE_BIG = 100000
 NEW_SIZE_SAMPLE = 200
 
@@ -177,11 +177,11 @@ if __name__ == '__main__':
         old_size = CLEANED_ROWS_BIG
         new_size = NEW_SIZE_BIG
     if not ROWS_CLEANED:
-        old_size = remove_unwanted_rows(filename=path+"news.csv",
-                                        new_filename=path+"news_cleaned.csv", rows_pr_iteration=ROWS_PR_ITERATION)
+        old_size = remove_unwanted_rows(filename=path+"raw.csv",
+                                        new_filename=path+"cleaned.csv", rows_pr_iteration=ROWS_PR_ITERATION)
     if not SPLIT:
-        create_dataset(old_size=old_size, new_size=new_size, old_filename=path+"news_cleaned.csv",
-                       new_filename=path+"news_dataset.csv", rows_pr_iteration=ROWS_PR_ITERATION)
+        create_dataset(old_size=old_size, new_size=new_size, old_filename=path+"cleaned.csv",
+                       new_filename=path+"dataset.csv", rows_pr_iteration=ROWS_PR_ITERATION)
     else:
-        create_train_vali_and_test_sets(old_size=old_size, new_size=new_size, split=(0.8, 0.1, 0.1), data_filename=path+"news_dataset.csv", train_filename=path+"train.csv",
+        create_train_vali_and_test_sets(old_size=old_size, new_size=new_size, split=(0.8, 0.1, 0.1), data_filename=path+"cleaned.csv", train_filename=path+"train.csv",
                                         vali_filename=path+"vali.csv", test_filename=path+"test.csv", rows_pr_iteration=ROWS_PR_ITERATION)
