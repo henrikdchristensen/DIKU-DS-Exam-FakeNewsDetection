@@ -165,7 +165,7 @@ ROWS_CLEANED = True
 CLEANED_ROWS_BIG = 7273069
 CLEANED_ROWS_SAMPLE = 7273069
 NEW_SIZE_BIG = 100000
-NEW_SIZE_SAMPLE = 100000
+NEW_SIZE_SAMPLE = 200
 
 if __name__ == '__main__':
     if SAMPLE:
@@ -185,4 +185,3 @@ if __name__ == '__main__':
     else:
         create_train_vali_and_test_sets(old_size=old_size, new_size=new_size, split=(0.8, 0.1, 0.1), data_filename=path+"news_dataset.csv", train_filename=path+"train.csv",
                                         vali_filename=path+"vali.csv", test_filename=path+"test.csv", rows_pr_iteration=ROWS_PR_ITERATION)
-        
