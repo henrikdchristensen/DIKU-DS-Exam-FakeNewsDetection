@@ -1,4 +1,3 @@
-import h5py
 #import filehandling as fh
 import preprocessing as pp
 import pandas as pd
@@ -37,12 +36,14 @@ class FunctionApplier:
     def function_to_apply(self, row):
         pass
 
+
 class Normalize(FunctionApplier):
-    def function_to_apply(self, vector): 
+    def function_to_apply(self, vector):
         sum = np.sum(vector)
         if sum == 0:
             return vector
         return vector / sum
+
 
 class Create_word_vector(FunctionApplier):
     def __init__(self, unique_words):
@@ -60,7 +61,7 @@ class Create_word_vector(FunctionApplier):
                 i += 1
             elif words[i] > self.unique_words[j]:
                 j += 1
-            else: # should never happen
+            else:  # should never happen
                 i += 1
         return np.array(vector)
 
@@ -75,14 +76,17 @@ class Generate_unique_word_list(FunctionApplier):
 
     def get_unique_words(self, low, high):
         word_sum = sum(self.unique_words.values())
-        sorted_items = sorted(self.unique_words.items(), key=lambda x: x[1], reverse=True)
-        sorted_freq_items = [x[0] for x in sorted_items if x[1] / word_sum >= low and x[1] / word_sum <= high]
+        sorted_items = sorted(self.unique_words.items(),
+                              key=lambda x: x[1], reverse=True)
+        sorted_freq_items = [x[0] for x in sorted_items if x[1] /
+                             word_sum >= low and x[1] / word_sum <= high]
 
         return sorted(sorted_freq_items)
 
     def get_freqs(self):
         word_sum = sum(self.unique_words.values())
-        sorted_items = sorted(self.unique_words.items(), key=lambda x: x[1], reverse=True)
+        sorted_items = sorted(self.unique_words.items(),
+                              key=lambda x: x[1], reverse=True)
         return [(x[0], x[1] / word_sum) for x in sorted_items]
 
     def get_most_frequent(self, nwords):
@@ -100,10 +104,11 @@ class Generate_unique_word_list(FunctionApplier):
         plt.xticks(rotation=90)
         plt.tight_layout()
         plt.show()
-    
+
     def plot_frequency_line(self, nwords):
         word_sum = sum(self.unique_words.values())
-        frequency = [x[1] / word_sum for x in self.unique_words.most_common(nwords)]
+        frequency = [
+            x[1] / word_sum for x in self.unique_words.most_common(nwords)]
         plt.plot(list(range(len(frequency))), frequency)
         plt.ylabel('Frequency')
         plt.title(f'Frequency of the {nwords} most frequent words')
@@ -111,8 +116,9 @@ class Generate_unique_word_list(FunctionApplier):
         plt.tight_layout()
         plt.show()
 
+
 class Word_frequency(FunctionApplier):
-    def __init__(self, nwords = 50):
+    def __init__(self, nwords=50):
         self.swords = nwords
         self.words = []
         self.frequency = Counter()
@@ -123,9 +129,10 @@ class Word_frequency(FunctionApplier):
         content = literal_eval(content)
         self.frequency.update(content)
         # Return the sorted dictionary based on the frequency of each word
-        self.sorted_frequency = sorted(self.frequency.items(), key=lambda x: x[1], reverse=True)
+        self.sorted_frequency = sorted(
+            self.frequency.items(), key=lambda x: x[1], reverse=True)
         return content
-    
+
     def plot(self):
         # Extract the words and their frequency from the sorted list
         words = [x[0] for x in self.sorted_frequency[:self.swords]]
@@ -137,6 +144,7 @@ class Word_frequency(FunctionApplier):
         plt.xticks(rotation=90)
         plt.tight_layout()
         plt.show()
+
 
 class Tokenizer(FunctionApplier):
     def function_to_apply(self, cell):
@@ -159,21 +167,24 @@ class Stem(FunctionApplier):
             stemmed_words.append(ps.stem(w))
         return stemmed_words
 
+
 patterns = {
-            re.compile(r'((https?:\/\/)?(?:www\.)?[a-zA-Z0-9-_\+=.:~@#%]+\.[a-zA-Z0-9()]{1,6}\b(?:[a-zA-Z0-9-_.:\\/@#$%&()=+~?]*))'): ' <URL> ',
-            re.compile(r'(https?:\/\/)?w{0,3}\.?[a-z]+\.[a-z]\w*[\w\/-]*'): ' <URL> ',
-            re.compile(r'(\d{1,2}([\:\-/\\]|(,\s)?)){2}\d{2,4}|\d{2,4}(([\:\-/\\]|(,\s)?)\d{1,2}){2}'): ' <DATE> ',
-            re.compile(r'([Jj]an(uary)?|[Ff]eb(ruary)?|[Mm]ar(ch)?|[Aa]pr(il)?|[Mm]ay|[Jj]un(e)?|[Jj]ul(y)?|[Aa]ug(ust)?|[Ss]ep(tember)?|[Oo]ct(ober)?|[Nn]ov(ember)?|[Dd]ec(ember)?)([\:\-/\\]|(,\s)?)\d{1,2}([\:\-/\\]|(,\s)?)\d{1,4}'): ' <DATE> ',
-            re.compile(r'([\w.\-]+@(?:[\w-]+\.)+[\w-]{2,4})|@[\w\d]+'): ' <EMAIL> ',
-            re.compile(r'(\r\n|\n|\r)+'): ' ',
-            re.compile(r'(\t+)'): ' ',
-            re.compile(r'(\!|\[|\])'): '',
-            #re.compile(r'(\=|\~|\u2018|\t|\;|\@|\″|\^|\…|\<|\>|\+|\/|\.|\*|\#|\,|\?|\&|\"|\”|\“|\%|\:|\-|\(|\)|\´|\`|\’|\$|\'|\|)'): '',
-            #re.compile(r'(\–|\—)'): ' ',
-            re.compile(r'[^A-Za-z0-9\s]'): '',
-            re.compile(r'(\d+)(th)?'): ' <NUM> ',
-            re.compile(r'( +)'): ' ',
-        }
+    re.compile(r'((https?:\/\/)?(?:www\.)?[a-zA-Z0-9-_\+=.:~@#%]+\.[a-zA-Z0-9()]{1,6}\b(?:[a-zA-Z0-9-_.:\\/@#$%&()=+~?]*))'): ' <URL> ',
+    re.compile(r'(https?:\/\/)?w{0,3}\.?[a-z]+\.[a-z]\w*[\w\/-]*'): ' <URL> ',
+    re.compile(r'(\d{1,2}([\:\-/\\]|(,\s)?)){2}\d{2,4}|\d{2,4}(([\:\-/\\]|(,\s)?)\d{1,2}){2}'): ' <DATE> ',
+    re.compile(r'([Jj]an(uary)?|[Ff]eb(ruary)?|[Mm]ar(ch)?|[Aa]pr(il)?|[Mm]ay|[Jj]un(e)?|[Jj]ul(y)?|[Aa]ug(ust)?|[Ss]ep(tember)?|[Oo]ct(ober)?|[Nn]ov(ember)?|[Dd]ec(ember)?)([\:\-/\\]|(,\s)?)\d{1,2}([\:\-/\\]|(,\s)?)\d{1,4}'): ' <DATE> ',
+    re.compile(r'([\w.\-]+@(?:[\w-]+\.)+[\w-]{2,4})|@[\w\d]+'): ' <EMAIL> ',
+    re.compile(r'(\r\n|\n|\r)+'): ' ',
+    re.compile(r'(\t+)'): ' ',
+    re.compile(r'(\!|\[|\])'): '',
+    # re.compile(r'(\=|\~|\u2018|\t|\;|\@|\″|\^|\…|\<|\>|\+|\/|\.|\*|\#|\,|\?|\&|\"|\”|\“|\%|\:|\-|\(|\)|\´|\`|\’|\$|\'|\|)'): '',
+    # re.compile(r'(\–|\—)'): ' ',
+    re.compile(r'[^A-Za-z0-9\s]'): '',
+    re.compile(r'(\d+)(th)?'): ' <NUM> ',
+    re.compile(r'( +)'): ' ',
+}
+
+
 class Clean_data(FunctionApplier):
     def function_to_apply(self, cell):
         # Apply patterns using list comprehension
@@ -185,18 +196,21 @@ class Clean_data(FunctionApplier):
 
         return cell
 
+
 class Decode_to_str(FunctionApplier):
     def function_to_apply(self, row):
         return row.decode("utf-8")
-        
+
 
 class Decode_from_json(FunctionApplier):
     def function_to_apply(self, row):
         return json.loads(row)
 
+
 class Encode_to_json(FunctionApplier):
     def function_to_apply(self, row):
         return json.dumps(row)
+
 
 class Print_first_row(FunctionApplier):
     def __init__(self):
@@ -230,47 +244,51 @@ class Print_content_to_csv(FunctionApplier):
 
         return row
 
+
 class binary_labels(FunctionApplier):
     def __init__(self):
         self.binary_labels: dict = {
-            'fake':False,
-            'conspiracy':False,
-            'junksci':False,
-            'hate':False,
-            'unreliable':False,
-            'bias':False,
-            'satire':False,
-            'state':False,
-            'reliable':True,
-            'clickbait':True,
-            'political':True
+            'fake': False,
+            'conspiracy': False,
+            'junksci': False,
+            'hate': False,
+            'unreliable': False,
+            'bias': False,
+            'satire': False,
+            'state': False,
+            'reliable': True,
+            'clickbait': True,
+            'political': True
         }
+
     def function_to_apply(self, cell):
         try:
             binary_label = self.binary_labels[cell]
         except:
-            #TODO: what to do when no labels
+            # TODO: what to do when no labels
             #print("Key error in binary_labels class:", cell)
             binary_label = True
         return binary_label
-    
+
+
 class Simple_model(FunctionApplier):
     def __init__(self):
         self.dict_domains = {}
 
     def function_to_apply(self, row):
         # ASKE DO YOUR THING
-        
 
         return row
 
     def get_metrics(self):
         pass
 
+
 ROWS_PR_ITERATION = 98
 TEST_NUM = 1000
 ROWS = 8529853
 TQDM_COLOR = 'magenta'
+
 
 def applier(function_cols, row):
     for function, col in function_cols:
@@ -280,16 +298,18 @@ def applier(function_cols, row):
             row[col] = function.function_to_apply(row[col])
     return row
 
+
 def apply_pipeline_pd(df, function_cols):
     df = df.copy()
     for index, row in df.iterrows():
-        df.loc[index]= applier(function_cols, row)
+        df.loc[index] = applier(function_cols, row)
     return df
+
 
 def apply_pipeline_pd_tqdm(df, function_cols):
     df = df.copy()
     for index, row in tqdm(df.iterrows(), total=df.shape[0]):
-        df.loc[index]= applier(function_cols, row)
+        df.loc[index] = applier(function_cols, row)
     return df
 
 
@@ -303,9 +323,9 @@ def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_IT
 
             if i >= TEST_NUM:
                 break
-            
+
             for index, row in chunk.iterrows():
-                chunk.loc[index]= applier(function_cols, row)
+                chunk.loc[index] = applier(function_cols, row)
 
             if new_file != None:
                 if i == 0:
@@ -313,10 +333,10 @@ def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_IT
                 else:
                     # append to csv file pd
                     chunk.to_csv(new_file, mode='a', header=False, index=False)
-            
+
             if get_batch:
                 return chunk
-            
+
             i += batch_size
         print(f'finish time: {time()-start_time}')
 
@@ -324,36 +344,42 @@ def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_IT
 def get_csv_batch(file, n):
     return pd.read_csv(file, nrows=n)
 
-def read_rows_of_csv(file, n = None):
+
+def read_rows_of_csv(file, n=None):
     if n != None:
         return pd.read_csv(file, nrows=n)
     else:
         return pd.read_csv(file)
 
+
 def create_csv_from_existing_with_n_rows(file, new_file, n):
     df = read_rows_of_csv(file, n)
     df.to_csv(new_file)
 
+
 def create_test_file():
-    create_csv_from_existing_with_n_rows("../datasets/big/news_cleaned_2018_02_13.csv", "../datasets/big/news_sample.csv", 100)
+    create_csv_from_existing_with_n_rows(
+        "../datasets/big/news_cleaned_2018_02_13.csv", "../datasets/big/news_sample.csv", 100)
     print(read_rows_of_csv("../datasets/big/news_sample.csv")["content"])
 
 
 def ist_pipeline():
-    stopwords_lst = stopwords.words('english') + ["<NUM>","<DATE>","<URL>"]
-    apply_pipeline("../datasets/big/news_sample.csv", [ 
+    stopwords_lst = stopwords.words('english') + ["<NUM>", "<DATE>", "<URL>"]
+    apply_pipeline("../datasets/big/news_sample.csv", [
         (Clean_data(), "content"),
         (Tokenizer(), "content"),
         (Remove_stopwords(stopwords_lst), "content"),
         (Stem(), "content"),
     ], new_file="../datasets/big/news_sample_cleaned.csv")
 
+
 def word_freq_pipeline():
     wf = Word_frequency()
-    apply_pipeline("../datasets/big/news_sample_cleaned.csv",[
+    apply_pipeline("../datasets/big/news_sample_cleaned.csv", [
         (wf, "content")
     ])
     wf.plot()
+
 
 def simple_model_test():
     sm = Simple_model()

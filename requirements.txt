@@ -1,7 +1,11 @@
 jupyterlab
-nltk>=3.8.1
+ipykernel
+nltk==3.8.1
 numpy==1.23.5
-pandas>=1.5.3
+pandas==1.5.3
 scikit-learn==1.2.1
 torch==2.0.0
-tqdm>=4.64.1
+tqdm==4.64.1
+matplotlib==3.7.1
+tensorflow==2.11.0 
+transformers==4.27.1

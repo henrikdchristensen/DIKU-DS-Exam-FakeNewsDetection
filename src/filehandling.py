@@ -159,7 +159,7 @@ def read_rows(filename: str, idx: int, num: int = 1) -> int:
 
 
 ROWS_PR_ITERATION = 20000
-SAMPLE = False
+SAMPLE = True
 SPLIT = False
 ROWS_CLEANED = False
 CLEANED_ROWS_BIG = 7273069
@@ -175,9 +175,11 @@ if __name__ == '__main__':
     if SAMPLE:
         old_size = CLEANED_ROWS_SAMPLE
         new_size = NEW_SIZE_SAMPLE
+        path = SAMPLE_PATH
     else:
         old_size = CLEANED_ROWS_BIG
         new_size = NEW_SIZE_BIG
+        path = BIG_PATH
     if not ROWS_CLEANED:
         old_size = remove_unwanted_rows(filename=path+"raw.csv",
                                         new_filename=path+"cleaned.csv", rows_pr_iteration=ROWS_PR_ITERATION)
