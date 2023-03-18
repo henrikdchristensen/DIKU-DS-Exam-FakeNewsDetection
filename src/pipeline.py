@@ -78,7 +78,7 @@ class Generate_unique_word_list(FunctionApplier):
         sorted_items = sorted(self.unique_words.items(), key=lambda x: x[1], reverse=True)
         sorted_freq_items = [x[0] for x in sorted_items if x[1] / word_sum >= low and x[1] / word_sum <= high]
 
-        return sorted_freq_items
+        return sorted(sorted_freq_items)
 
     def get_freqs(self):
         word_sum = sum(self.unique_words.values())
