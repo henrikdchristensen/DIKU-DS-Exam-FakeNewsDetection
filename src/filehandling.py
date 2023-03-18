@@ -161,19 +161,21 @@ def read_rows(filename: str, idx: int, num: int = 1) -> int:
 ROWS_PR_ITERATION = 20000
 SAMPLE = False
 SPLIT = False
-ROWS_CLEANED = True
+ROWS_CLEANED = False
 CLEANED_ROWS_BIG = 7273069
 CLEANED_ROWS_SAMPLE = 232
 NEW_SIZE_BIG = 100000
 NEW_SIZE_SAMPLE = 200
+BIG_PATH = "../datasets/big/"
+SAMPLE_PATH = "../datasets/sample/"
 
 if __name__ == '__main__':
+    create_directory(BIG_PATH)
+    create_directory(SAMPLE_PATH)
     if SAMPLE:
-        path = "../datasets/sample/"
         old_size = CLEANED_ROWS_SAMPLE
         new_size = NEW_SIZE_SAMPLE
     else:
-        path = "../datasets/big/"
         old_size = CLEANED_ROWS_BIG
         new_size = NEW_SIZE_BIG
     if not ROWS_CLEANED:
