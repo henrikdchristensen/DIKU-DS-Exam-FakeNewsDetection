@@ -12,6 +12,7 @@ from tqdm import tqdm
 from time import time
 from ast import literal_eval
 import numpy as np
+from sklearn.preprocessing import normalize
 
 headers = {
     'row': 0,
@@ -36,6 +37,13 @@ class FunctionApplier:
     def function_to_apply(self, row):
         pass
 
+class Normalize(FunctionApplier):
+    def function_to_apply(self, vector): 
+        sum = np.sum(vector)
+        if sum == 0:
+            return vector
+        return vector / sum
+
 class Create_word_vector(FunctionApplier):
     def __init__(self, unique_words):
         self.unique_words = unique_words
@@ -59,14 +67,49 @@ class Create_word_vector(FunctionApplier):
 
 class Generate_unique_word_list(FunctionApplier):
     def __init__(self):
-        self.unique_words = set()
+        self.unique_words = Counter()
 
     def function_to_apply(self, words):
         self.unique_words.update(words)
         return words
 
-    def get_unique_words(self):
-        return sorted(list(self.unique_words))
+    def get_unique_words(self, low, high):
+        word_sum = sum(self.unique_words.values())
+        sorted_items = sorted(self.unique_words.items(), key=lambda x: x[1], reverse=True)
+        sorted_freq_items = [x[0] for x in sorted_items if x[1] / word_sum >= low and x[1] / word_sum <= high]
+
+        return sorted_freq_items
+
+    def get_freqs(self):
+        word_sum = sum(self.unique_words.values())
+        sorted_items = sorted(self.unique_words.items(), key=lambda x: x[1], reverse=True)
+        return [(x[0], x[1] / word_sum) for x in sorted_items]
+
+    def get_most_frequent(self, nwords):
+        return sorted(self.unique_words.most_common(nwords))
+
+    def plot_most_frequent(self, nwords, freq=False):
+        words = [x[0] for x in self.unique_words.most_common(nwords)]
+        frequency = [x[1] for x in self.unique_words.most_common(nwords)]
+        if freq:
+            s = sum(self.unique_words.values())
+            frequency = [x / s for x in frequency]
+        plt.bar(words, frequency)
+        plt.ylabel('Frequency')
+        plt.title(f'Frequency of the {nwords} most frequent words')
+        plt.xticks(rotation=90)
+        plt.tight_layout()
+        plt.show()
+    
+    def plot_frequency_line(self, nwords):
+        word_sum = sum(self.unique_words.values())
+        frequency = [x[1] / word_sum for x in self.unique_words.most_common(nwords)]
+        plt.plot(list(range(len(frequency))), frequency)
+        plt.ylabel('Frequency')
+        plt.title(f'Frequency of the {nwords} most frequent words')
+        plt.xticks(rotation=90)
+        plt.tight_layout()
+        plt.show()
 
 class Word_frequency(FunctionApplier):
     def __init__(self, nwords = 50):
@@ -127,7 +170,7 @@ patterns = {
             re.compile(r'(\!|\[|\])'): '',
             #re.compile(r'(\=|\~|\u2018|\t|\;|\@|\″|\^|\…|\<|\>|\+|\/|\.|\*|\#|\,|\?|\&|\"|\”|\“|\%|\:|\-|\(|\)|\´|\`|\’|\$|\'|\|)'): '',
             #re.compile(r'(\–|\—)'): ' ',
-            re.compile(r'[^A-Za-z0-9\s]'): '',
+            re.compile(r'[^A-Za-z0-9\s<>]'): '',
             re.compile(r'(\d+)(th)?'): ' <NUM> ',
             re.compile(r'( +)'): ' ',
         }
@@ -255,6 +298,9 @@ def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_IT
     start_time = time()
     with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8', lineterminator='\n') as reader:
         for chunk in reader:
+            if function_cols == None:
+                return chunk
+
             if i >= TEST_NUM:
                 break
             
