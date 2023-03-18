@@ -36,7 +36,7 @@ First, in an **administrator** command prompt, enable unrestricted Powershell sc
 set-executionpolicy unrestricted
 ```
 
-Then makes sure that the conda Script directory in is your Path.
+Make sure that the conda Script directory in is your Path.
 For instance, with miniconda: `%USERPROFILE%\Miniconda3\Scripts`.
 
 In a regular Powershell prompt check if conda is working, and update to latest version:
@@ -44,7 +44,6 @@ In a regular Powershell prompt check if conda is working, and update to latest v
 ```powershell
 conda update conda
 conda --version
-# should be conda 4.6.1 or newer
 ```
 
 Setup conda for Powershell using the following command:
@@ -53,7 +52,7 @@ Setup conda for Powershell using the following command:
 conda init powershell
 ```
 
-Finally, restart powershell. An initialisation script is run every time Powershell starts.
+Finally, restart powershell. An initialization script is run every time Powershell starts.
 You should now be able to activate environment with:
 
 ```powershell
