@@ -3,6 +3,8 @@ import preprocessing as pp
 import filehandling as fh
 import os
 
+# TODO: LAV REQUIREMENTS.TXT
+
 #file = "https://raw.githubusercontent.com/several27/FakeNewsCorpus/master/news_sample.csv"
 file = "datasets/news_sample.csv"
 
