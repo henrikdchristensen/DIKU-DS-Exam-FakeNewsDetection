@@ -161,8 +161,8 @@ def read_rows(filename: str, idx: int, num: int = 1) -> int:
 def run_split_dataset(size: int, split: Tuple[float, float, float], data_filename: str, train_filename: str, vali_filename: str, test_filename: str, rows_pr_iteration: int = 20000):
     data_cleaned_filename = data_filename.replace('.csv', '_cleaned.csv')
     rows = remove_unwanted_rows(
-        filename=old_filename, new_filename=data_cleaned_filename, rows_pr_iteration=rows_pr_iteration)
-    create_train_vali_and_test_sets(old_size=rows, new_size=size, split=split, data_filename=data_filename, train_filename=train_filename,
+        filename=data_filename, new_filename=data_cleaned_filename, rows_pr_iteration=rows_pr_iteration)
+    create_train_vali_and_test_sets(old_size=rows, new_size=size, split=split, data_filename=data_cleaned_filename, train_filename=train_filename,
                                     vali_filename=vali_filename, test_filename=test_filename, rows_pr_iteration=rows_pr_iteration)
 
 
@@ -179,7 +179,7 @@ if __name__ == '__main__':
     run_single_dataset(size=250, old_filename="../datasets/sample/news_sample.csv",
                        new_filename='../datasets/sample/dataset.csv', rows_pr_iteration=20000)
     #    vali_filename='../datasets/big/vali.csv', test_filename='../datasets/big/test.csv', rows_pr_iteration=20000)
-    # run_split_dataset(size=100000, split=(0.8, 0.1, 0.1), data_filename="../datasets/big/news_cleaned_2018_02_13.csv", train_filename='../datasets/big/train.csv',
-    #    vali_filename='../datasets/big/vali.csv', test_filename='../datasets/big/test.csv', rows_pr_iteration=20000)
+    run_split_dataset(size=100000, split=(0.8, 0.1, 0.1), data_filename="../datasets/big/news_cleaned_2018_02_13.csv", train_filename='../datasets/big/train.csv',
+                      vali_filename='../datasets/big/vali.csv', test_filename='../datasets/big/test.csv', rows_pr_iteration=20000)
     # run_split_dataset(size=200, split=(0.8, 0.1, 0.1), data_filename="../datasets/sample/news_sample.csv", train_filename='../datasets/sample/train.csv',
     #   vali_filename='../datasets/sample/vali.csv', test_filename='../datasets/sample/test.csv', rows_pr_iteration=20000)
