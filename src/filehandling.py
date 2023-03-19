@@ -115,7 +115,7 @@ def data_preparation(filename: str, new_filename: str, rows_pr_iteration: int = 
             # Drop rows with empty content column:
             chunk = chunk.dropna(subset=['content'])
             # Remove rows where type is not one of the specified values:
-            chunk = chunk[chunk['type'].isin(gd.types_of_interest)]
+            chunk = chunk[chunk['type'].isin(types_dict)]
             retained_rows += chunk.shape[0]
             chunk.to_csv(new_filename, mode='a', header=None)
             # Append the 'type' column to the type_array
