@@ -261,7 +261,7 @@ class Print_content_to_csv(FunctionApplier):
         return row
 
 
-class binary_labels(FunctionApplier):
+class Binary_labels(FunctionApplier):
     def __init__(self):
         self.binary_labels: dict = {
             'fake': False,

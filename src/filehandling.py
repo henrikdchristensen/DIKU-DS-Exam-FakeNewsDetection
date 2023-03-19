@@ -7,6 +7,8 @@ import os
 import pandas as pd
 from tqdm import tqdm
 
+TQDM_COLOR = 'magenta'
+
 
 def remove_file(filename: str):
     if os.path.exists(filename):
@@ -72,11 +74,9 @@ def csv_split(filename: str, dirname: str = 'csv-chunks', rows_pr_iteration: int
             f'{dirname}/{i+1:0{padding}}.csv', index=False)
 
 
-type = ['fake', 'conspiracy', 'junksci', 'hate', 'unreliable',
-        'bias', 'satire', 'state', 'reliable', 'clickbait', 'political']
-
-
-def remove_unwanted_rows(filename: str, new_filename: str, rows_pr_iteration: int = 20000):
+def remove_unwanted_rows(filename: str, new_filename: str, rows_pr_iteration: int = 20000) -> int:
+    type = ['fake', 'conspiracy', 'junksci', 'hate', 'unreliable',
+            'bias', 'satire', 'state', 'reliable', 'clickbait', 'political']
     with open(filename, encoding='utf-8') as f:
         colnames = pd.DataFrame(columns=next(csv.reader(f)))
     colnames.to_csv(new_filename, mode='w')
@@ -145,7 +145,7 @@ def create_dataset(old_size: int, new_size: int, old_filename: str, new_filename
             chunk_split = arr[start:end]
             start += chunk.shape[0]
             # Select the values from the chunk for the dataset:
-            rows = chunk[chunk_split is True]
+            rows = chunk[chunk_split == True]
             if rows.shape[0] > 0:
                 rows.to_csv(new_filename, mode='a', header=None)
 
@@ -154,35 +154,34 @@ def read_rows(filename: str, idx: int, num: int = 1) -> int:
     return pd.read_csv(filename, encoding='utf-8', lineterminator='\n', skiprows=idx, nrows=num)
 
 
-TQDM_COLOR = 'magenta'
 ROWS_PR_ITERATION = 20000
-SAMPLE = True
-SPLIT = False
-ROWS_CLEANED = False
 CLEANED_ROWS_BIG = 7273069
 CLEANED_ROWS_SAMPLE = 232
 NEW_SIZE_BIG = 100000
 NEW_SIZE_SAMPLE = 200
-BIG_PATH = "../datasets/large/"
-SAMPLE_PATH = "../datasets/sample/"
 
-if __name__ == '__main__':
-    create_directory(BIG_PATH)
-    create_directory(SAMPLE_PATH)
-    if SAMPLE:
+
+def run(sample: bool = True, rows_cleaned: bool = False, rows_pr_iteration: int = ROWS_PR_ITERATION, split=False, new_size: int = NEW_SIZE_SAMPLE):
+    if sample:
         old_size = CLEANED_ROWS_SAMPLE
-        new_size = NEW_SIZE_SAMPLE
-        path = SAMPLE_PATH
+        new_size = min(new_size, NEW_SIZE_SAMPLE)
+        path = "../datasets/sample/"
     else:
         old_size = CLEANED_ROWS_BIG
-        new_size = NEW_SIZE_BIG
-        path = BIG_PATH
-    if not ROWS_CLEANED:
+        new_size = min(new_size, NEW_SIZE_BIG)
+        path = "../datasets/large/"
+    create_directory(path)
+    if not rows_cleaned:
         old_size = remove_unwanted_rows(filename=path+"raw.csv",
-                                        new_filename=path+"cleaned.csv", rows_pr_iteration=ROWS_PR_ITERATION)
-    if not SPLIT:
+                                        new_filename=path+"cleaned.csv", rows_pr_iteration=rows_pr_iteration)
+    if not split:
         create_dataset(old_size=old_size, new_size=new_size, old_filename=path+"cleaned.csv",
-                       new_filename=path+"dataset.csv", rows_pr_iteration=ROWS_PR_ITERATION)
+                       new_filename=path+"dataset.csv", rows_pr_iteration=rows_pr_iteration)
     else:
         create_train_vali_and_test_sets(old_size=old_size, new_size=new_size, split=(0.8, 0.1, 0.1), data_filename=path+"cleaned.csv", train_filename=path+"train.csv",
-                                        vali_filename=path+"vali.csv", test_filename=path+"test.csv", rows_pr_iteration=ROWS_PR_ITERATION)
+                                        vali_filename=path+"vali.csv", test_filename=path+"test.csv", rows_pr_iteration=rows_pr_iteration)
+
+
+if __name__ == '__main__':
+    run(sample=True, rows_cleaned=False,
+        rows_pr_iteration=ROWS_PR_ITERATION, split=False, new_size=200)

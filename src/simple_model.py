@@ -118,7 +118,7 @@ class Simple_model(FunctionApplier):
         # make result new dataframe
         self.result = pd.DataFrame(columns=['domain', 'fake'])
 
-    def sourceDistribution(self, row):
+    def source_distribution(self, row):
         print(row['domain'])
 
         if row['type'] in binary_labels:
@@ -135,7 +135,7 @@ class Simple_model(FunctionApplier):
 
         # return sourceDict
 
-    def simpleMajorityClassfier(self, sourceDict: Dict[str, Dict[str, int]]):
+    def simple_majority_classfier(self, sourceDict: Dict[str, Dict[str, int]]):
         # count all the fake labels for each source, if the count is greater than half of the total, then it is fake
         # make dict of sources and fake label count as a pandas dataframe
         print("sourceDict: ", sourceDict)
@@ -163,7 +163,7 @@ class Simple_model(FunctionApplier):
 
     def function_to_apply(self, row: pd.DataFrame):
         # ASKE DO YOUR THING
-        self.sourceDistribution(row)
+        self.source_distribution(row)
         # self.simpleMajorityClassfier(self.sourceDict)
         return row
 
@@ -174,7 +174,7 @@ class Simple_logistic_model(FunctionApplier):
         # make result new dataframe
         self.result = pd.DataFrame(columns=['domain', 'fake'])
 
-    def sourceDistribution(self):
+    def source_distribution(self):
         df = pd.read_csv('../datasets/sample/news_sample.csv')
 
         # Split the data into training and test sets
@@ -206,14 +206,14 @@ def simple_model_test():
     ])
 
     # print("got source dict", sm.sourceDict)
-    sm.simpleMajorityClassfier(sm.sourceDict)
+    sm.simple_majority_classfier(sm.sourceDict)
 
     print("got result", sm.result)
 
 
 def simple_model_test2():
     sm = Simple_logistic_model(binary_labels)
-    sm.sourceDistribution()
+    sm.source_distribution()
     # print("got source dict", sm.sourceDict)
 
 # simple_model_test2()
