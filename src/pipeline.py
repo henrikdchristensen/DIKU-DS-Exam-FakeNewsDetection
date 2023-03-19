@@ -51,15 +51,11 @@ class Normalize(FunctionApplier):
 class Create_word_vector(FunctionApplier):
     def __init__(self, unique_words):
         self.unique_words = unique_words
-        self.word_to_index = {word: i for i, word in enumerate(unique_words)}
 
     def function_to_apply(self, words):
-        vector = np.zeros(len(self.unique_words), dtype=int)
-        for word in words:
-            if word in self.word_to_index:
-                index = self.word_to_index[word]
-                vector[index] += 1
-        return vector
+        counter = Counter(words)
+        vector = [counter[word] for word in self.unique_words]
+        return np.array(vector)
 
 
 class Generate_unique_word_list(FunctionApplier):
