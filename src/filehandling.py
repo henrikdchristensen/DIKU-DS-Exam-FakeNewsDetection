@@ -155,9 +155,9 @@ def read_rows(filename: str, idx: int, num: int = 1) -> int:
 
 
 ROWS_PR_ITERATION = 20000
-CLEANED_ROWS_BIG = 7273069
+CLEANED_ROWS_LARGE = 7273069
 CLEANED_ROWS_SAMPLE = 232
-NEW_SIZE_BIG = 100000
+NEW_SIZE_LARGE = 100000
 NEW_SIZE_SAMPLE = 200
 
 
@@ -167,8 +167,8 @@ def run(sample: bool = True, rows_cleaned: bool = False, rows_pr_iteration: int 
         new_size = min(new_size, NEW_SIZE_SAMPLE)
         path = "../datasets/sample/"
     else:
-        old_size = CLEANED_ROWS_BIG
-        new_size = min(new_size, NEW_SIZE_BIG)
+        old_size = CLEANED_ROWS_LARGE
+        new_size = min(new_size, NEW_SIZE_LARGE)
         path = "../datasets/large/"
     create_directory(path)
     if not rows_cleaned:
