@@ -156,26 +156,19 @@ def read_rows(filename: str, idx: int, num: int = 1) -> int:
     return pd.read_csv(filename, encoding='utf-8', lineterminator='\n', skiprows=idx, nrows=num)
 
 
+#CLEANED_ROWS_LARGE = 7273069
+#CLEANED_ROWS_SAMPLE = 232
 ROWS_PR_ITERATION = 20000
-CLEANED_ROWS_LARGE = 7273069  # counted already
-CLEANED_ROWS_SAMPLE = 232  # counted already
-NEW_SIZE_LARGE = 100000
-NEW_SIZE_SAMPLE = 200
 
 
-def run(sample: bool = True, rows_cleaned: bool = False, rows_pr_iteration: int = ROWS_PR_ITERATION, new_size: int = NEW_SIZE_SAMPLE, balance_classes: bool = False, all_classes_must_exist: bool = False, balance_hard: bool = False):
+def run(sample: bool = True, rows_pr_iteration: int = ROWS_PR_ITERATION, new_size: int = 0, balance_classes: bool = False, all_classes_must_exist: bool = False, balance_hard: bool = False):
     if sample:
-        old_size = CLEANED_ROWS_SAMPLE
-        new_size = min(new_size, NEW_SIZE_SAMPLE)
         path = "../datasets/sample/"
     else:
-        old_size = CLEANED_ROWS_LARGE
-        new_size = min(new_size, NEW_SIZE_LARGE)
         path = "../datasets/large/"
     create_directory(path)
-    if not rows_cleaned:
-        types = data_preparation(filename=path+"raw.csv",
-                                 new_filename=path+"cleaned.csv", rows_pr_iteration=rows_pr_iteration)
+    types = data_preparation(filename=path+"raw.csv",
+                             new_filename=path+"cleaned.csv", rows_pr_iteration=rows_pr_iteration)
     create_dataset(types=types, new_size=new_size, old_filename=path+"cleaned.csv",
                    new_filename=path+"dataset.csv", rows_pr_iteration=rows_pr_iteration, balance_classes=balance_classes, all_classes_must_exist=all_classes_must_exist, balance_hard=balance_hard)
 
