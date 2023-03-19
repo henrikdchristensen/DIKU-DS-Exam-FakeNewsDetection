@@ -7,10 +7,6 @@ import os
 import pandas as pd
 from tqdm import tqdm
 
-TQDM_COLOR = 'magenta'
-
-# https://raw.githubusercontent.com/several27/FakeNewsCorpus/master/news_sample.csv
-
 
 def remove_file(filename: str):
     if os.path.exists(filename):
@@ -158,6 +154,7 @@ def read_rows(filename: str, idx: int, num: int = 1) -> int:
     return pd.read_csv(filename, encoding='utf-8', lineterminator='\n', skiprows=idx, nrows=num)
 
 
+TQDM_COLOR = 'magenta'
 ROWS_PR_ITERATION = 20000
 SAMPLE = True
 SPLIT = False
@@ -166,7 +163,7 @@ CLEANED_ROWS_BIG = 7273069
 CLEANED_ROWS_SAMPLE = 232
 NEW_SIZE_BIG = 100000
 NEW_SIZE_SAMPLE = 200
-BIG_PATH = "../datasets/big/"
+BIG_PATH = "../datasets/large/"
 SAMPLE_PATH = "../datasets/sample/"
 
 if __name__ == '__main__':
