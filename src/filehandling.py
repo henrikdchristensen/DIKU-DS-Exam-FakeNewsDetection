@@ -155,8 +155,8 @@ def read_rows(filename: str, idx: int, num: int = 1) -> int:
 
 
 ROWS_PR_ITERATION = 20000
-CLEANED_ROWS_LARGE = 7273069
-CLEANED_ROWS_SAMPLE = 232
+CLEANED_ROWS_LARGE = 7273069  # counted already
+CLEANED_ROWS_SAMPLE = 232  # counted already
 NEW_SIZE_LARGE = 100000
 NEW_SIZE_SAMPLE = 200
 
