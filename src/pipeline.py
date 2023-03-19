@@ -39,31 +39,27 @@ class FunctionApplier:
 
 class Normalize(FunctionApplier):
     def function_to_apply(self, vector):
+        # Compute the sum of all elements in the input vector
         sum = np.sum(vector)
+        # Check if the sum is zero to avoid division by zero
         if sum == 0:
             return vector
+        # Normalize the input vector by dividing each element by the sum
         return vector / sum
 
 
 class Create_word_vector(FunctionApplier):
     def __init__(self, unique_words):
         self.unique_words = unique_words
+        self.word_to_index = {word: i for i, word in enumerate(unique_words)}
 
     def function_to_apply(self, words):
-        vector = [0] * len(self.unique_words)
-
-        words = sorted(words)
-        i = 0
-        j = 0
-        while i < len(words) and j < len(self.unique_words):
-            if words[i] == self.unique_words[j]:
-                vector[j] += 1
-                i += 1
-            elif words[i] > self.unique_words[j]:
-                j += 1
-            else:  # should never happen
-                i += 1
-        return np.array(vector)
+        vector = np.zeros(len(self.unique_words), dtype=int)
+        for word in words:
+            if word in self.word_to_index:
+                index = self.word_to_index[word]
+                vector[index] += 1
+        return vector
 
 
 class Generate_unique_word_list(FunctionApplier):
@@ -75,7 +71,9 @@ class Generate_unique_word_list(FunctionApplier):
         return words
 
     def get_unique_words(self, low, high):
+        # Get the sum of all words
         word_sum = sum(self.unique_words.values())
+        # Sort the words by frequency and filter out the words that are not within the given range
         sorted_items = sorted(self.unique_words.items(),
                               key=lambda x: x[1], reverse=True)
         sorted_freq_items = [x[0] for x in sorted_items if x[1] /
@@ -84,20 +82,27 @@ class Generate_unique_word_list(FunctionApplier):
         return sorted(sorted_freq_items)
 
     def get_freqs(self):
+        # Get the sum of all words
         word_sum = sum(self.unique_words.values())
+        # Sort the words by frequency and filter out the words that are not within the given range
         sorted_items = sorted(self.unique_words.items(),
                               key=lambda x: x[1], reverse=True)
         return [(x[0], x[1] / word_sum) for x in sorted_items]
 
     def get_most_frequent(self, nwords):
+        # Return the n most frequent words
         return sorted(self.unique_words.most_common(nwords))
 
     def plot_most_frequent(self, nwords, freq=False):
+        # Calculate the frequency of each word
         words = [x[0] for x in self.unique_words.most_common(nwords)]
+        # Calculate the frequency of each word
         frequency = [x[1] for x in self.unique_words.most_common(nwords)]
+        # If freq is True, normalize the frequency
         if freq:
             s = sum(self.unique_words.values())
             frequency = [x / s for x in frequency]
+        # Plot the frequency of the n most frequent words
         plt.bar(words, frequency)
         plt.ylabel('Frequency')
         plt.title(f'Frequency of the {nwords} most frequent words')
@@ -106,9 +111,11 @@ class Generate_unique_word_list(FunctionApplier):
         plt.show()
 
     def plot_frequency_line(self, nwords):
+        # Calculate the frequency of each word
         word_sum = sum(self.unique_words.values())
         frequency = [
             x[1] / word_sum for x in self.unique_words.most_common(nwords)]
+        # Plot the frequency of the n most frequent words
         plt.plot(list(range(len(frequency))), frequency)
         plt.ylabel('Frequency')
         plt.title(f'Frequency of the {nwords} most frequent words')
@@ -161,6 +168,7 @@ class Remove_stopwords(FunctionApplier):
 
 class Stem(FunctionApplier):
     def function_to_apply(self, words: list[str]):
+        # Create a PorterStemmer object, which remove morphological affixes from words, leaving only the word stem.
         ps = PorterStemmer()
         stemmed_words = []
         for w in words:
@@ -168,30 +176,32 @@ class Stem(FunctionApplier):
         return stemmed_words
 
 
-patterns = {
-    re.compile(r'((https?:\/\/)?(?:www\.)?[a-zA-Z0-9-_\+=.:~@#%]+\.[a-zA-Z0-9()]{1,6}\b(?:[a-zA-Z0-9-_.:\\/@#$%&()=+~?]*))'): ' <URL> ',
-    re.compile(r'(https?:\/\/)?w{0,3}\.?[a-z]+\.[a-z]\w*[\w\/-]*'): ' <URL> ',
-    re.compile(r'(\d{1,2}([\:\-/\\]|(,\s)?)){2}\d{2,4}|\d{2,4}(([\:\-/\\]|(,\s)?)\d{1,2}){2}'): ' <DATE> ',
-    re.compile(r'([Jj]an(uary)?|[Ff]eb(ruary)?|[Mm]ar(ch)?|[Aa]pr(il)?|[Mm]ay|[Jj]un(e)?|[Jj]ul(y)?|[Aa]ug(ust)?|[Ss]ep(tember)?|[Oo]ct(ober)?|[Nn]ov(ember)?|[Dd]ec(ember)?)([\:\-/\\]|(,\s)?)\d{1,2}([\:\-/\\]|(,\s)?)\d{1,4}'): ' <DATE> ',
-    re.compile(r'([\w.\-]+@(?:[\w-]+\.)+[\w-]{2,4})|@[\w\d]+'): ' <EMAIL> ',
-    re.compile(r'(\r\n|\n|\r)+'): ' ',
-    re.compile(r'(\t+)'): ' ',
-    re.compile(r'(\!|\[|\])'): '',
-    # re.compile(r'(\=|\~|\u2018|\t|\;|\@|\″|\^|\…|\<|\>|\+|\/|\.|\*|\#|\,|\?|\&|\"|\”|\“|\%|\:|\-|\(|\)|\´|\`|\’|\$|\'|\|)'): '',
-    # re.compile(r'(\–|\—)'): ' ',
-    re.compile(r'[^A-Za-z0-9\s]'): '',
-    re.compile(r'(\d+)(th)?'): ' <NUM> ',
-    re.compile(r'( +)'): ' ',
-}
-
-
 class Clean_data(FunctionApplier):
+    def __init__(self):
+        # Create a list of patterns to remove.
+        # Compile the patterns to speed up the process
+        self.patterns = {
+            re.compile(r'((https?:\/\/)?(?:www\.)?[a-zA-Z0-9-_\+=.:~@#%]+\.[a-zA-Z0-9()]{1,6}\b(?:[a-zA-Z0-9-_.:\\/@#$%&()=+~?]*))'): ' <URL> ',
+            re.compile(r'(https?:\/\/)?w{0,3}\.?[a-z]+\.[a-z]\w*[\w\/-]*'): ' <URL> ',
+            re.compile(r'(\d{1,2}([\:\-/\\]|(,\s)?)){2}\d{2,4}|\d{2,4}(([\:\-/\\]|(,\s)?)\d{1,2}){2}'): ' <DATE> ',
+            re.compile(r'([Jj]an(uary)?|[Ff]eb(ruary)?|[Mm]ar(ch)?|[Aa]pr(il)?|[Mm]ay|[Jj]un(e)?|[Jj]ul(y)?|[Aa]ug(ust)?|[Ss]ep(tember)?|[Oo]ct(ober)?|[Nn]ov(ember)?|[Dd]ec(ember)?)([\:\-/\\]|(,\s)?)\d{1,2}([\:\-/\\]|(,\s)?)\d{1,4}'): ' <DATE> ',
+            re.compile(r'([\w.\-]+@(?:[\w-]+\.)+[\w-]{2,4})|@[\w\d]+'): ' <EMAIL> ',
+            re.compile(r'(\r\n|\n|\r)+'): ' ',
+            re.compile(r'(\t+)'): ' ',
+            re.compile(r'(\!|\[|\])'): '',
+            # re.compile(r'(\=|\~|\u2018|\t|\;|\@|\″|\^|\…|\<|\>|\+|\/|\.|\*|\#|\,|\?|\&|\"|\”|\“|\%|\:|\-|\(|\)|\´|\`|\’|\$|\'|\|)'): '',
+            # re.compile(r'(\–|\—)'): ' ',
+            re.compile(r'[^A-Za-z0-9\s]'): '',
+            re.compile(r'(\d+)(th)?'): ' <NUM> ',
+            re.compile(r'( +)'): ' ',
+        }
+
     def function_to_apply(self, cell):
         # Apply patterns using list comprehension
         cell = str(cell)
         cell = cell.lower()
         # Loop through each pattern and apply the pattern to each row and do replacement if needed
-        for pattern, replacement in patterns.items():
+        for pattern, replacement in self.patterns.items():
             cell = re.sub(pattern, replacement, cell)
 
         return cell
@@ -276,7 +286,7 @@ class Simple_model(FunctionApplier):
         self.dict_domains = {}
 
     def function_to_apply(self, row):
-        # ASKE DO YOUR THING
+        # TODO ASKE DO YOUR THING
 
         return row
 
@@ -291,23 +301,30 @@ TQDM_COLOR = 'magenta'
 
 
 def applier(function_cols, row):
+    # Iterate over each function and column index in function_cols
     for function, col in function_cols:
-        if col == None:
+        # If no column index is specified, apply the function to the entire row
+        if col is None:
             row = function.function_to_apply(row)
+        # If a column index is specified, apply the function to that column in the row
         else:
             row[col] = function.function_to_apply(row[col])
     return row
 
 
 def apply_pipeline_pd(df, function_cols):
+    # Make a copy of the input DataFrame to avoid modifying it
     df = df.copy()
+    # Iterate through each row in the DataFrame and apply the functions
     for index, row in df.iterrows():
         df.loc[index] = applier(function_cols, row)
     return df
 
 
 def apply_pipeline_pd_tqdm(df, function_cols):
+    # Make a copy of the input DataFrame to avoid modifying it
     df = df.copy()
+    # Iterate through each row in the DataFrame and apply the functions
     for index, row in tqdm(df.iterrows(), total=df.shape[0]):
         df.loc[index] = applier(function_cols, row)
     return df
@@ -316,28 +333,30 @@ def apply_pipeline_pd_tqdm(df, function_cols):
 def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False):
     i = 0
     start_time = time()
+    # Use Pandas chunksize and iterator to read the input file in batches
     with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8', lineterminator='\n') as reader:
         for chunk in reader:
-            if function_cols == None:
+            if function_cols is None:
                 return chunk
-
+             # If no functions are specified, return the original data
             if i >= TEST_NUM:
                 break
-
+            # Apply the specified functions to each row in the batch
             for index, row in chunk.iterrows():
                 chunk.loc[index] = applier(function_cols, row)
-
-            if new_file != None:
+            # If an output file is specified, append the processed data to it
+            if new_file is not None:
                 if i == 0:
                     chunk.to_csv(new_file, mode='w', index=False)
                 else:
-                    # append to csv file pd
+                    # Append to csv file without header
                     chunk.to_csv(new_file, mode='a', header=False, index=False)
-
+            # If get_batch is True, return only the first batch of processed data
             if get_batch:
                 return chunk
 
             i += batch_size
+        # Print the time taken to process the data
         print(f'finish time: {time()-start_time}')
 
 
