@@ -14,7 +14,7 @@ TYPES_DICT = {'fake': 1, 'conspiracy': 2, 'junksci': 3, 'hate': 4, 'unreliable':
 
 #ROWS_LARGE = 7273069
 #ROWS_SAMPLE = 232
-SAMPLE = False
+SAMPLE = True
 ROWS_PR_ITERATION = 20000
 NEW_SIZE = 100000
 BALANCE_CLASSES = True
@@ -110,7 +110,7 @@ def csv_split(filename: str, dirname: str = 'csv-chunks', rows_pr_iteration: int
 def data_preparation(filename: str, new_filename: str, rows_pr_iteration: int = 20000) -> np.ndarray:
     with open(filename, encoding='utf-8') as f:
         colnames = pd.DataFrame(columns=next(csv.reader(f)))
-    colnames.to_csv(new_filename, mode='w')
+    colnames.to_csv(new_filename, mode='w', index=False)
     original_rows = 0
     retained_rows = 0
     type_arr = np.empty(0, dtype=int)
@@ -122,7 +122,7 @@ def data_preparation(filename: str, new_filename: str, rows_pr_iteration: int = 
             # Remove rows where type is not one of the specified values:
             chunk = chunk[chunk['type'].isin(TYPES_DICT)]
             retained_rows += chunk.shape[0]
-            chunk.to_csv(new_filename, mode='a', header=None)
+            chunk.to_csv(new_filename, mode='a', header=None, index=False)
             # Append the 'type' column to the type_array
             # Append the value of the 'type' column to the type_array
             type_arr = np.append(
@@ -141,7 +141,7 @@ def create_dataset(types: np.ndarray, new_size: int, old_filename: str, new_file
     # Write the header row to the new files:
     with open(old_filename, encoding='utf-8') as f:
         colnames = pd.DataFrame(columns=next(csv.reader(f)))
-    colnames.to_csv(new_filename, mode='w')
+    colnames.to_csv(new_filename, mode='w', index=False)
     # Loop through data in chunks and append to the right dataset:
     start = 0
     with pd.read_csv(old_filename, encoding='utf-8', chunksize=rows_pr_iteration, lineterminator='\n') as reader:
@@ -153,7 +153,7 @@ def create_dataset(types: np.ndarray, new_size: int, old_filename: str, new_file
             # Select the values from the chunk for the dataset:
             rows = chunk[chunk_split == True]
             if rows.shape[0] > 0:
-                rows.to_csv(new_filename, mode='a', header=None)
+                rows.to_csv(new_filename, mode='a', header=None, index=False)
     print("Dataset created!")
 
 
