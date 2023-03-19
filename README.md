@@ -1,5 +1,7 @@
 # FakeNews
 
+The overall goal of this project is to be able to detect fake news. For this, we have created and trained models in order to classify news articles.
+
 ## Access dataset
 
 The dataset used in the project are scraped articles into a large .csv file (>32 GB, 8+ mio. rows). There exists also a sample .csv file, which only contains a small amount of articles (250 rows).
@@ -28,7 +30,7 @@ For the large dataset, all the chunks, needs to be downloaded, and 7-zip can be 
 5. Find path to miniconda
 6. Install packages via conda enviroment installed pip (DO NOT use the typically globally installed pip)
    ```powershell
-   </path-to-miniconda>/miniconda3/envs/fake-news-env/Scripts/pip install -r requirements.txt
+   <path-to-miniconda>/miniconda3/envs/fake-news-env/Scripts/pip install -r requirements.txt
    ```
 7. Add the enviroment as a jupyter kernel
    ```powershell
