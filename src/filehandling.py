@@ -89,7 +89,7 @@ def create_random_array(balance_classes: bool, all_classes_must_exist: bool, bal
                     f"Warning! type {key} has only {num_elements} elements - adding all.\nThe final array will contain True values less than the given new_size.\n")
             else:
                 arr[np.random.choice(indices, type_size, replace=False)] = True
-        print(f"Number of True value in the final array: {np.sum(arr)}")
+        print(f"True values in the final array: {np.sum(arr)}")
     return arr
 
 
@@ -128,7 +128,7 @@ def data_preparation(filename: str, new_filename: str, rows_pr_iteration: int = 
             type_arr = np.append(
                 type_arr, chunk['type'].map(TYPES_DICT))
     print(
-        f"Removed rows: {original_rows-retained_rows}\n(original rows: {original_rows}, retained rows: {retained_rows})")
+        f"Removed rows: {original_rows-retained_rows}\n(rows before: {original_rows}, rows after (retained): {retained_rows})")
     return type_arr
 
 
@@ -154,7 +154,7 @@ def create_dataset(types: np.ndarray, new_size: int, old_filename: str, new_file
             rows = chunk[chunk_split == True]
             if rows.shape[0] > 0:
                 rows.to_csv(new_filename, mode='a', header=None)
-    print("Dataset created")
+    print("Dataset created!")
 
 
 def read_rows(filename: str, idx: int, num: int = 1) -> int:
