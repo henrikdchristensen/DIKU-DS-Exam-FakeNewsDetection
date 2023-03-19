@@ -117,13 +117,13 @@ def create_train_vali_and_test_sets(old_size: int, new_size: int, split: Tuple[f
             start += chunk.shape[0]
             # Select the values from the chunk for the train- or vali- or test dataset
             # from the chunk if it matches the shuffled split array:
-            train_rows = chunk[chunk_split == Set.TRAIN]
+            train_rows = chunk[chunk_split is Set.TRAIN]
             if train_rows.shape[0] > 0:
                 train_rows.to_csv(train_filename, mode='a', header=None)
-            vali_rows = chunk[chunk_split == Set.VALI]
+            vali_rows = chunk[chunk_split is Set.VALI]
             if vali_rows.shape[0] > 0:
                 vali_rows.to_csv(vali_filename, mode='a', header=None)
-            test_rows = chunk[chunk_split == Set.TEST]
+            test_rows = chunk[chunk_split is Set.TEST]
             if test_rows.shape[0] > 0:
                 test_rows.to_csv(test_filename, mode='a', header=None)
 
@@ -145,7 +145,7 @@ def create_dataset(old_size: int, new_size: int, old_filename: str, new_filename
             chunk_split = arr[start:end]
             start += chunk.shape[0]
             # Select the values from the chunk for the dataset:
-            rows = chunk[chunk_split == True]
+            rows = chunk[chunk_split is True]
             if rows.shape[0] > 0:
                 rows.to_csv(new_filename, mode='a', header=None)
 

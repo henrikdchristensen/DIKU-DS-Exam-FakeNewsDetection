@@ -53,8 +53,19 @@ class Create_word_vector(FunctionApplier):
         self.unique_words = unique_words
 
     def function_to_apply(self, words):
-        counter = Counter(words)
-        vector = [counter[word] for word in self.unique_words]
+        vector = [0] * len(self.unique_words)
+
+        words = sorted(words)
+        i = 0
+        j = 0
+        while i < len(words) and j < len(self.unique_words):
+            if words[i] == self.unique_words[j]:
+                vector[j] += 1
+                i += 1
+            elif words[i] > self.unique_words[j]:
+                j += 1
+            else:  # should never happen
+                i += 1
         return np.array(vector)
 
 
@@ -361,10 +372,7 @@ def get_csv_batch(file, n):
 
 
 def read_rows_of_csv(file, n=None):
-    if n != None:
-        return pd.read_csv(file, nrows=n)
-    else:
-        return pd.read_csv(file)
+    return pd.read_csv(file, nrows=n) if n is not None else pd.read_csv(file)
 
 
 def create_csv_from_existing_with_n_rows(file, new_file, n):
