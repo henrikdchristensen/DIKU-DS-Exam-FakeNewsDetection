@@ -1,5 +1,3 @@
-from collections import Counter
-from typing import Dict, Tuple
 from enum import IntEnum
 import shutil
 import numpy as np
@@ -10,8 +8,18 @@ from tqdm import tqdm
 import warnings
 
 TQDM_COLOR = 'magenta'
-types_dict = {'fake': 1, 'conspiracy': 2, 'junksci': 3, 'hate': 4, 'unreliable': 5,
+TYPES_DICT = {'fake': 1, 'conspiracy': 2, 'junksci': 3, 'hate': 4, 'unreliable': 5,
               'bias': 6, 'satire': 7, 'state': 8, 'reliable': 9, 'clickbait': 10, 'political': 11}
+
+
+#ROWS_LARGE = 7273069
+#ROWS_SAMPLE = 232
+SAMPLE = False
+ROWS_PR_ITERATION = 20000
+NEW_SIZE = 100000
+BALANCE_CLASSES = True
+ALL_CLASSES_MUST_EXIST = False
+BALANCE_HARD = False
 
 
 def remove_file(filename: str):
@@ -40,13 +48,13 @@ def create_random_array(balance_classes: bool, all_classes_must_exist: bool, bal
     unique, counts = np.unique(types, return_counts=True)
     for i in range(len(unique)):
         print(
-            f"{list(types_dict.keys())[list(types_dict.values()).index(unique[i])]}: {counts[i]}")
-    missing_types = set(types_dict.values()) - set(unique)
+            f"{list(TYPES_DICT.keys())[list(TYPES_DICT.values()).index(unique[i])]}: {counts[i]}")
+    missing_types = set(TYPES_DICT.values()) - set(unique)
     if len(missing_types) > 0:
         print("\nMissing types:")
         for t in missing_types:
             print(
-                f"{list(types_dict.keys())[list(types_dict.values()).index(t)]}")
+                f"{list(TYPES_DICT.keys())[list(TYPES_DICT.values()).index(t)]}")
         if all_classes_must_exist:
             # Raise error if hard_balance is True and there are missing types
             raise Exception("All classes doesn't exists.")
@@ -63,12 +71,9 @@ def create_random_array(balance_classes: bool, all_classes_must_exist: bool, bal
         counts = {t: np.count_nonzero(types == t)
                   for t in np.unique(types)}
         # Calculate the number of elements to include for each type
-        if balance_hard:
-            min_count = min(counts.values())
-            type_size = min_count
-        else:
-            type_size = round(new_size / len(counts))
-        print(f"Number of elements to take for each type: {type_size}")
+        type_size = min(counts.values()) if balance_hard else round(
+            new_size / len(counts))
+        print(f"\nNumber of elements to take for each type: {type_size}")
         if new_size % len(counts) != 0:
             warnings.warn(
                 f"\nWarning! The new_size={new_size} is not divisible by the number of {len(counts)} types.\nThe final array will contain True values less than the given new_size.\n")
@@ -110,18 +115,18 @@ def data_preparation(filename: str, new_filename: str, rows_pr_iteration: int = 
     retained_rows = 0
     type_arr = np.empty(0, dtype=int)
     with pd.read_csv(filename, encoding='utf-8', chunksize=rows_pr_iteration, lineterminator='\n') as reader:
-        for chunk in tqdm(reader, desc='remove missing/false values', unit='rows encountered', unit_scale=rows_pr_iteration, colour=TQDM_COLOR):
+        for chunk in tqdm(reader, desc='remove missing/incorrect values', unit='rows encountered', unit_scale=rows_pr_iteration, colour=TQDM_COLOR):
             original_rows += chunk.shape[0]
             # Drop rows with empty content column:
             chunk = chunk.dropna(subset=['content'])
             # Remove rows where type is not one of the specified values:
-            chunk = chunk[chunk['type'].isin(types_dict)]
+            chunk = chunk[chunk['type'].isin(TYPES_DICT)]
             retained_rows += chunk.shape[0]
             chunk.to_csv(new_filename, mode='a', header=None)
             # Append the 'type' column to the type_array
             # Append the value of the 'type' column to the type_array
             type_arr = np.append(
-                type_arr, chunk['type'].map(types_dict))
+                type_arr, chunk['type'].map(TYPES_DICT))
     print(
         f"Removed rows: {original_rows-retained_rows}\n(original rows: {original_rows}, retained rows: {retained_rows})")
     return type_arr
@@ -156,11 +161,6 @@ def read_rows(filename: str, idx: int, num: int = 1) -> int:
     return pd.read_csv(filename, encoding='utf-8', lineterminator='\n', skiprows=idx, nrows=num)
 
 
-#CLEANED_ROWS_LARGE = 7273069
-#CLEANED_ROWS_SAMPLE = 232
-ROWS_PR_ITERATION = 20000
-
-
 def run(sample: bool = True, rows_pr_iteration: int = ROWS_PR_ITERATION, new_size: int = 0, balance_classes: bool = False, all_classes_must_exist: bool = False, balance_hard: bool = False):
     if sample:
         path = "../datasets/sample/"
@@ -174,5 +174,5 @@ def run(sample: bool = True, rows_pr_iteration: int = ROWS_PR_ITERATION, new_siz
 
 
 if __name__ == '__main__':
-    run(sample=False, rows_cleaned=False,
-        rows_pr_iteration=ROWS_PR_ITERATION, new_size=100000, balance_classes=True, all_classes_must_exist=False, balance_hard=False)
+    run(sample=SAMPLE, rows_pr_iteration=ROWS_PR_ITERATION, new_size=NEW_SIZE,
+        balance_classes=BALANCE_CLASSES, all_classes_must_exist=ALL_CLASSES_MUST_EXIST, balance_hard=BALANCE_HARD)
