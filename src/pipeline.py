@@ -53,8 +53,7 @@ class Create_word_vector(FunctionApplier):
         self.unique_words = unique_words
 
     def function_to_apply(self, words):
-        vector = [0] * len(self.unique_words)
-
+        vector = np.zeros(len(self.unique_words), dtype=int)
         words = sorted(words)
         i = 0
         j = 0
