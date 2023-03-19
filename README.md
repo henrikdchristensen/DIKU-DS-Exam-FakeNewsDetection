@@ -86,31 +86,31 @@ The data set files should be placed in `datasets/large` and `datasets/sample`.
 
 ### Source code
 
-#### filehandling.py
+#### _filehandling.py_
 
 This code in overall create a randomly sampled data set from the raw data set file. It has a function to just create one single randomly data set file and a function to split the data set into training, validation, and testing data set. These to functions has helpter functions which for example remove unwanted rows, such as those with empty content or types which is not of interest.
 
-#### pipeline.py
+#### _pipeline.py_
 
 TODO
 
-#### preprocessing.py
+#### _preprocessing.py_
 
 TODO
 
-#### simple_model.py
+#### _simple_model.py_
 
 TODO
 
-#### models.py
+#### _models.py_
 
 TODO
 
-#### book.ipynb
+#### _book.ipynb_
 
 TODO
 
-#### main.py
+#### _main.py_
 
 TODO
 
