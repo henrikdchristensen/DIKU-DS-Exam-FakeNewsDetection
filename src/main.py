@@ -66,7 +66,7 @@ def main():
     print(f"red. rate stopwords: {reduction_rate_stopwords}")
     print(f"red. rate stemming: {reduction_rate_stemming}")
 
-    url_count = pp.Exploration.countItems(cleaned)
+    url_count = pp.Exploration.count_items(cleaned)
     #source_dist = ps.Exploration.sourceDistribution(cleaned)
 
     # print(source_dist)

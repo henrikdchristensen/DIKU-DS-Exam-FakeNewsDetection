@@ -1,4 +1,3 @@
-import h5py
 #import filehandling as fh
 import preprocessing as pp
 import pandas as pd
@@ -11,6 +10,8 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from time import time
 from ast import literal_eval
+import numpy as np
+from sklearn.preprocessing import normalize
 
 headers = {
     'row': 0,
@@ -35,8 +36,102 @@ class FunctionApplier:
     def function_to_apply(self, row):
         pass
 
+
+class Normalize(FunctionApplier):
+    def function_to_apply(self, vector):
+        # Compute the sum of all elements in the input vector
+        sum = np.sum(vector)
+        # Check if the sum is zero to avoid division by zero
+        if sum == 0:
+            return vector
+        # Normalize the input vector by dividing each element by the sum
+        return vector / sum
+
+
+class Create_word_vector(FunctionApplier):
+    def __init__(self, unique_words):
+        self.unique_words = unique_words
+
+    def function_to_apply(self, words):
+        vector = np.zeros(len(self.unique_words), dtype=int)
+        words = sorted(words)
+        i = 0
+        j = 0
+        while i < len(words) and j < len(self.unique_words):
+            if words[i] == self.unique_words[j]:
+                vector[j] += 1
+                i += 1
+            elif words[i] > self.unique_words[j]:
+                j += 1
+            else:  # should never happen
+                i += 1
+        return np.array(vector)
+
+
+class Generate_unique_word_list(FunctionApplier):
+    def __init__(self):
+        self.unique_words = Counter()
+
+    def function_to_apply(self, words):
+        self.unique_words.update(words)
+        return words
+
+    def get_unique_words(self, low, high):
+        # Get the sum of all words
+        word_sum = sum(self.unique_words.values())
+        # Sort the words by frequency and filter out the words that are not within the given range
+        sorted_items = sorted(self.unique_words.items(),
+                              key=lambda x: x[1], reverse=True)
+        sorted_freq_items = [x[0] for x in sorted_items if x[1] /
+                             word_sum >= low and x[1] / word_sum <= high]
+
+        return sorted(sorted_freq_items)
+
+    def get_freqs(self):
+        # Get the sum of all words
+        word_sum = sum(self.unique_words.values())
+        # Sort the words by frequency and filter out the words that are not within the given range
+        sorted_items = sorted(self.unique_words.items(),
+                              key=lambda x: x[1], reverse=True)
+        return [(x[0], x[1] / word_sum) for x in sorted_items]
+
+    def get_most_frequent(self, nwords):
+        # Return the n most frequent words
+        return sorted(self.unique_words.most_common(nwords))
+
+    def plot_most_frequent(self, nwords, freq=False):
+        # Calculate the frequency of each word
+        words = [x[0] for x in self.unique_words.most_common(nwords)]
+        # Calculate the frequency of each word
+        frequency = [x[1] for x in self.unique_words.most_common(nwords)]
+        # If freq is True, normalize the frequency
+        if freq:
+            s = sum(self.unique_words.values())
+            frequency = [x / s for x in frequency]
+        # Plot the frequency of the n most frequent words
+        plt.bar(words, frequency)
+        plt.ylabel('Frequency')
+        plt.title(f'Frequency of the {nwords} most frequent words')
+        plt.xticks(rotation=90)
+        plt.tight_layout()
+        plt.show()
+
+    def plot_frequency_line(self, nwords):
+        # Calculate the frequency of each word
+        word_sum = sum(self.unique_words.values())
+        frequency = [
+            x[1] / word_sum for x in self.unique_words.most_common(nwords)]
+        # Plot the frequency of the n most frequent words
+        plt.plot(list(range(len(frequency))), frequency)
+        plt.ylabel('Frequency')
+        plt.title(f'Frequency of the {nwords} most frequent words')
+        plt.xticks(rotation=90)
+        plt.tight_layout()
+        plt.show()
+
+
 class Word_frequency(FunctionApplier):
-    def __init__(self, nwords = 50):
+    def __init__(self, nwords=50):
         self.swords = nwords
         self.words = []
         self.frequency = Counter()
@@ -47,9 +142,10 @@ class Word_frequency(FunctionApplier):
         content = literal_eval(content)
         self.frequency.update(content)
         # Return the sorted dictionary based on the frequency of each word
-        self.sorted_frequency = sorted(self.frequency.items(), key=lambda x: x[1], reverse=True)
+        self.sorted_frequency = sorted(
+            self.frequency.items(), key=lambda x: x[1], reverse=True)
         return content
-    
+
     def plot(self):
         # Extract the words and their frequency from the sorted list
         words = [x[0] for x in self.sorted_frequency[:self.swords]]
@@ -61,6 +157,7 @@ class Word_frequency(FunctionApplier):
         plt.xticks(rotation=90)
         plt.tight_layout()
         plt.show()
+
 
 class Tokenizer(FunctionApplier):
     def function_to_apply(self, cell):
@@ -77,47 +174,59 @@ class Remove_stopwords(FunctionApplier):
 
 class Stem(FunctionApplier):
     def function_to_apply(self, words: list[str]):
+        # Create a PorterStemmer object, which remove morphological affixes from words, leaving only the word stem.
         ps = PorterStemmer()
         stemmed_words = []
         for w in words:
             stemmed_words.append(ps.stem(w))
         return stemmed_words
 
-patterns = {
-            re.compile(r'(\r\n|\n|\r)+'): '(\n)',
-            re.compile(r'( +)'): ' ',
-            re.compile(r'(\t+)'): '(\t)',
-            re.compile(r'(\!|\[|\])'): '',
-            re.compile(r'(\d{1,2}[-/\\]\d{1,2}[-/\\]\d{2,4}|\d{2,4}[-/\\]\d{1,2}[-/\\]\d{1,2})|\w{3}\s\d{1,2}\S\d{4}|\d{1,2}\s\w{3}\s\d{4}|(?:jan(?:uary)?|feb(?:ruary)|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?),? \d{2,4},? \d{2,4}|\d{2,4},? (?:jan(?:uary)?|feb(?:ruary)|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?),? \d{2,4}'): '<DATE>',
-            re.compile(r'([\w.\-]+@(?:[\w-]+\.)+[\w-]{2,4})'): '<EMAIL>',
-            re.compile(r'((https?:\/\/)?(?:www\.)?[a-zA-Z0-9-_\+=.:~@#%]+\.[a-zA-Z0-9()]{1,6}\b(?:[a-zA-Z0-9-_.:\\/@#$%&()=+~?]*))'): '<URL>',
-            re.compile(r'(\.|\,|\?|\&|\"|\”|\“|\%|\:|\-|\(|\)|\´|\`|\’|\$|\'|\|)'): '',
-            re.compile(r'(\–|\—)'): ' ',
-            re.compile(r'(\d+)(th)?'): '<NUM>',
-        }
+
 class Clean_data(FunctionApplier):
+    def __init__(self):
+        # Create a list of patterns to remove.
+        # Compile the patterns to speed up the process
+        self.patterns = {
+            re.compile(r'((https?:\/\/)?(?:www\.)?[a-zA-Z0-9-_\+=.:~@#%]+\.[a-zA-Z0-9()]{1,6}\b(?:[a-zA-Z0-9-_.:\\/@#$%&()=+~?]*))'): ' <URL> ',
+            re.compile(r'(https?:\/\/)?w{0,3}\.?[a-z]+\.[a-z]\w*[\w\/-]*'): ' <URL> ',
+            re.compile(r'(\d{1,2}([\:\-/\\]|(,\s)?)){2}\d{2,4}|\d{2,4}(([\:\-/\\]|(,\s)?)\d{1,2}){2}'): ' <DATE> ',
+            re.compile(r'([Jj]an(uary)?|[Ff]eb(ruary)?|[Mm]ar(ch)?|[Aa]pr(il)?|[Mm]ay|[Jj]un(e)?|[Jj]ul(y)?|[Aa]ug(ust)?|[Ss]ep(tember)?|[Oo]ct(ober)?|[Nn]ov(ember)?|[Dd]ec(ember)?)([\:\-/\\]|(,\s)?)\d{1,2}([\:\-/\\]|(,\s)?)\d{1,4}'): ' <DATE> ',
+            re.compile(r'([\w.\-]+@(?:[\w-]+\.)+[\w-]{2,4})|@[\w\d]+'): ' <EMAIL> ',
+            re.compile(r'(\r\n|\n|\r)+'): ' ',
+            re.compile(r'(\t+)'): ' ',
+            re.compile(r'(\!|\[|\])'): '',
+            # re.compile(r'(\=|\~|\u2018|\t|\;|\@|\″|\^|\…|\<|\>|\+|\/|\.|\*|\#|\,|\?|\&|\"|\”|\“|\%|\:|\-|\(|\)|\´|\`|\’|\$|\'|\|)'): '',
+            # re.compile(r'(\–|\—)'): ' ',
+            re.compile(r'[^A-Za-z0-9\s]'): '',
+            re.compile(r'(\d+)(th)?'): ' <NUM> ',
+            re.compile(r'( +)'): ' ',
+        }
+
     def function_to_apply(self, cell):
         # Apply patterns using list comprehension
         cell = str(cell)
         cell = cell.lower()
         # Loop through each pattern and apply the pattern to each row and do replacement if needed
-        for pattern, replacement in patterns.items():
+        for pattern, replacement in self.patterns.items():
             cell = re.sub(pattern, replacement, cell)
 
         return cell
 
+
 class Decode_to_str(FunctionApplier):
     def function_to_apply(self, row):
         return row.decode("utf-8")
-        
+
 
 class Decode_from_json(FunctionApplier):
     def function_to_apply(self, row):
         return json.loads(row)
 
+
 class Encode_to_json(FunctionApplier):
     def function_to_apply(self, row):
         return json.dumps(row)
+
 
 class Print_first_row(FunctionApplier):
     def __init__(self):
@@ -151,118 +260,148 @@ class Print_content_to_csv(FunctionApplier):
 
         return row
 
-class binary_labels(FunctionApplier):
+
+class Binary_labels(FunctionApplier):
     def __init__(self):
         self.binary_labels: dict = {
-            'fake':False,
-            'conspiracy':False,
-            'junksci':False,
-            'hate':False,
-            'unreliable':False,
-            'bias':False,
-            'satire':False,
-            'state':False,
-            'reliable':True,
-            'clickbait':True,
-            'political':True,
-
-            # extra
-            'rumor':False,
+            'fake': False,
+            'conspiracy': False,
+            'junksci': False,
+            'hate': False,
+            'unreliable': False,
+            'bias': False,
+            'satire': False,
+            'state': False,
+            'reliable': True,
+            'clickbait': True,
+            'political': True
         }
+
     def function_to_apply(self, cell):
         try:
             binary_label = self.binary_labels[cell]
         except:
-            #TODO: what to do when no labels
-            print("Key error in binary_labels class:", cell)
+            # TODO: what to do when no labels
+            #print("Key error in binary_labels class:", cell)
             binary_label = True
         return binary_label
-    
+
+
 class Simple_model(FunctionApplier):
     def __init__(self):
         self.dict_domains = {}
 
     def function_to_apply(self, row):
-        # ASKE DO YOUR THING
-        
+        # TODO ASKE DO YOUR THING
 
         return row
 
     def get_metrics(self):
         pass
 
+
 ROWS_PR_ITERATION = 98
 TEST_NUM = 1000
 ROWS = 8529853
 TQDM_COLOR = 'magenta'
 
+
 def applier(function_cols, row):
+    # Iterate over each function and column index in function_cols
     for function, col in function_cols:
-        if col == None:
+        # If no column index is specified, apply the function to the entire row
+        if col is None:
             row = function.function_to_apply(row)
+        # If a column index is specified, apply the function to that column in the row
         else:
             row[col] = function.function_to_apply(row[col])
     return row
 
 
+def apply_pipeline_pd(df, function_cols):
+    # Make a copy of the input DataFrame to avoid modifying it
+    df = df.copy()
+    # Iterate through each row in the DataFrame and apply the functions
+    for index, row in df.iterrows():
+        df.loc[index] = applier(function_cols, row)
+    return df
+
+
+def apply_pipeline_pd_tqdm(df, function_cols):
+    # Make a copy of the input DataFrame to avoid modifying it
+    df = df.copy()
+    # Iterate through each row in the DataFrame and apply the functions
+    for index, row in tqdm(df.iterrows(), total=df.shape[0]):
+        df.loc[index] = applier(function_cols, row)
+    return df
+
+
 def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False):
     i = 0
     start_time = time()
+    # Use Pandas chunksize and iterator to read the input file in batches
     with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8', lineterminator='\n') as reader:
         for chunk in reader:
+            if function_cols is None:
+                return chunk
+             # If no functions are specified, return the original data
             if i >= TEST_NUM:
                 break
-            
+            # Apply the specified functions to each row in the batch
             for index, row in chunk.iterrows():
-                chunk.loc[index]= applier(function_cols, row)
-
-            if new_file != None:
+                chunk.loc[index] = applier(function_cols, row)
+            # If an output file is specified, append the processed data to it
+            if new_file is not None:
                 if i == 0:
                     chunk.to_csv(new_file, mode='w', index=False)
                 else:
-                    # append to csv file pd
+                    # Append to csv file without header
                     chunk.to_csv(new_file, mode='a', header=False, index=False)
-            
+            # If get_batch is True, return only the first batch of processed data
             if get_batch:
                 return chunk
-            
+
             i += batch_size
+        # Print the time taken to process the data
         print(f'finish time: {time()-start_time}')
 
 
 def get_csv_batch(file, n):
     return pd.read_csv(file, nrows=n)
 
-def read_rows_of_csv(file, n = None):
-    if n != None:
-        return pd.read_csv(file, nrows=n)
-    else:
-        return pd.read_csv(file)
+
+def read_rows_of_csv(file, n=None):
+    return pd.read_csv(file, nrows=n) if n is not None else pd.read_csv(file)
+
 
 def create_csv_from_existing_with_n_rows(file, new_file, n):
     df = read_rows_of_csv(file, n)
     df.to_csv(new_file)
 
+
 def create_test_file():
-    create_csv_from_existing_with_n_rows("../datasets/big/news_cleaned_2018_02_13.csv", "../datasets/big/news_sample.csv", 100)
+    create_csv_from_existing_with_n_rows(
+        "../datasets/big/news_cleaned_2018_02_13.csv", "../datasets/big/news_sample.csv", 100)
     print(read_rows_of_csv("../datasets/big/news_sample.csv")["content"])
 
 
 def ist_pipeline():
-    stopwords_lst = stopwords.words('english') + ["<NUM>","<DATE>","<URL>"]
-    apply_pipeline("../datasets/big/news_sample.csv", [ 
+    stopwords_lst = stopwords.words('english') + ["<NUM>", "<DATE>", "<URL>"]
+    apply_pipeline("../datasets/big/news_sample.csv", [
         (Clean_data(), "content"),
         (Tokenizer(), "content"),
         (Remove_stopwords(stopwords_lst), "content"),
         (Stem(), "content"),
     ], new_file="../datasets/big/news_sample_cleaned.csv")
 
+
 def word_freq_pipeline():
     wf = Word_frequency()
-    apply_pipeline("../datasets/big/news_sample_cleaned.csv",[
+    apply_pipeline("../datasets/big/news_sample_cleaned.csv", [
         (wf, "content")
     ])
     wf.plot()
+
 
 def simple_model_test():
     sm = Simple_model()
@@ -272,79 +411,4 @@ def simple_model_test():
     sm.get_metrics()
 
 
-
-
-
-# translate_labels()
-
-"""
-
-# print("INITIAL FILE")
-# apply_pipeline("../datasets/sample/data.h5", [Print_content(), Clean_data()], "../datasets/sample/data_cleaned.h5")
-# apply_pipeline("../datasets/sample/data.h5", [Print_content(), Clean_data()],"../datasets/sample/data_cleaned.h5")
-# print("CLEANED FILE")
-
-stopwords_lst = stopwords.words('english') + ["<NUM>","<DATE>","<URL>"]
-
-apply_pipeline1("../datasets/big/news_cleaned_2018_02_13.csv",[ 
-    Clean_data(),
-    #Tokenizer(),
-    #Remove_stopwords(stopwords_lst),
-    #Stem(),
-    #Encode_to_json(),
-], column=headers["content"], new_file="../datasets/big/data_cleaned.csv")
-
-apply_pipeline("../datasets/big/data.h5",[
-    Decode_to_str(), 
-    Clean_data(),
-    #Tokenizer(),
-    #Remove_stopwords(stopwords_lst),
-    #Stem(),
-    #Encode_to_json(),
-], column=headers["content"], new_file="../datasets/big/data_cleaned.h5")
-#apply_pipeline("../datasets/sample/news_sample_cleaned.h5",[Print_first_row()], column=headers["content"])
-# apply_pipeline("../datasets/sample/news_sample_cleaned.h5", [Print_content_to_csv(
-#    100, "../datasets/sample/out_cleaned.csv")], "../datasets/sample/out_cleaned.h5")
-
-
-
-wf = Word_frequency()
-apply_pipeline("../datasets/big/data_cleaned.h5",[
-    Decode_from_json(), 
-    wf
-], column=headers["content"])
-wf.plot()
-
-def apply_pipeline(old_file, functions, column=None, new_file=None, rows_pr_iteration=ROWS_PR_ITERATION):
-    with h5py.File(old_file, 'r') as f:
-        data_set = f['data']
-        if new_file is not None:
-            save_to = h5py.File(new_file, 'w')
-            arr = fh.create_empty_string_array(data_set.shape[1]) 
-            save_set = save_to.create_dataset('data', data=arr, maxshape=(data_set.shape), dtype=h5py.string_dtype(encoding='utf-8'))
-            save_set.resize((TEST_NUM+1,data_set.shape[1]))#save_set.resize(data_set.shape)
-            save_set[0] = data_set[0]
-        start_time = time()
-        for start in tqdm(range(1, TEST_NUM, rows_pr_iteration),
-                      desc='csv to hdf', total=int(TEST_NUM/rows_pr_iteration), unit='rows', unit_scale=rows_pr_iteration, colour=TQDM_COLOR):#data_set.shape[0]
-            end = min(start + rows_pr_iteration, data_set.shape[0])
-            rows = data_set[start:end]
-            for i in range(len(rows)):
-                for j, func in enumerate(functions):
-                    if column == None:
-                        rows[i,column] = func.function_to_apply(rows[i,column])
-                    else:
-                        if j == 0:
-                            acc_out = rows[i,column]
-                        acc_out = func.function_to_apply(acc_out)
-                        if j == len(functions)-1:
-                            rows[i,column] = acc_out
-            if new_file is not None:
-                save_set[start:end] = rows
-        print(f'finish time: {time()-start_time}')
-        try:
-            save_to.close()
-        except:
-            pass
-
-"""
+unique_words = Generate_unique_word_list()

@@ -11,36 +11,38 @@ from sklearn.model_selection import train_test_split
 from pipeline import apply_pipeline
 
 
-#reliable: reliable, clickbait, political
-#fake: fake, conspiracy, junksci, hate, unreliable, bias, satire, (state)
-#False for fake, True for reliable
+# reliable: reliable, clickbait, political
+# fake: fake, conspiracy, junksci, hate, unreliable, bias, satire, (state)
+# False for fake, True for reliable
 binary_labels: dict = {
-    'fake':False,
-    'conspiracy':False,
-    'junksci':False,
-    'hate':False,
-    'unreliable':False,
-    'bias':False,
-    'satire':False,
-    'state':False,
-    'reliable':True,
-    'clickbait':True,
-    'political':True,
+    'fake': False,
+    'conspiracy': False,
+    'junksci': False,
+    'hate': False,
+    'unreliable': False,
+    'bias': False,
+    'satire': False,
+    'state': False,
+    'reliable': True,
+    'clickbait': True,
+    'political': True,
     'nan': False
 }
 
-#Models based on content
-def content_model(train_data, train_labels, val_data, val_labels, strategy : str):
+# Models based on content
+
+
+def content_model(train_data, train_labels, val_data, val_labels, strategy: str):
     dummy_clf = DummyClassifier(strategy=strategy)
     dummy_clf.fit(train_data, train_labels)
     pred = dummy_clf.predict(val_data)
     acc = dummy_clf.score(val_labels, pred)
     return acc
 
-#Accuracy of three different models - iterate for each chunk
+# Accuracy of three different models - iterate for each chunk
 #freq_model = content_model(data, strategy="most_frequent")
 #uniform_model = content_model(data, strategy="uniform")
-#print(f"Most frequent acc: {freq_model}"
+# print(f"Most frequent acc: {freq_model}"
 #print(f"Uniform acc: {uniform_model}")
 
 
@@ -105,7 +107,7 @@ def content_model(train_data, train_labels, val_data, val_labels, strategy : str
 #         else:
 #             sourceDict[source]['fake'] = 0
 #     pass
-    
+
 
 class Simple_model(FunctionApplier):
 
@@ -116,12 +118,12 @@ class Simple_model(FunctionApplier):
         # make result new dataframe
         self.result = pd.DataFrame(columns=['domain', 'fake'])
 
-    def sourceDistribution(self, row):
+    def source_distribution(self, row):
         print(row['domain'])
-        
+
         if row['type'] in binary_labels:
             self.typeDict[row['type']] += 1
-            
+
         if not row['domain'] in self.sourceDict:
             self.sourceDict[row['domain']] = {k: 0 for k in binary_labels}
             self.sourceDict[row['domain']]['total'] = 0
@@ -132,8 +134,8 @@ class Simple_model(FunctionApplier):
             self.sourceDict[row['domain']]['total'] += 1
 
         # return sourceDict
-    
-    def simpleMajorityClassfier( self, sourceDict: Dict[str, Dict[str, int]]):
+
+    def simple_majority_classfier(self, sourceDict: Dict[str, Dict[str, int]]):
         # count all the fake labels for each source, if the count is greater than half of the total, then it is fake
         # make dict of sources and fake label count as a pandas dataframe
         print("sourceDict: ", sourceDict)
@@ -141,11 +143,11 @@ class Simple_model(FunctionApplier):
             total = sourceDict[source]['total'] | 0
             count = 0
             for label in sourceDict[source]:
-                if label != 'total':
+                if label is not 'total':
                     # only count the labels that are in the binary_labels dict
                     if label in binary_labels:
                         # only add to count if the label is fake
-                        if binary_labels[label] == False:
+                        if binary_labels[label] is False:
                             count += sourceDict[source][label]
 
             if count > total/2:
@@ -153,19 +155,18 @@ class Simple_model(FunctionApplier):
             else:
                 sourceDict[source]['isTrusty'] = 0
             # calculate the percentage of fake labels
-            if total != 0:
+            if total is not 0:
                 sourceDict[source]['percentFake'] = count/total * 100
 
         panda = pd.DataFrame.from_dict(sourceDict, orient='index')
         self.result = panda
 
-
     def function_to_apply(self, row: pd.DataFrame):
         # ASKE DO YOUR THING
-        self.sourceDistribution(row)
+        self.source_distribution(row)
         # self.simpleMajorityClassfier(self.sourceDict)
         return row
-    
+
 
 class Simple_logistic_model(FunctionApplier):
 
@@ -173,11 +174,12 @@ class Simple_logistic_model(FunctionApplier):
         # make result new dataframe
         self.result = pd.DataFrame(columns=['domain', 'fake'])
 
-    def sourceDistribution(self):
+    def source_distribution(self):
         df = pd.read_csv('../datasets/sample/news_sample.csv')
 
         # Split the data into training and test sets
-        X_train, X_test, y_train, y_test = train_test_split(df['content'], df['type'], test_size=0.2, random_state=42)
+        X_train, X_test, y_train, y_test = train_test_split(
+            df['content'], df['type'], test_size=0.2, random_state=42)
 
         # Convert the text into a matrix of token counts
         vectorizer = CountVectorizer(stop_words='english')
@@ -192,11 +194,9 @@ class Simple_logistic_model(FunctionApplier):
         y_pred = clf.predict(X_test_counts)
         accuracy = accuracy_score(y_test, y_pred)
         f1 = f1_score(y_test, y_pred, pos_label='fake')
-    
+
         print(f"Accuracy: {accuracy:.2f}")
         print(f"F1 score (fake class): {f1:.2f}")
-
-
 
 
 def simple_model_test():
@@ -206,15 +206,14 @@ def simple_model_test():
     ])
 
     # print("got source dict", sm.sourceDict)
-    sm.simpleMajorityClassfier(sm.sourceDict)
+    sm.simple_majority_classfier(sm.sourceDict)
 
     print("got result", sm.result)
 
 
-
 def simple_model_test2():
     sm = Simple_logistic_model(binary_labels)
-    sm.sourceDistribution()
+    sm.source_distribution()
     # print("got source dict", sm.sourceDict)
 
 # simple_model_test2()

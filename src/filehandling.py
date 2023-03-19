@@ -9,8 +9,6 @@ from tqdm import tqdm
 
 TQDM_COLOR = 'magenta'
 
-# https://raw.githubusercontent.com/several27/FakeNewsCorpus/master/news_sample.csv
-
 
 def remove_file(filename: str):
     if os.path.exists(filename):
@@ -76,11 +74,9 @@ def csv_split(filename: str, dirname: str = 'csv-chunks', rows_pr_iteration: int
             f'{dirname}/{i+1:0{padding}}.csv', index=False)
 
 
-type = ['fake', 'conspiracy', 'junksci', 'hate', 'unreliable',
-        'bias', 'satire', 'state', 'reliable', 'clickbait', 'political']
-
-
-def remove_unwanted_rows(filename: str, new_filename: str, rows_pr_iteration: int = 20000):
+def remove_unwanted_rows(filename: str, new_filename: str, rows_pr_iteration: int = 20000) -> int:
+    type = ['fake', 'conspiracy', 'junksci', 'hate', 'unreliable',
+            'bias', 'satire', 'state', 'reliable', 'clickbait', 'political']
     with open(filename, encoding='utf-8') as f:
         colnames = pd.DataFrame(columns=next(csv.reader(f)))
     colnames.to_csv(new_filename, mode='w')
@@ -121,13 +117,13 @@ def create_train_vali_and_test_sets(old_size: int, new_size: int, split: Tuple[f
             start += chunk.shape[0]
             # Select the values from the chunk for the train- or vali- or test dataset
             # from the chunk if it matches the shuffled split array:
-            train_rows = chunk[chunk_split == Set.TRAIN]
+            train_rows = chunk[chunk_split is Set.TRAIN]
             if train_rows.shape[0] > 0:
                 train_rows.to_csv(train_filename, mode='a', header=None)
-            vali_rows = chunk[chunk_split == Set.VALI]
+            vali_rows = chunk[chunk_split is Set.VALI]
             if vali_rows.shape[0] > 0:
                 vali_rows.to_csv(vali_filename, mode='a', header=None)
-            test_rows = chunk[chunk_split == Set.TEST]
+            test_rows = chunk[chunk_split is Set.TEST]
             if test_rows.shape[0] > 0:
                 test_rows.to_csv(test_filename, mode='a', header=None)
 
@@ -158,28 +154,34 @@ def read_rows(filename: str, idx: int, num: int = 1) -> int:
     return pd.read_csv(filename, encoding='utf-8', lineterminator='\n', skiprows=idx, nrows=num)
 
 
-def run_split_dataset(size: int, split: Tuple[float, float, float], data_filename: str, train_filename: str, vali_filename: str, test_filename: str, rows_pr_iteration: int = 20000):
-    data_cleaned_filename = data_filename.replace('.csv', '_cleaned.csv')
-    rows = remove_unwanted_rows(
-        filename=data_filename, new_filename=data_cleaned_filename, rows_pr_iteration=rows_pr_iteration)
-    create_train_vali_and_test_sets(old_size=rows, new_size=size, split=split, data_filename=data_cleaned_filename, train_filename=train_filename,
-                                    vali_filename=vali_filename, test_filename=test_filename, rows_pr_iteration=rows_pr_iteration)
+ROWS_PR_ITERATION = 20000
+CLEANED_ROWS_LARGE = 7273069
+CLEANED_ROWS_SAMPLE = 232
+NEW_SIZE_LARGE = 100000
+NEW_SIZE_SAMPLE = 200
 
 
-def run_single_dataset(size: int, old_filename: str, new_filename: str, rows_pr_iteration: int = 20000):
-    old_cleaned_filename = old_filename.replace('.csv', '_cleaned.csv')
-    rows = remove_unwanted_rows(
-        filename=old_filename, new_filename=old_cleaned_filename, rows_pr_iteration=rows_pr_iteration)
-    create_dataset(old_size=rows, new_size=size, old_filename=old_cleaned_filename,
-                   new_filename=new_filename, rows_pr_iteration=rows_pr_iteration)
+def run(sample: bool = True, rows_cleaned: bool = False, rows_pr_iteration: int = ROWS_PR_ITERATION, split=False, new_size: int = NEW_SIZE_SAMPLE):
+    if sample:
+        old_size = CLEANED_ROWS_SAMPLE
+        new_size = min(new_size, NEW_SIZE_SAMPLE)
+        path = "../datasets/sample/"
+    else:
+        old_size = CLEANED_ROWS_LARGE
+        new_size = min(new_size, NEW_SIZE_LARGE)
+        path = "../datasets/large/"
+    create_directory(path)
+    if not rows_cleaned:
+        old_size = remove_unwanted_rows(filename=path+"raw.csv",
+                                        new_filename=path+"cleaned.csv", rows_pr_iteration=rows_pr_iteration)
+    if not split:
+        create_dataset(old_size=old_size, new_size=new_size, old_filename=path+"cleaned.csv",
+                       new_filename=path+"dataset.csv", rows_pr_iteration=rows_pr_iteration)
+    else:
+        create_train_vali_and_test_sets(old_size=old_size, new_size=new_size, split=(0.8, 0.1, 0.1), data_filename=path+"cleaned.csv", train_filename=path+"train.csv",
+                                        vali_filename=path+"vali.csv", test_filename=path+"test.csv", rows_pr_iteration=rows_pr_iteration)
 
 
-# 8528956 rows in original big dataset
 if __name__ == '__main__':
-    run_single_dataset(size=250, old_filename="../datasets/sample/news_sample.csv",
-                       new_filename='../datasets/sample/dataset.csv', rows_pr_iteration=20000)
-    #    vali_filename='../datasets/big/vali.csv', test_filename='../datasets/big/test.csv', rows_pr_iteration=20000)
-    run_split_dataset(size=100000, split=(0.8, 0.1, 0.1), data_filename="../datasets/big/news_cleaned_2018_02_13.csv", train_filename='../datasets/big/train.csv',
-                      vali_filename='../datasets/big/vali.csv', test_filename='../datasets/big/test.csv', rows_pr_iteration=20000)
-    # run_split_dataset(size=200, split=(0.8, 0.1, 0.1), data_filename="../datasets/sample/news_sample.csv", train_filename='../datasets/sample/train.csv',
-    #   vali_filename='../datasets/sample/vali.csv', test_filename='../datasets/sample/test.csv', rows_pr_iteration=20000)
+    run(sample=True, rows_cleaned=False,
+        rows_pr_iteration=ROWS_PR_ITERATION, split=False, new_size=200)
