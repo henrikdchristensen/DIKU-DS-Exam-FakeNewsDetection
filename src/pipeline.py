@@ -64,7 +64,6 @@ class Create_word_vector(FunctionApplier):
                 i += 1
         return np.array(vector)
 
-
 class Generate_unique_word_list(FunctionApplier):
     def __init__(self):
         self.unique_words = Counter()
@@ -254,6 +253,52 @@ class binary_labels(FunctionApplier):
             binary_label = True
         return binary_label
     
+class count_number_occurences_per_label(FunctionApplier):
+    def __init__(self):
+        keys = ['fake', 'conspiracy', 'junksci', 'hate', 'unreliable', 'bias', 'satire', 'state', 
+                'reliable', 'clickbait', 'political', 'rumor']
+        self.typeDict = {k: 0 for k in keys}
+        self.countDict = {k: 0 for k in keys}
+        self.perTypeDict = {}
+        self.binaryDict = {'Reliable': 0, 'Fake': 0}
+
+    def function_to_apply(self, row):
+        try:
+            self.countDict[row['type']] += row['content'].count("<num>")
+            self.typeDict[row['type']] += 1
+        except:
+            pass
+
+        for k, v in self.countDict.items():
+            try:
+                self.perTypeDict[k] = v/self.typeDict[k]
+            except:
+                pass
+                #print("div by zero")
+
+    def print_stats(self):
+        print(self.perTypeDict)
+        
+    def plot_stats(self):
+        types = list(self.perTypeDict.keys())
+        counts = list(self.perTypeDict.values())
+        colors = ['purple', 'purple', 'purple', 'purple', 'green', 'purple', 'purple', 'green', 'purple', 'green', 'purple']
+        plt.bar(range(len(self.perTypeDict)), counts, tick_label=types, color=colors)
+        plt.show()
+    
+    def plot_stats_binary(self):
+        true_types = ['reliable', 'political', 'clickbait']
+        for type in list(self.perTypeDict.keys()):
+            if type in true_types:
+                self.binaryDict['Reliable'] += self.perTypeDict[type]
+            else:
+                self.binaryDict['Fake'] += self.perTypeDict[type]
+        types = list(self.binaryDict.keys())
+        counts = list(self.binaryDict.values())
+        colors = ['green', 'purple']
+        plt.bar(range(len(self.binaryDict)), counts, tick_label=types, color=colors)
+        plt.show()
+
 class Simple_model(FunctionApplier):
     def __init__(self):
         self.dict_domains = {}
@@ -291,7 +336,6 @@ def apply_pipeline_pd_tqdm(df, function_cols):
     for index, row in tqdm(df.iterrows(), total=df.shape[0]):
         df.loc[index]= applier(function_cols, row)
     return df
-
 
 def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False):
     i = 0
@@ -340,33 +384,35 @@ def create_test_file():
 
 
 def ist_pipeline():
-    stopwords_lst = stopwords.words('english') + ["<NUM>","<DATE>","<URL>"]
-    apply_pipeline("../datasets/big/news_sample.csv", [ 
+    stopwords_lst = stopwords.words('english')
+    apply_pipeline("../datasets/1mio-raw.csv", [ 
         (Clean_data(), "content"),
         (Tokenizer(), "content"),
         (Remove_stopwords(stopwords_lst), "content"),
         (Stem(), "content"),
-    ], new_file="../datasets/big/news_sample_cleaned.csv")
+    ], new_file="../datasets/1mio-raw-cleaned.csv")
 
 def word_freq_pipeline():
     wf = Word_frequency()
-    apply_pipeline("../datasets/big/news_sample_cleaned.csv",[
+    apply_pipeline("../datasets/1mio-raw-cleaned.csv",[
         (wf, "content")
-    ])
+    ],
+    new_file="../datasets/1mio-raw-cleaned-freq.csv"
+    )
     wf.plot()
 
 def simple_model_test():
     sm = Simple_model()
     apply_pipeline("../datasets/big/news_sample_cleaned.csv", [
         (sm, None)
-    ])
+    ], )
     sm.get_metrics()
 
 
 unique_words = Generate_unique_word_list()
+#ist_pipeline()
 
-
-# translate_labels()
+#word_freq_pipeline()
 
 """
 
