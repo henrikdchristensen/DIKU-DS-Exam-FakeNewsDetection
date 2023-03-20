@@ -13,27 +13,22 @@ TYPES_DICT = {'fake': 1, 'conspiracy': 2, 'junksci': 3, 'hate': 4, 'unreliable':
 SAMPLE = False
 ROWS_PR_ITERATION = 20000
 
-
 def remove_file(filename: str):
     if os.path.exists(filename):
         os.remove(filename)
-
 
 def create_directory(dirname: str):
     if not os.path.exists(dirname):
         os.makedirs(dirname)
 
-
 def remove_directory(dirname: str):
     if os.path.exists(dirname):
         shutil.rmtree(dirname)
-
 
 class Set(IntEnum):
     TRAIN = 1
     VALI = 2
     TEST = 3
-
 
 def create_random_array(size:int) -> np.ndarray:
     # Create a numpy array of the given size and set values from 0 to size-1
@@ -41,7 +36,6 @@ def create_random_array(size:int) -> np.ndarray:
     # Shuffle the indexes of the array
     np.random.shuffle(arr)
     return arr
-
 
 def csv_split(filename: str, dirname: str = 'csv-chunks', rows_pr_iteration: int = 20000, padding: int = 4):
     # Get header row:
@@ -55,7 +49,6 @@ def csv_split(filename: str, dirname: str = 'csv-chunks', rows_pr_iteration: int
                      desc='csv split', unit='splits', colour=TQDM_COLOR):
         pd.concat([colnames, c], ignore_index=True).to_csv(
             f'{dirname}/{i+1:0{padding}}.csv', index=False)
-
 
 def remove_unwanted(filename: str, new_filename: str, rows_pr_iteration: int = 20000) -> int:
     with open(filename, encoding='utf-8') as f:
@@ -71,12 +64,10 @@ def remove_unwanted(filename: str, new_filename: str, rows_pr_iteration: int = 2
             # Remove rows where type is not one of the specified values:
             chunk = chunk[chunk['type'].isin(TYPES_DICT)]
             # Set unique index for each row:
-            chunk.iloc[:,0] = chunk.iloc[:,0].reset_index(
-                drop=True).index + retained_rows
+            chunk.iloc[:,0] = chunk.iloc[:,0].reset_index(drop=True).index + retained_rows
             chunk.to_csv(new_filename, mode='a', header=None, index=False)
             retained_rows += chunk.shape[0]
-    print(
-        f"Removed rows: {original_rows-retained_rows}\n(rows before: {original_rows}, rows after (retained): {retained_rows})")
+    print(f"Removed rows: {original_rows-retained_rows}\n(rows before: {original_rows}, rows after (retained): {retained_rows})")
     return retained_rows
 
 def read_rows(filename: str, idx: int, num: int = 1) -> int:
@@ -93,18 +84,14 @@ def create_dataset(size:int, old_filename: str, new_filename: str, rows_pr_itera
     for index in tqdm(random_arr, desc='creating dataset', unit='rows encountered', unit_scale=rows_pr_iteration, colour=TQDM_COLOR):
         read_rows(old_filename, index, 1).to_csv(new_filename, mode='a', header=None, index=False)
 
-
 def run(sample: bool = True, rows_pr_iteration: int = ROWS_PR_ITERATION):
     if sample:
         path = "../datasets/sample/"
     else:
         path = "../datasets/large/"
     create_directory(path)
-    size = remove_unwanted(filename=path+"raw.csv",
-                             new_filename=path+"cleaned.csv", rows_pr_iteration=rows_pr_iteration)
-    create_dataset(size=size, old_filename=path+"cleaned.csv",
-                   new_filename=path+"dataset.csv", rows_pr_iteration=rows_pr_iteration)
-
+    size = remove_unwanted(filename=path+"raw.csv", new_filename=path+"cleaned.csv", rows_pr_iteration=rows_pr_iteration)
+    create_dataset(size=size, old_filename=path+"cleaned.csv", new_filename=path+"dataset.csv", rows_pr_iteration=rows_pr_iteration)
 
 if __name__ == '__main__':
     run(sample=SAMPLE, rows_pr_iteration=20)
