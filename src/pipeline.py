@@ -1,4 +1,5 @@
 #import filehandling as fh
+from multiprocesspandas import applyparallel
 import preprocessing as pp
 import pandas as pd
 import re
@@ -306,24 +307,21 @@ ROWS = 8529853
 TQDM_COLOR = 'magenta'
 
 
-def applier(function_cols, row):
-    # Iterate over each function and column index in function_cols
+def applier(function_cols, chunk):
+    # Apply the specified functions to each column or row in the chunk
     for function, col in function_cols:
-        # If no column index is specified, apply the function to the entire row
         if col is None:
-            row = function.function_to_apply(row)
-        # If a column index is specified, apply the function to that column in the row
+            chunk = chunk.apply(function.function_to_apply, axis=1)
         else:
-            row[col] = function.function_to_apply(row[col])
-    return row
+            chunk[col] = chunk[col].apply(function.function_to_apply)
+    return chunk
 
 
 def apply_pipeline_pd(df, function_cols):
     # Make a copy of the input DataFrame to avoid modifying it
     df = df.copy()
     # Iterate through each row in the DataFrame and apply the functions
-    for index, row in df.iterrows():
-        df.loc[index] = applier(function_cols, row)
+    df = applier(function_cols, df)
     return df
 
 
@@ -331,8 +329,7 @@ def apply_pipeline_pd_tqdm(df, function_cols):
     # Make a copy of the input DataFrame to avoid modifying it
     df = df.copy()
     # Iterate through each row in the DataFrame and apply the functions
-    for index, row in tqdm(df.iterrows(), total=df.shape[0]):
-        df.loc[index] = applier(function_cols, row)
+    df = applier(function_cols, df)
     return df
 
 
@@ -348,8 +345,7 @@ def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_IT
             if i >= TEST_NUM:
                 break
             # Apply the specified functions to each row in the batch
-            for index, row in chunk.iterrows():
-                chunk.loc[index] = applier(function_cols, row)
+            chunk = applier(function_cols, chunk)
             # If an output file is specified, append the processed data to it
             if new_file is not None:
                 if i == 0:
