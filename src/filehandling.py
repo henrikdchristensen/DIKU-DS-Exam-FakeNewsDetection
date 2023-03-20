@@ -12,7 +12,7 @@ TYPES_DICT = ['fake', 'conspiracy', 'junksci', 'hate', 'unreliable', 'bias',
               'satire', 'state', 'reliable', 'clickbait', 'political']
 SAMPLE = False
 ROWS_PR_ITERATION = 20000
-FILE_SIZE = 50000
+FILE_SIZE = 10000
 PADDING = 3
 
 def remove_file(filename: str):
@@ -34,19 +34,19 @@ def create_random_array(size:int) -> np.ndarray:
     np.random.shuffle(arr)
     return arr
 
-def csv_split(filename: str, dirname: str, file_size: int = 20000, padding: int = 3):
+def csv_split(filename: str, dirname: str):
     # Get and set header row:
     with open(filename, encoding='utf-8') as f:
         colnames = pd.DataFrame(columns=next(csv.reader(f)))
     # Remove existing directory and create new:
     remove_directory(dirname)
     create_directory(dirname)
-    # Add each chunk to a file in the directory:
-    for i, c in tqdm(enumerate(pd.read_csv(filename, encoding='utf-8', chunksize=file_size, lineterminator='\n')),
+    # Create a file for each chunk in the directory:
+    for i, c in tqdm(enumerate(pd.read_csv(filename, encoding='utf-8', chunksize=FILE_SIZE, lineterminator='\n')),
                      desc='csv splitting', unit='splits', colour=TQDM_COLOR):
-        pd.concat([colnames, c], ignore_index=True).to_csv(f'{dirname}/{i+1:0{padding}}.csv', index=False)
+        pd.concat([colnames, c], ignore_index=True).to_csv(f'{dirname}/{i+1:0{PADDING}}.csv', index=False)
 
-def remove_unwanted(filename: str, new_filename: str, rows_pr_iteration: int = 20000) -> int:
+def remove_unwanted(filename: str, new_filename: str) -> int:
     # Write the header row to the new file:
     with open(filename, encoding='utf-8') as f:
         colnames = pd.DataFrame(columns=next(csv.reader(f)))
@@ -54,8 +54,8 @@ def remove_unwanted(filename: str, new_filename: str, rows_pr_iteration: int = 2
     colnames.drop('', inplace=True, axis=1)
     colnames.to_csv(new_filename, mode='w', index=False)
     original_rows = retained_rows = 0
-    with pd.read_csv(filename, encoding='utf-8', chunksize=rows_pr_iteration, lineterminator='\n') as reader:
-        for chunk in tqdm(reader, desc='remove unwanted rows', unit='rows encountered', unit_scale=rows_pr_iteration, colour=TQDM_COLOR):
+    with pd.read_csv(filename, encoding='utf-8', chunksize=ROWS_PR_ITERATION, lineterminator='\n') as reader:
+        for chunk in tqdm(reader, desc='remove unwanted rows', unit='rows encountered', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
             original_rows += chunk.shape[0]
             # Drop rows with empty content column:
             chunk = chunk.dropna(subset=['content'])
@@ -86,7 +86,7 @@ def create_dataset(size:int, old_filename: str, new_filename: str):
     colnames.to_csv(new_filename, mode='w', index=False)
     # Loop through cleaned dataset and take out rows corresponding to randomly created array:
     for i in tqdm(random_arr, desc='creating dataset', unit='rows encountered', colour=TQDM_COLOR):
-        # Find the chunk file:
+        # Find the right chunk file:
         file_num = math.ceil((i+1)/FILE_SIZE)
         # Find the row index of the row to be read:
         row_idx = i-(file_num-1)*FILE_SIZE
@@ -95,11 +95,11 @@ def create_dataset(size:int, old_filename: str, new_filename: str):
     # Remove the temporary directory:
     #remove_directory(temp_dir)#TODO
 
-def run(sample: bool, rows_pr_iteration: int = ROWS_PR_ITERATION):
+def run(sample: bool):
     path = "../datasets/sample/" if sample else "../datasets/large/"
-    size = remove_unwanted(filename=path+"raw.csv", new_filename=path+"cleaned.csv", rows_pr_iteration=rows_pr_iteration)
+    size = 7273069#TODOremove_unwanted(filename=path+"raw.csv", new_filename=path+"cleaned.csv")
     create_dataset(size=size, old_filename=path+"cleaned.csv", new_filename=path+"dataset.csv")
     
 
 if __name__ == '__main__':
-    run(sample=SAMPLE, rows_pr_iteration=ROWS_PR_ITERATION)
+    run(sample=SAMPLE)
