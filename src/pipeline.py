@@ -12,6 +12,7 @@ from time import time
 from ast import literal_eval
 import numpy as np
 from sklearn.preprocessing import normalize
+
 tqdm.pandas()
 
 headers = {
@@ -67,7 +68,6 @@ class Create_word_vector(FunctionApplier):
             else:  # should never happen
                 i += 1
         return np.array(vector)
-
 
 class Generate_unique_word_list(FunctionApplier):
     def __init__(self):
@@ -288,7 +288,6 @@ class Binary_labels(FunctionApplier):
             binary_label = True
         return binary_label
 
-
 class Simple_model(FunctionApplier):
     def __init__(self):
         self.dict_domains = {}
@@ -306,6 +305,19 @@ ROWS_PR_ITERATION = 20000
 ROWS = 8529853
 TQDM_COLOR = 'magenta'
 DELETE_TOKEN = '<DELETE>'
+
+def get_batch(df, batch_size):
+    new_df = pd.DataFrame()
+    grouped = df.groupby('type', axis=0)
+    for name, group in grouped:
+        new_group = group.sample(n=min(batch_size, len(group)))
+        new_df = pd.concat([new_df, new_group], ignore_index=True)
+    return new_df
+
+
+def get_batch_from_csv(file: str, batch_size: int):
+    return get_batch(pd.read_csv(file), batch_size)
+
 
 def applier(function_cols, chunk, progress_bar=False):
     # Apply the specified functions to each column or row in the chunk
@@ -349,7 +361,6 @@ def apply_pipeline_pd_tqdm(df, function_cols):
     # Iterate through each row in the DataFrame and apply the functions
     return applier(function_cols, df.copy(), progress_bar=True)
 
-
 def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False):
     i = 0
     start_time = time()
@@ -376,10 +387,6 @@ def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_IT
             i += batch_size
         # Print the time taken to process the data
         print(f'finish time: {time()-start_time}')
-
-
-def get_csv_batch(file, n):
-    return pd.read_csv(file, nrows=n)
 
 
 def read_rows_of_csv(file, n=None):
@@ -411,7 +418,9 @@ def word_freq_pipeline():
     wf = Word_frequency()
     apply_pipeline("../datasets/big/news_sample_cleaned.csv", [
         (wf, "content")
-    ])
+    ],
+    new_file="../datasets/1mio-raw-cleaned-freq.csv"
+    )
     wf.plot()
 
 
@@ -419,8 +428,8 @@ def simple_model_test():
     sm = Simple_model()
     apply_pipeline("../datasets/big/news_sample_cleaned.csv", [
         (sm, None)
-    ])
+    ], )
     sm.get_metrics()
 
 
-unique_words = Generate_unique_word_list()
+#unique_words = Generate_unique_word_list()
