@@ -217,4 +217,3 @@ def simple_model_test2():
     sm.sourceDistribution()
     # print("got source dict", sm.sourceDict)
 
-# simple_model_test2()

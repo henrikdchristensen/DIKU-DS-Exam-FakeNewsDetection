@@ -25,16 +25,20 @@ class Exploration:
         dates = 0
         numbers = 0
 
-        for text in df['content']:
-            urls += text.count("<URL>")
-            dates += text.count("<DATE>")
-            numbers += text.count("<NUM>")
+        for text in df:
+            print(text)
+            urls += text.count("<url>")
+            dates += text.count("<date>")
+            numbers += text.count("<num>")
 
-        return {
+        result = {
             "Urls": urls,
             "Dates": dates,
             "Numbers": numbers
         }
+
+
+        return result
 
     """ 
     Distribution of sources: 

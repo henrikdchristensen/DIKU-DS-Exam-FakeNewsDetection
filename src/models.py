@@ -128,6 +128,7 @@ def distilBERT():
     
     return embeddings
 
+# words in context
 def word_embeddings_model(word_embeddings):
     print("a")
     labels = pp.apply_pipeline("../datasets/sample/train.csv", [], get_batch=True, batch_size=BATCH_SIZE)['type']

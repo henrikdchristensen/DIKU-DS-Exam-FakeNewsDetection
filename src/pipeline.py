@@ -35,32 +35,6 @@ class FunctionApplier:
     def function_to_apply(self, row):
         pass
 
-class Word_frequency(FunctionApplier):
-    def __init__(self, nwords = 50):
-        self.swords = nwords
-        self.words = []
-        self.frequency = Counter()
-        self.sorted_frequency = []
-
-    def function_to_apply(self, content):
-        # Update/add list of word
-        content = literal_eval(content)
-        self.frequency.update(content)
-        # Return the sorted dictionary based on the frequency of each word
-        self.sorted_frequency = sorted(self.frequency.items(), key=lambda x: x[1], reverse=True)
-        return content
-    
-    def plot(self):
-        # Extract the words and their frequency from the sorted list
-        words = [x[0] for x in self.sorted_frequency[:self.swords]]
-        frequency = [x[1] for x in self.sorted_frequency[:self.swords]]
-        # Plot a barplot using matplotlib
-        plt.bar(words, frequency)
-        plt.ylabel('Frequency')
-        plt.title(f'Frequency of the {self.swords} most frequent words')
-        plt.xticks(rotation=90)
-        plt.tight_layout()
-        plt.show()
 
 class Tokenizer(FunctionApplier):
     def function_to_apply(self, cell):
@@ -192,11 +166,12 @@ class Simple_model(FunctionApplier):
         pass
 
 ROWS_PR_ITERATION = 98
-TEST_NUM = 1000
+TEST_NUM = 10000
 ROWS = 8529853
 TQDM_COLOR = 'magenta'
 
 def applier(function_cols, row):
+    # print(row)
     for function, col in function_cols:
         if col == None:
             row = function.function_to_apply(row)
@@ -205,14 +180,36 @@ def applier(function_cols, row):
     return row
 
 
-def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False):
+def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False, type = None, typeSize=200, exclude= []):
     i = 0
     start_time = time()
     with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8', lineterminator='\n') as reader:
         for chunk in reader:
             if i >= TEST_NUM:
                 break
-            
+
+            if type != None:
+                # get only the rows of the type we want in the dataframe
+                print("Length raw", len(chunk) )
+                chunk = chunk[chunk['type'] == type]
+                print("Length raw type", len(chunk) )
+                maxLength = len(chunk) if len(chunk) <= typeSize else typeSize
+
+                # get only the first 200 rows of the type we want in the dataframe
+                chunk = chunk[:maxLength]
+                # print("Length", len(chunk) )
+
+            if len(exclude) > 0:
+                # get only the rows of the type we want in the dataframe
+                chunk = chunk[~chunk['type'].isin(exclude)]
+
+            # if exclude != None:
+            #     # get only the rows of the type we want in the dataframe
+            #     chunk = chunk[chunk['type'] != exclude]
+            #     maxLength = len(chunk) if len(chunk) <= typeSize else typeSize
+            #     # get only the first 200 rows of the type we want in the dataframe
+            #     chunk = chunk[:maxLength]
+
             for index, row in chunk.iterrows():
                 chunk.loc[index]= applier(function_cols, row)
 
@@ -224,6 +221,7 @@ def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_IT
                     chunk.to_csv(new_file, mode='a', header=False, index=False)
             
             if get_batch:
+                print("Length", len(chunk) )
                 return chunk
             
             i += batch_size
@@ -248,18 +246,19 @@ def create_test_file():
     print(read_rows_of_csv("../datasets/big/news_sample.csv")["content"])
 
 
-def ist_pipeline():
-    stopwords_lst = stopwords.words('english') + ["<NUM>","<DATE>","<URL>"]
-    apply_pipeline("../datasets/big/news_sample.csv", [ 
+def ist_pipeline(srcFilename: str):
+    stopwords_lst = stopwords.words('english') 
+    # + ["<NUM>","<DATE>","<URL>"]
+    apply_pipeline(srcFilename, [ 
         (Clean_data(), "content"),
         (Tokenizer(), "content"),
         (Remove_stopwords(stopwords_lst), "content"),
         (Stem(), "content"),
-    ], new_file="../datasets/big/news_sample_cleaned.csv")
+    ], new_file="../datasets/sample/news_sample_cleaned_num.csv")
 
 def word_freq_pipeline():
     wf = Word_frequency()
-    apply_pipeline("../datasets/big/news_sample_cleaned.csv",[
+    apply_pipeline("../datasets/sample/clean-100k.csv",[
         (wf, "content")
     ])
     wf.plot()
@@ -271,7 +270,7 @@ def simple_model_test():
     ])
     sm.get_metrics()
 
-
+# word_freq_pipeline()
 
 
 
