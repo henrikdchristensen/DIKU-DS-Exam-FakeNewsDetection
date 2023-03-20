@@ -144,6 +144,6 @@ def numCountPerLabel(df: pd.DataFrame):
 
 def plotNumCount(dict):
     types = list(dict.keys())
-    counts = list(dic.values())
+    counts = list(dict.values())
     plt.bar(range(len(numCountDict)), counts, tick_label=types)
     plt.show()
