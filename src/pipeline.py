@@ -1,5 +1,4 @@
 #import filehandling as fh
-from multiprocesspandas import applyparallel
 import preprocessing as pp
 import pandas as pd
 import re
@@ -13,6 +12,7 @@ from time import time
 from ast import literal_eval
 import numpy as np
 from sklearn.preprocessing import normalize
+tqdm.pandas()
 
 headers = {
     'row': 0,
@@ -301,8 +301,7 @@ class Simple_model(FunctionApplier):
         pass
 
 
-ROWS_PR_ITERATION = 98
-TEST_NUM = 10000
+ROWS_PR_ITERATION = 20000
 ROWS = 8529853
 TQDM_COLOR = 'magenta'
 
@@ -316,6 +315,14 @@ def applier(function_cols, chunk):
             chunk[col] = chunk[col].apply(function.function_to_apply)
     return chunk
 
+def progress_applier(function_cols, chunk):
+    # Apply the specified functions to each column or row in the chunk
+    for function, col in function_cols:
+        if col is None:
+            chunk = chunk.progress_apply(function.function_to_apply, axis=1)
+        else:
+            chunk[col] = chunk[col].progress_apply(function.function_to_apply)
+    return chunk
 
 def apply_pipeline_pd(df, function_cols):
     # Make a copy of the input DataFrame to avoid modifying it
@@ -329,7 +336,7 @@ def apply_pipeline_pd_tqdm(df, function_cols):
     # Make a copy of the input DataFrame to avoid modifying it
     df = df.copy()
     # Iterate through each row in the DataFrame and apply the functions
-    df = applier(function_cols, df)
+    df = progress_applier(function_cols, df)
     return df
 
 
@@ -341,9 +348,6 @@ def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_IT
         for chunk in reader:
             if function_cols is None:
                 return chunk
-             # If no functions are specified, return the original data
-            if i >= TEST_NUM:
-                break
             # Apply the specified functions to each row in the batch
             chunk = applier(function_cols, chunk)
             # If an output file is specified, append the processed data to it
