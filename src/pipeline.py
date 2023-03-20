@@ -33,6 +33,24 @@ headers = {
     'summary': 14
 }
 
+labels: dict = {
+    'fake': False,
+    'conspiracy': False,
+    'junksci': False,
+    'hate': False,
+    'unreliable': False,
+    'bias': False,
+    'satire': False,
+    #'state': False,
+    'reliable': True,
+    'clickbait': True,
+    'political': True
+}
+
+ROWS_PR_ITERATION = 20000
+ROWS = 8529853
+TQDM_COLOR = 'magenta'
+DELETE_TOKEN = '<DELETE>'
 
 class FunctionApplier:
     def function_to_apply(self, row):
@@ -49,6 +67,107 @@ class Normalize(FunctionApplier):
         # Normalize the input vector by dividing each element by the sum
         return vector / sum
 
+
+class Create_sets(FunctionApplier):
+    def __init__(self, total_size, splits, balanced):
+        # create empty lists of size splits
+        self.curr_index = 0
+        self.sets = []
+        for split, b in zip(splits, balanced):
+            if not b:
+                self.sets.append([b, int(split * total_size)])
+            else:
+                split_dict = {}
+                label_num = int((split * total_size) / len(labels))
+                for label in labels:
+                    split_dict[label] = label_num
+                self.sets.append([b, split_dict])
+
+    def function_to_apply(self, label):
+        if self.curr_index >= len(self.sets):
+            return DELETE_TOKEN
+        
+        balanced, curr_set = self.sets[self.curr_index]
+        if balanced:
+            if sum(curr_set.values()) == 0:
+                self.curr_index += 1
+                return self.function_to_apply(label)
+            elif curr_set[label] > 0:
+                curr_set[label] -= 1
+                return self.curr_index
+            else:
+                return DELETE_TOKEN
+        else:
+            if curr_set == 0:
+                self.curr_index += 1
+                return self.function_to_apply(label)
+            elif curr_set > 0:
+                self.sets[self.curr_index][1] -= 1 
+                return self.curr_index
+            else:
+                return DELETE_TOKEN
+
+def get_dataframe_with_distribution(file, total_size, splits, balanced, chunksize=ROWS_PR_ITERATION):
+    print("running")
+    # empty dataframe
+    data = None
+    curr_index = 0
+    sets = []
+    for split, b in zip(splits, balanced):
+        if not b:
+            sets.append([b, int(split * total_size)])
+        else:
+            split_dict = {}
+            label_num = int((split * total_size) / len(labels))
+            for label in labels:
+                split_dict[label] = label_num
+            sets.append([b, split_dict])
+
+    def apply_to_rows(label):
+        nonlocal curr_index
+        if curr_index >= len(sets):
+            return DELETE_TOKEN
+        
+        balanced, curr_set = sets[curr_index]
+        if balanced:
+            if sum(curr_set.values()) == 0:
+                curr_index += 1
+                return apply_to_rows(label)
+            elif curr_set[label] > 0:
+                curr_set[label] -= 1
+                return curr_index
+            else:
+                return DELETE_TOKEN
+        else:
+            if curr_set == 0:
+                curr_index += 1
+                return apply_to_rows(label)
+            elif curr_set > 0:
+                sets[curr_index][1] -= 1 
+                return curr_index
+            else:
+                return DELETE_TOKEN
+    
+    entries_read = 0
+    with pd.read_csv(file, chunksize=chunksize, encoding='utf-8', lineterminator='\n') as reader:
+        for chunk in reader:
+            entries_read += len(chunk)
+            chunk["set"] = chunk["type"].progress_apply(apply_to_rows)
+            chunk = chunk[chunk["set"] != DELETE_TOKEN]
+            if data is None:
+                data = chunk
+            else:
+                data = pd.concat([data, chunk])
+
+            finished = True
+            for balanced, set in sets:
+                if (balanced and sum(set.values()) > 0) or (not balanced and set > 0):
+                    finished = False
+            if finished:
+                print("entries read:", entries_read)
+                return data
+    print("ERROR: not enough data to create sets")
+    return data
 
 class Create_word_vector(FunctionApplier):
     def __init__(self, unique_words):
@@ -68,6 +187,7 @@ class Create_word_vector(FunctionApplier):
             else:  # should never happen
                 i += 1
         return np.array(vector)
+
 
 class Generate_unique_word_list(FunctionApplier):
     def __init__(self):
@@ -288,6 +408,7 @@ class Binary_labels(FunctionApplier):
             binary_label = True
         return binary_label
 
+
 class Simple_model(FunctionApplier):
     def __init__(self):
         self.dict_domains = {}
@@ -301,10 +422,6 @@ class Simple_model(FunctionApplier):
         pass
 
 
-ROWS_PR_ITERATION = 20000
-ROWS = 8529853
-TQDM_COLOR = 'magenta'
-DELETE_TOKEN = '<DELETE>'
 
 def get_batch(df, batch_size):
     new_df = pd.DataFrame()
@@ -321,36 +438,39 @@ def get_batch_from_csv(file: str, batch_size: int):
 
 def applier(function_cols, chunk, progress_bar=False):
     # Apply the specified functions to each column or row in the chunk
-        
+
     for f in function_cols:
         if len(f) == 2:
-            function, col = f
-            if col is None:
+            function, to_col = f
+            if to_col is None:
                 if progress_bar:
                     chunk = chunk.progress_apply(function.function_to_apply, axis=1)
                 else:
                     chunk = chunk.apply(function.function_to_apply, axis=1)
             else:
                 if progress_bar:
-                    chunk[col] = chunk[col].progress_apply(function.function_to_apply)
+                    chunk[to_col] = chunk[to_col].progress_apply(function.function_to_apply)
                 else:
-                    chunk[col] = chunk[col].apply(function.function_to_apply)
+                    chunk[to_col] = chunk[to_col].apply(function.function_to_apply)
+                chunk = chunk[chunk[to_col] != DELETE_TOKEN]
         elif len(f) == 3:
             function, from_col, to_col = f
             if from_col is None:
                 if progress_bar:
-                    chunk[to_col] = chunk.progress_apply(function.function_to_apply, axis=1)      
+                    chunk[to_col] = chunk.progress_apply(function.function_to_apply, axis=1)
                 else:
                     chunk[to_col] = chunk.apply(function.function_to_apply, axis=1)
             else:
                 if progress_bar:
-                    chunk[to_col] = chunk[from_col].progress_apply(function.function_to_apply)      
+                    chunk[to_col] = chunk[from_col].progress_apply(function.function_to_apply)
                 else:
                     chunk[to_col] = chunk[from_col].apply(function.function_to_apply)
-    
+                chunk = chunk[chunk[to_col] != DELETE_TOKEN]
+
     # delete rows equal to DELETE_TOKEN
-    chunk = chunk[chunk['content'] != DELETE_TOKEN]
+   
     return chunk
+
 
 def apply_pipeline_pd(df, function_cols):
     # Iterate through each row in the DataFrame and apply the functions
@@ -361,7 +481,7 @@ def apply_pipeline_pd_tqdm(df, function_cols):
     # Iterate through each row in the DataFrame and apply the functions
     return applier(function_cols, df.copy(), progress_bar=True)
 
-def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False):
+def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False, progress_bar=False):
     i = 0
     start_time = time()
 
@@ -371,7 +491,13 @@ def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_IT
             if function_cols is None:
                 return chunk
             # Apply the specified functions to each row in the batch
-            chunk = applier(function_cols, chunk)
+            chunk = applier(function_cols, chunk, progress_bar=progress_bar)
+
+            # If get_batch is True, return only the first batch of processed data
+            if get_batch:
+                print("Length", len(chunk))
+                return chunk
+            
             # If an output file is specified, append the processed data to it
             if new_file is not None:
                 if i == 0:
@@ -379,10 +505,6 @@ def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_IT
                 else:
                     # Append to csv file without header
                     chunk.to_csv(new_file, mode='a', header=False, index=False)
-            # If get_batch is True, return only the first batch of processed data
-            if get_batch:
-                print("Length", len(chunk))
-                return chunk
 
             i += batch_size
         # Print the time taken to process the data
@@ -399,7 +521,7 @@ def create_csv_from_existing_with_n_rows(file, new_file, n):
 
 
 def create_test_file():
-    create_csv_from_existing_with_n_rows(   
+    create_csv_from_existing_with_n_rows(
         "../datasets/big/news_cleaned_2018_02_13.csv", "../datasets/big/news_sample.csv", 100)
     print(read_rows_of_csv("../datasets/big/news_sample.csv")["content"])
 
@@ -419,7 +541,7 @@ def word_freq_pipeline():
     apply_pipeline("../datasets/big/news_sample_cleaned.csv", [
         (wf, "content")
     ],
-    new_file="../datasets/1mio-raw-cleaned-freq.csv"
+        new_file="../datasets/1mio-raw-cleaned-freq.csv"
     )
     wf.plot()
 
