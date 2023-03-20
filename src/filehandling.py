@@ -31,20 +31,20 @@ class Set(IntEnum):
     TEST = 3
 
 def create_random_array(size:int) -> np.ndarray:
-    # Create a numpy array of the given size and set values from 0 to size-1
+    # Create a numpy array of the given size and set values from 0 to size-1:
     arr = np.arange(size)
-    # Shuffle the indexes of the array
+    # Shuffle the indexes of the array:
     np.random.shuffle(arr)
     return arr
 
 def csv_split(filename: str, dirname: str = 'csv-chunks', rows_pr_iteration: int = 20000, padding: int = 4):
-    # Get header row:
+    # Get and set header row:
     with open(filename, encoding='utf-8') as f:
         colnames = pd.DataFrame(columns=next(csv.reader(f)))
     # Remove existing directory and create new:
     remove_directory(dirname)
-    # Add each chunk to a file in the directory:
     create_directory(dirname)
+    # Add each chunk to a file in the directory:
     for i, c in tqdm(enumerate(pd.read_csv(filename, encoding='utf-8', chunksize=rows_pr_iteration, lineterminator='\n')),
                      desc='csv split', unit='splits', colour=TQDM_COLOR):
         pd.concat([colnames, c], ignore_index=True).to_csv(
