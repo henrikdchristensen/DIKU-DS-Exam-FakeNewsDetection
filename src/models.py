@@ -138,7 +138,11 @@ def distilBERT():
 
     return embeddings
 
+<<<<<<< HEAD
 
+=======
+# words in context
+>>>>>>> origin/stats
 def word_embeddings_model(word_embeddings):
     print("a")
     labels = pp.apply_pipeline(

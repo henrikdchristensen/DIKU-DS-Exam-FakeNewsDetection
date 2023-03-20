@@ -301,7 +301,7 @@ class Simple_model(FunctionApplier):
 
 
 ROWS_PR_ITERATION = 98
-TEST_NUM = 1000
+TEST_NUM = 10000
 ROWS = 8529853
 TQDM_COLOR = 'magenta'
 
@@ -359,6 +359,7 @@ def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_IT
                     chunk.to_csv(new_file, mode='a', header=False, index=False)
             # If get_batch is True, return only the first batch of processed data
             if get_batch:
+                print("Length", len(chunk))
                 return chunk
 
             i += batch_size
@@ -392,7 +393,7 @@ def ist_pipeline():
         (Tokenizer(), "content"),
         (Remove_stopwords(stopwords_lst), "content"),
         (Stem(), "content"),
-    ], new_file="../datasets/big/news_sample_cleaned.csv")
+    ], new_file="../datasets/sample/news_sample_cleaned_num.csv")
 
 
 def word_freq_pipeline():
