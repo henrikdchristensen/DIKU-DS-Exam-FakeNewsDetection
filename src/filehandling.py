@@ -5,21 +5,13 @@ import csv
 import os
 import pandas as pd
 from tqdm import tqdm
-import warnings
 
 TQDM_COLOR = 'magenta'
 TYPES_DICT = {'fake': 1, 'conspiracy': 2, 'junksci': 3, 'hate': 4, 'unreliable': 5,
               'bias': 6, 'satire': 7, 'state': 8, 'reliable': 9, 'clickbait': 10, 'political': 11}
 
-
-#ROWS_LARGE = 7273069
-#ROWS_SAMPLE = 232
 SAMPLE = False
 ROWS_PR_ITERATION = 20000
-NEW_SIZE = 100000
-BALANCE_CLASSES = True
-ALL_CLASSES_MUST_EXIST = False
-BALANCE_HARD = False
 
 
 def remove_file(filename: str):
@@ -44,9 +36,9 @@ class Set(IntEnum):
 
 
 def create_random_array(size:int) -> np.ndarray:
-    # Create a numpy array of the given size and set all to zeroes
+    # Create a numpy array of the given size and set values from 0 to size-1
     arr = np.arange(size)
-    # Shuffle the indexes of the array and return
+    # Shuffle the indexes of the array
     np.random.shuffle(arr)
     return arr
 
@@ -92,14 +84,14 @@ def read_rows(filename: str, idx: int, num: int = 1) -> int:
 
 def create_dataset(size:int, old_filename: str, new_filename: str, rows_pr_iteration: int = 20000):
     rows_pr_iteration = min(rows_pr_iteration, size)
-    arr = create_random_array(size=size)
+    random_arr = create_random_array(size=size)
     # Write the header row to the new files:
     with open(old_filename, encoding='utf-8') as f:
         colnames = pd.DataFrame(columns=next(csv.reader(f)))
     colnames.to_csv(new_filename, mode='w', index=False)
     # Loop through cleaned dataset and take out rows corresponding to randomly created array:
-    for a in tqdm(arr, desc='creating dataset', unit='rows encountered', unit_scale=rows_pr_iteration, colour=TQDM_COLOR):
-        read_rows(old_filename, a, 1).to_csv(new_filename, mode='a', header=None, index=False)
+    for index in tqdm(random_arr, desc='creating dataset', unit='rows encountered', unit_scale=rows_pr_iteration, colour=TQDM_COLOR):
+        read_rows(old_filename, index, 1).to_csv(new_filename, mode='a', header=None, index=False)
 
 
 def run(sample: bool = True, rows_pr_iteration: int = ROWS_PR_ITERATION, new_size: int = 0):
