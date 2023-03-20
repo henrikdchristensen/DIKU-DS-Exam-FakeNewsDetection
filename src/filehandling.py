@@ -94,7 +94,7 @@ def create_dataset(size:int, old_filename: str, new_filename: str, rows_pr_itera
         read_rows(old_filename, index, 1).to_csv(new_filename, mode='a', header=None, index=False)
 
 
-def run(sample: bool = True, rows_pr_iteration: int = ROWS_PR_ITERATION, new_size: int = 0):
+def run(sample: bool = True, rows_pr_iteration: int = ROWS_PR_ITERATION):
     if sample:
         path = "../datasets/sample/"
     else:
