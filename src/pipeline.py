@@ -233,9 +233,10 @@ class Print_first_row(FunctionApplier):
     def __init__(self):
         self.has_printed = False
 
-    def function_to_apply(self, row):
+    def function_to_apply(self, r):
         if not self.has_printed:
             self.has_printed = True
+            print(r)
 
 
 class Print_content_to_csv(FunctionApplier):
@@ -304,10 +305,11 @@ class Simple_model(FunctionApplier):
 ROWS_PR_ITERATION = 20000
 ROWS = 8529853
 TQDM_COLOR = 'magenta'
-
+DELETE_TOKEN = '<DELETE>'
 
 def applier(function_cols, chunk, progress_bar=False):
     # Apply the specified functions to each column or row in the chunk
+        
     for f in function_cols:
         if len(f) == 2:
             function, col = f
@@ -323,10 +325,19 @@ def applier(function_cols, chunk, progress_bar=False):
                     chunk[col] = chunk[col].apply(function.function_to_apply)
         elif len(f) == 3:
             function, from_col, to_col = f
-            if progress_bar:
-                chunk[to_col] = chunk[from_col].progress_apply(function.function_to_apply)      
+            if from_col is None:
+                if progress_bar:
+                    chunk[to_col] = chunk.progress_apply(function.function_to_apply, axis=1)      
+                else:
+                    chunk[to_col] = chunk.apply(function.function_to_apply, axis=1)
             else:
-                chunk[to_col] = chunk[from_col].apply(function.function_to_apply)
+                if progress_bar:
+                    chunk[to_col] = chunk[from_col].progress_apply(function.function_to_apply)      
+                else:
+                    chunk[to_col] = chunk[from_col].apply(function.function_to_apply)
+    
+    # delete rows equal to DELETE_TOKEN
+    chunk = chunk[chunk['content'] != DELETE_TOKEN]
     return chunk
 
 def apply_pipeline_pd(df, function_cols):
