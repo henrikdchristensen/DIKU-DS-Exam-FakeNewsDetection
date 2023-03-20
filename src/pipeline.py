@@ -12,6 +12,7 @@ from time import time
 from ast import literal_eval
 import numpy as np
 from sklearn.preprocessing import normalize
+
 tqdm.pandas()
 
 headers = {
@@ -232,9 +233,10 @@ class Print_first_row(FunctionApplier):
     def __init__(self):
         self.has_printed = False
 
-    def function_to_apply(self, row):
+    def function_to_apply(self, r):
         if not self.has_printed:
             self.has_printed = True
+            print(r)
 
 
 class Print_content_to_csv(FunctionApplier):
@@ -302,10 +304,24 @@ class Simple_model(FunctionApplier):
 ROWS_PR_ITERATION = 20000
 ROWS = 8529853
 TQDM_COLOR = 'magenta'
+DELETE_TOKEN = '<DELETE>'
+
+def get_batch(df, batch_size):
+    new_df = pd.DataFrame()
+    grouped = df.groupby('type', axis=0)
+    for name, group in grouped:
+        new_group = group.sample(n=min(batch_size, len(group)))
+        new_df = pd.concat([new_df, new_group], ignore_index=True)
+    return new_df
+
+
+def get_batch_from_csv(file: str, batch_size: int):
+    return get_batch(pd.read_csv(file), batch_size)
 
 
 def applier(function_cols, chunk, progress_bar=False):
     # Apply the specified functions to each column or row in the chunk
+        
     for f in function_cols:
         if len(f) == 2:
             function, col = f
@@ -321,10 +337,19 @@ def applier(function_cols, chunk, progress_bar=False):
                     chunk[col] = chunk[col].apply(function.function_to_apply)
         elif len(f) == 3:
             function, from_col, to_col = f
-            if progress_bar:
-                chunk[to_col] = chunk[from_col].progress_apply(function.function_to_apply)      
+            if from_col is None:
+                if progress_bar:
+                    chunk[to_col] = chunk.progress_apply(function.function_to_apply, axis=1)      
+                else:
+                    chunk[to_col] = chunk.apply(function.function_to_apply, axis=1)
             else:
-                chunk[to_col] = chunk[from_col].apply(function.function_to_apply)
+                if progress_bar:
+                    chunk[to_col] = chunk[from_col].progress_apply(function.function_to_apply)      
+                else:
+                    chunk[to_col] = chunk[from_col].apply(function.function_to_apply)
+    
+    # delete rows equal to DELETE_TOKEN
+    chunk = chunk[chunk['content'] != DELETE_TOKEN]
     return chunk
 
 def apply_pipeline_pd(df, function_cols):
@@ -362,10 +387,6 @@ def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_IT
             i += batch_size
         # Print the time taken to process the data
         print(f'finish time: {time()-start_time}')
-
-
-def get_csv_batch(file, n):
-    return pd.read_csv(file, nrows=n)
 
 
 def read_rows_of_csv(file, n=None):
@@ -411,4 +432,4 @@ def simple_model_test():
     sm.get_metrics()
 
 
-unique_words = Generate_unique_word_list()
+#unique_words = Generate_unique_word_list()
