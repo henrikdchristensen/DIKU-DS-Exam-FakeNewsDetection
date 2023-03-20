@@ -12,6 +12,7 @@ from time import time
 from ast import literal_eval
 import numpy as np
 from sklearn.preprocessing import normalize
+
 tqdm.pandas()
 
 headers = {
@@ -306,6 +307,19 @@ ROWS = 8529853
 TQDM_COLOR = 'magenta'
 
 
+def get_batch(df, batch_size):
+    new_df = pd.DataFrame()
+    grouped = df.groupby('type', axis=0)
+    for name, group in grouped:
+        new_group = group.sample(n=min(batch_size, len(group)))
+        new_df = pd.concat([new_df, new_group], ignore_index=True)
+    return new_df
+
+
+def get_batch_from_csv(file: str, batch_size: int):
+    return get_batch(pd.read_csv(file), batch_size)
+
+
 def applier(function_cols, chunk):
     # Apply the specified functions to each column or row in the chunk
     for function, col in function_cols:
@@ -315,6 +329,7 @@ def applier(function_cols, chunk):
             chunk[col] = chunk[col].apply(function.function_to_apply)
     return chunk
 
+
 def progress_applier(function_cols, chunk):
     # Apply the specified functions to each column or row in the chunk
     for function, col in function_cols:
@@ -323,6 +338,7 @@ def progress_applier(function_cols, chunk):
         else:
             chunk[col] = chunk[col].progress_apply(function.function_to_apply)
     return chunk
+
 
 def apply_pipeline_pd(df, function_cols):
     # Make a copy of the input DataFrame to avoid modifying it
@@ -367,10 +383,6 @@ def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_IT
         print(f'finish time: {time()-start_time}')
 
 
-def get_csv_batch(file, n):
-    return pd.read_csv(file, nrows=n)
-
-
 def read_rows_of_csv(file, n=None):
     return pd.read_csv(file, nrows=n) if n is not None else pd.read_csv(file)
 
@@ -412,4 +424,4 @@ def simple_model_test():
     sm.get_metrics()
 
 
-unique_words = Generate_unique_word_list()
+#unique_words = Generate_unique_word_list()
