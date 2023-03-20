@@ -1,10 +1,10 @@
 ## FakeNews
 # exclude
-*.h5
 # include
-datasets\big\news_cleaned_2018_02_13.csv
-datasets\sample\news_sample.csv
 *.csv
+
+# exclude all datasets
+datasets\*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

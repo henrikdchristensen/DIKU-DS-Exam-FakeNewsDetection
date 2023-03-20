@@ -15,9 +15,11 @@ from sklearn.model_selection import train_test_split
 5. plot the frequency of the 10000 most frequent words (any interesting patterns?)
 6. run the analysis in point 4 and 5 both before and after removing stopwords and applying stemming: do you see any difference?
 """
+
+
 class Exploration:
 
-    def countItems(df: pd.DataFrame):
+    def count_items(df: pd.DataFrame):
         # make list of tuples with the count of each
         # map =  df.applymap(lambda x: x.count('<URL>'))
         # return map.sum(axis=1)
@@ -25,16 +27,20 @@ class Exploration:
         dates = 0
         numbers = 0
 
-        for text in df['content']:
-            urls += text.count("<URL>")
-            dates += text.count("<DATE>")
-            numbers += text.count("<NUM>")
+        for text in df:
+            print(text)
+            urls += text.count("<url>")
+            dates += text.count("<date>")
+            numbers += text.count("<num>")
 
-        return {
+        result = {
             "Urls": urls,
             "Dates": dates,
             "Numbers": numbers
         }
+
+
+        return result
 
     """ 
     Distribution of sources: 
@@ -43,7 +49,7 @@ class Exploration:
     visualize the distribution of sources. A box plot can also be used to show the spread of the sources' reputability scores.
     """
 
-    def sourceDistribution(df: pd.DataFrame):
+    def source_distribution(df: pd.DataFrame):
 
         keys = df['type'].unique()
         print(keys)
@@ -114,7 +120,7 @@ Task 4: Split the resulting dataset into a training, validation, and test splits
 # 80% training, 10% validation, 10% test
 
 
-def splitDataSet(pd: pd.DataFrame):
+def split_dataset(pd: pd.DataFrame):
     # split the data into training, validation, and test sets
     # A common strategy is to uniformly at random split the data 80% / 10% / 10%.
 
@@ -125,7 +131,8 @@ def splitDataSet(pd: pd.DataFrame):
 
     return train, val, test
 
-def numCountPerLabel(df: pd.DataFrame):
+
+def num_count_per_label(df: pd.DataFrame):
     keys = df['type'].unique()
     typeDict = {k: 0 for k in keys}
     countDict = {k: 0 for k in keys}
@@ -142,7 +149,7 @@ def numCountPerLabel(df: pd.DataFrame):
     return perTypeDict
 
 
-def plotNumCount(dict):
+def plot_num_count(dict):
     types = list(dict.keys())
     counts = list(dict.values())
     plt.bar(range(len(numCountDict)), counts, tick_label=types)

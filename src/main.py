@@ -3,8 +3,6 @@ import preprocessing as pp
 import filehandling as fh
 import os
 
-# TODO: LAV REQUIREMENTS.TXT
-
 #file = "https://raw.githubusercontent.com/several27/FakeNewsCorpus/master/news_sample.csv"
 file = "datasets/news_sample.csv"
 
@@ -68,7 +66,7 @@ def main():
     print(f"red. rate stopwords: {reduction_rate_stopwords}")
     print(f"red. rate stemming: {reduction_rate_stemming}")
 
-    url_count = pp.Exploration.countItems(cleaned)
+    url_count = pp.Exploration.count_items(cleaned)
     #source_dist = ps.Exploration.sourceDistribution(cleaned)
 
     # print(source_dist)
