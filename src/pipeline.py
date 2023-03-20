@@ -1,5 +1,4 @@
 #import filehandling as fh
-from multiprocesspandas import applyparallel
 import preprocessing as pp
 import pandas as pd
 import re
@@ -13,6 +12,7 @@ from time import time
 from ast import literal_eval
 import numpy as np
 from sklearn.preprocessing import normalize
+tqdm.pandas()
 
 headers = {
     'row': 0,
@@ -299,48 +299,52 @@ class Simple_model(FunctionApplier):
         pass
 
 
-ROWS_PR_ITERATION = 98
-TEST_NUM = 10000
+ROWS_PR_ITERATION = 20000
 ROWS = 8529853
 TQDM_COLOR = 'magenta'
 
 
-def applier(function_cols, chunk):
+def applier(function_cols, chunk, progress_bar=False):
     # Apply the specified functions to each column or row in the chunk
-    for function, col in function_cols:
-        if col is None:
-            chunk = chunk.apply(function.function_to_apply, axis=1)
-        else:
-            chunk[col] = chunk[col].apply(function.function_to_apply)
+    for f in function_cols:
+        if len(f) == 2:
+            function, col = f
+            if col is None:
+                if progress_bar:
+                    chunk = chunk.progress_apply(function.function_to_apply, axis=1)
+                else:
+                    chunk = chunk.apply(function.function_to_apply, axis=1)
+            else:
+                if progress_bar:
+                    chunk[col] = chunk[col].progress_apply(function.function_to_apply)
+                else:
+                    chunk[col] = chunk[col].apply(function.function_to_apply)
+        elif len(f) == 3:
+            function, from_col, to_col = f
+            if progress_bar:
+                chunk[to_col] = chunk[from_col].progress_apply(function.function_to_apply)      
+            else:
+                chunk[to_col] = chunk[from_col].apply(function.function_to_apply)
     return chunk
 
-
 def apply_pipeline_pd(df, function_cols):
-    # Make a copy of the input DataFrame to avoid modifying it
-    df = df.copy()
     # Iterate through each row in the DataFrame and apply the functions
-    df = applier(function_cols, df)
-    return df
+    return applier(function_cols, df.copy())
 
 
 def apply_pipeline_pd_tqdm(df, function_cols):
-    # Make a copy of the input DataFrame to avoid modifying it
-    df = df.copy()
     # Iterate through each row in the DataFrame and apply the functions
-    df = applier(function_cols, df)
-    return df
+    return applier(function_cols, df.copy(), progress_bar=True)
 
 def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False):
     i = 0
     start_time = time()
+
     # Use Pandas chunksize and iterator to read the input file in batches
     with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8', lineterminator='\n') as reader:
         for chunk in reader:
             if function_cols is None:
                 return chunk
-             # If no functions are specified, return the original data
-            if i >= TEST_NUM:
-                break
             # Apply the specified functions to each row in the batch
             chunk = applier(function_cols, chunk)
             # If an output file is specified, append the processed data to it
@@ -374,7 +378,7 @@ def create_csv_from_existing_with_n_rows(file, new_file, n):
 
 
 def create_test_file():
-    create_csv_from_existing_with_n_rows(
+    create_csv_from_existing_with_n_rows(   
         "../datasets/big/news_cleaned_2018_02_13.csv", "../datasets/big/news_sample.csv", 100)
     print(read_rows_of_csv("../datasets/big/news_sample.csv")["content"])
 
