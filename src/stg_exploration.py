@@ -1,3 +1,4 @@
+from xmlrpc.client import Binary
 from pytz import country_names
 import pipeline as pp
 import matplotlib.pyplot as plt
@@ -22,9 +23,8 @@ class count_number_occurences_per_label(pp.FunctionApplier):
 
     def function_to_apply(self, row):
         try:
-            self.countDict[row['type']] += row['content'].count("<num>")
+            self.countDict[row['type']] += row['content'].count("<number>")
             self.typeDict[row['type']] += 1
-            #self.count_df[row['type']] = row['content'].count("<num>")
         except:
             pass
 
@@ -33,6 +33,7 @@ class count_number_occurences_per_label(pp.FunctionApplier):
                 self.perTypeDict[k] = v/self.typeDict[k]
             except:
                 self.perTypeDict[k] = 0
+        return row['content'].count("<number>")
 
     def print_stats(self):
         print(self.perTypeDict)
@@ -60,16 +61,23 @@ class count_number_occurences_per_label(pp.FunctionApplier):
         plt.ylabel("Number of occurrences")
         plt.xlabel("Label")
         plt.show()
+    
+    def boxplot(self, file):
+        df = pd.read_csv(file)
+        plt.boxplot(df)
+        plt.show()
 
 def num_count():
     nc = count_number_occurences_per_label()
-    pp.apply_pipeline("../datasets/1mio-raw-cleaned.csv", [
+    pp.apply_pipeline("../datasets/tokenized-100k.csv", [
         (nc, None)
-    ], 
+    ],
+    new_file="../datasets/clean-100k-num-count.csv"
     )
     #nc.print_stats()
     #nc.plot_stats()
     nc.plot_stats_binary()
+    nc.boxplot("../datasets/clean-100k-num-count.csv")
 
 #Clean data while keeping punctuation
 patterns_with_punctuation = {
@@ -111,13 +119,12 @@ class Clean_data_punct(pp.FunctionApplier):
 
 def ist_pipeline_punct():
     stopwords_lst = pp.stopwords.words('english')
-    pp.apply_pipeline("../datasets/1mio-raw.csv", [ 
+    pp.apply_pipeline("../datasets/clean-100k.csv", [ 
         (Clean_data_punct(), "content"),
         (pp.Tokenizer(), "content"),
         (pp.Remove_stopwords(stopwords_lst), "content"),
         (pp.Stem(), "content"),
-    ], new_file="../datasets/1mio-raw-cleaned-punct.csv")
-
+    ], new_file="../datasets/tokenized-100k.csv")
 
 #Count punctuation occurences
 class count_punctuation(pp.FunctionApplier):
@@ -146,6 +153,7 @@ class count_punctuation(pp.FunctionApplier):
                 self.perTypeDict[k] = [x / self.typeDict[k] for x in v]
             except: 
                 self.perTypeDict[k] = [0, 0, 0]
+        return q_count + excl_count
 
     def print_stats(self):
         print(self.perTypeDict)
@@ -229,8 +237,10 @@ class religious_content(pp.FunctionApplier):
 
     def function_to_apply(self, row):
         try:
+            sum = 0
             for word in row['content'].split(", "):
                 if word[1:-1] in self.stem_religious_words:
+                    sum += 1
                     self.count_dict[row['type']] += 1
             self.typeDict[row['type']] += 1
         except:
@@ -241,6 +251,7 @@ class religious_content(pp.FunctionApplier):
                 self.perTypeDict[k] = v / self.typeDict[k]
             except: 
                 self.perTypeDict[k] = 0
+        return sum
 
     def print_stats(self):
         print(self.perTypeDict)
@@ -288,6 +299,7 @@ class content_length(pp.FunctionApplier):
         self.typeDict = {k: 0 for k in keys}
         self.perTypeDict = {}
         self.binaryDict = {'Reliable': 0, 'Fake': 0}
+        
     
     def function_to_apply(self, row):
         try:
@@ -302,6 +314,7 @@ class content_length(pp.FunctionApplier):
                 self.perTypeDict[k] = v / self.typeDict[k]
             except: 
                 self.perTypeDict[k] = 0
+        return len(row['content'])
 
     def print_stats(self):
         print(self.perTypeDict)
@@ -345,11 +358,50 @@ def content_len():
     cl.plot_stats_binary()
     cl.boxplot()
 
+
+
+#Convert to features
+def content_length(df : pd.DataFrame):
+    return df['content'].apply(lambda x : len(x))
+
+def binary():
+    bl = pp.Binary_labels()
+    pp.apply_pipeline("../datasets/clean-100k.csv", [
+        (bl, "type")
+    ],
+    new_file= "../datasets/clean-100k-binary.csv"
+    )    
+
 if __name__ == "__main__":
+    ist_pipeline_punct()
+    num_count()
+
+    """file = "../datasets/clean-100k.csv"
+    df = pd.read_csv(file)
+    df['content length'] = content_length(df)
+    true_types = ['reliable', 'political', 'clickbait']
+    #binary()
+    binary_file = "../datasets/clean-100k-binary.csv"
+    df_binary = pd.read_csv(binary_file)
+    df['binary label'] = df_binary['type']
+    print(df['type'])
+    print(df['binary label'])
+    df_true = df.loc[str(df['binary label']) == 'True']
+    df_false = df.loc[str(df['binary label']) == 'False']
+
+    print(len(df_true))
+    print(len(df_false))
+
+    #print(df.dtypes)
+    #df_true = df[df['type'] in true_types]
+    #df_false = df[df['type'].any() not in true_types]"""
+    
+   
+
+
+    
     #ist_pipeline_punct()
     #num_count()
     #punct_count()
     #religious_count()
-    content_len()
-
-#Convert to features
+    #content_len()
