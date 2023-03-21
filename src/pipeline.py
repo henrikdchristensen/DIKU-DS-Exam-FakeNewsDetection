@@ -12,6 +12,7 @@ from time import time
 from ast import literal_eval
 import numpy as np
 from sklearn.preprocessing import normalize
+import bisect
 
 tqdm.pandas()
 
@@ -47,7 +48,7 @@ labels: dict = {
     'political': True
 }
 
-ROWS_PR_ITERATION = 20000
+ROWS_PR_ITERATION = 200000
 ROWS = 8529853
 TQDM_COLOR = 'magenta'
 DELETE_TOKEN = '<DELETE>'
@@ -67,45 +68,26 @@ class Normalize(FunctionApplier):
         # Normalize the input vector by dividing each element by the sum
         return vector / sum
 
+class TF_IDF(FunctionApplier):
+    def __init__(self, n, n_t, unique_words):
+        self.unique_words = unique_words
+        self.idf_vec = self.get_idf(n, n_t)
 
-class Create_sets(FunctionApplier):
-    def __init__(self, total_size, splits, balanced):
-        # create empty lists of size splits
-        self.curr_index = 0
-        self.sets = []
-        for split, b in zip(splits, balanced):
-            if not b:
-                self.sets.append([b, int(split * total_size)])
-            else:
-                split_dict = {}
-                label_num = int((split * total_size) / len(labels))
-                for label in labels:
-                    split_dict[label] = label_num
-                self.sets.append([b, split_dict])
+    def get_idf(self, n, n_t):        
+        idf_vec = [np.zeros(len(self.unique_words), dtype=int) for _ in range(len(n))]
+        for i in range(len(n)):
+            for j, word in enumerate(self.unique_words):
+                if word in n_t[i]:
+                    idf_vec[i][j] = np.log(n[i] / n_t[i][word])
+                else:
+                    idf_vec[i][j] = 0
+        return idf_vec
 
-    def function_to_apply(self, label):
-        if self.curr_index >= len(self.sets):
-            return DELETE_TOKEN
-        
-        balanced, curr_set = self.sets[self.curr_index]
-        if balanced:
-            if sum(curr_set.values()) == 0:
-                self.curr_index += 1
-                return self.function_to_apply(label)
-            elif curr_set[label] > 0:
-                curr_set[label] -= 1
-                return self.curr_index
-            else:
-                return DELETE_TOKEN
-        else:
-            if curr_set == 0:
-                self.curr_index += 1
-                return self.function_to_apply(label)
-            elif curr_set > 0:
-                self.sets[self.curr_index][1] -= 1 
-                return self.curr_index
-            else:
-                return DELETE_TOKEN
+    def function_to_apply(self, row):
+        vector = row["content"]
+        set = row["set"]
+        vector[vector == 0] = 1 # avoid division by zero in log - should not make any difference as the value will be multiplied by 0
+        return (np.log(vector) + 1) * self.idf_vec[set]
 
 def get_dataframe_with_distribution(file, total_size, splits, balanced, chunksize=ROWS_PR_ITERATION):
     print("running")
@@ -125,7 +107,7 @@ def get_dataframe_with_distribution(file, total_size, splits, balanced, chunksiz
 
     def apply_to_rows(label):
         nonlocal curr_index
-        if curr_index >= len(sets):
+        if curr_index >= len(sets) or label not in labels:
             return DELETE_TOKEN
         
         balanced, curr_set = sets[curr_index]
@@ -188,14 +170,29 @@ class Create_word_vector(FunctionApplier):
                 i += 1
         return np.array(vector)
 
-
 class Generate_unique_word_list(FunctionApplier):
     def __init__(self):
         self.unique_words = Counter()
+        self.n_t = []
+        self.n = []
 
-    def function_to_apply(self, words):
+    def function_to_apply(self, row):
+        words = row["content"]
+        set = row["set"] if "set" in row else 0
+        if len(self.n_t) <= set:
+            self.n_t.append({})
+            self.n.append(0)
+            return self.function_to_apply(row)
+        n_t = self.n_t[set]
         self.unique_words.update(words)
-        return words
+        self.n[set] += 1
+        for word in words:
+            if word in n_t:
+                n_t[word] += 1
+            else:
+                n_t[word] = 1
+        
+
 
     def get_unique_words(self, low, high):
         # Get the sum of all words
@@ -218,7 +215,7 @@ class Generate_unique_word_list(FunctionApplier):
 
     def get_most_frequent(self, nwords):
         # Return the n most frequent words
-        return sorted(self.unique_words.most_common(nwords))
+        return self.unique_words.most_common(nwords)
 
     def plot_most_frequent(self, nwords, freq=False):
         # Calculate the frequency of each word
@@ -308,6 +305,7 @@ class Clean_data(FunctionApplier):
         # Create a list of patterns to remove.
         # Compile the patterns to speed up the process
         self.patterns = {
+            re.compile(r'[<>]'): '',
             re.compile(r'((https?:\/\/)?(?:www\.)?[a-zA-Z0-9-_\+=.:~@#%]+\.[a-zA-Z0-9()]{1,6}\b(?:[a-zA-Z0-9-_.:\\/@#$%&()=+~?]*))'): ' <URL> ',
             re.compile(r'(https?:\/\/)?w{0,3}\.?[a-z]+\.[a-z]\w*[\w\/-]*'): ' <URL> ',
             re.compile(r'(\d{1,2}([\:\-/\\]|(,\s)?)){2}\d{2,4}|\d{2,4}(([\:\-/\\]|(,\s)?)\d{1,2}){2}'): ' <DATE> ',
@@ -315,10 +313,9 @@ class Clean_data(FunctionApplier):
             re.compile(r'([\w.\-]+@(?:[\w-]+\.)+[\w-]{2,4})|@[\w\d]+'): ' <EMAIL> ',
             re.compile(r'(\r\n|\n|\r)+'): ' ',
             re.compile(r'(\t+)'): ' ',
-            re.compile(r'(\!|\[|\])'): '',
-            # re.compile(r'(\=|\~|\u2018|\t|\;|\@|\″|\^|\…|\<|\>|\+|\/|\.|\*|\#|\,|\?|\&|\"|\”|\“|\%|\:|\-|\(|\)|\´|\`|\’|\$|\'|\|)'): '',
-            # re.compile(r'(\–|\—)'): ' ',
-            re.compile(r'[^A-Za-z0-9\s]'): '',
+            re.compile(r'(\?)'): ' ? ',
+            re.compile(r'(\!)'): ' ! ',
+            re.compile(r'[^A-Za-z0-9\s<>\?\!]'): '',
             re.compile(r'(\d+)(th)?'): ' <NUM> ',
             re.compile(r'( +)'): ' ',
         }
