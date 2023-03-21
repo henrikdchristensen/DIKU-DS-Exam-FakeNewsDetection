@@ -4,14 +4,13 @@ import csv
 import os
 import pandas as pd
 from tqdm import tqdm
-import math
 import h5py
 
 TQDM_COLOR = 'magenta'
 TYPES = ['fake', 'conspiracy', 'junksci', 'hate', 'unreliable', 'bias', 
               'satire', 'state', 'reliable', 'clickbait', 'political']
-SAMPLE = True
-ROWS_PR_ITERATION = 11
+SAMPLE = False
+ROWS_PR_ITERATION = 40000
 FILE_SIZE = 10000
 PADDING = 3
 
