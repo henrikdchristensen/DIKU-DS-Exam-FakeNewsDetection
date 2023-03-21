@@ -10,7 +10,7 @@ import h5py
 TQDM_COLOR = 'magenta'
 TYPES = ['fake', 'conspiracy', 'junksci', 'hate', 'unreliable', 'bias', 
               'satire', 'state', 'reliable', 'clickbait', 'political']
-SAMPLE = False
+SAMPLE = True
 ROWS_PR_ITERATION = 20000
 FILE_SIZE = 10000
 PADDING = 3
@@ -94,20 +94,31 @@ def create_dataset(size:int, old_filename: str, new_filename: str):
         row_idx = i-(file_num-1)*FILE_SIZE
         # Read the row and append it to the new file:
         read_rows(f'{temp_dir}/{file_num:0{PADDING}}.csv', row_idx, 1).to_csv(new_filename, mode='a', header=None, index=False)
-    # Remove the temporary directory:
-    #remove_directory(temp_dir)#TODO
     
 def create_empty_string_array(cols: int) -> np.ndarray:
     arr = np.zeros((1, cols), dtype=object)
     arr[0] = ["" for x in range(cols)]
     return arr
 
-def csv_to_hdf(csv_filename: str, hdf_filename: str):
+def clean_chunk(chunk: pd.DataFrame, idx_start: int) -> pd.DataFrame:
+    # Drop rows with empty content column:
+    chunk = chunk.dropna(subset=['content'])
+    # Remove rows where type is not one of the specified values:
+    chunk = chunk[chunk['type'].isin(TYPES)]
+    # Set unique index for each row:
+    chunk['id'] = chunk['id'].reset_index(drop=True).index + idx_start
+    # Remove index column:
+    chunk = chunk.drop(chunk.columns[[0]], axis=1)
+    return chunk
+
+def csv_to_h5(csv_filename: str, hdf_filename: str):
     with h5py.File(hdf_filename, 'w') as store:
         with open(csv_filename, encoding='utf-8') as f:
             colnames = next(csv.reader(f))
+        # Remove first coloumn (unnamed), which is not used:
         colnames.pop(0)
         cols = len(colnames)
+        # Create a dataset:
         data_set = store.create_dataset('data', data=create_empty_string_array(cols), maxshape=(
             None, cols), dtype=h5py.string_dtype(encoding='utf-8'))#TODO
         # Set the header row:
@@ -117,55 +128,53 @@ def csv_to_hdf(csv_filename: str, hdf_filename: str):
         for chunk in tqdm(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=ROWS_PR_ITERATION, lineterminator='\n'),
                       desc='csv to hdf', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
             original_rows += chunk.shape[0]
-            # Drop rows with empty content column:
-            chunk = chunk.dropna(subset=['content'])
-            # Remove rows where type is not one of the specified values:
-            chunk = chunk[chunk['type'].isin(TYPES)]
-            # Set unique index for each row:
-            chunk['id'] = chunk['id'].reset_index(drop=True).index + retained_rows
-            # Remove index column:
-            chunk = chunk.reset_index(drop=True)
-            chunk = chunk.drop(chunk.columns[[0]], axis=1) 
+            chunk = clean_chunk(chunk, retained_rows)
             # Append processed chunk to new file:
             retained_rows += chunk.shape[0]
             data_set.resize((retained_rows+1, cols))
-            data_set[-len(chunk):] = chunk.astype(str)
+            # Check if chunk is empty. If not, assign to dataset:
+            if len(chunk) > 0:
+                data_set[-len(chunk):] = chunk.astype(str)
         return retained_rows, cols
 
-def shuffle_hdf(old_filename: str, new_filename: str, rows: int, cols: int):
+def shuffle_h5(old_filename: str, new_filename: str, rows: int, cols: int):
     with h5py.File(old_filename, 'r') as read , h5py.File(new_filename, 'w') as write:
+        # Create a dataset:
         write_set = write.create_dataset('data', data=create_empty_string_array(cols), maxshape=(
             None, cols), dtype=h5py.string_dtype(encoding='utf-8'))#TODO: cols and maxshape
+        # Create a random array of the given size:
         random_arr = create_random_array(size=rows)
+        # Set the header row:
         write_set.resize((1, cols))
         write_set[0] = read['data'][0]
+        # Loop through the old dataset and take out rows corresponding to randomly created array:
         for i, j in enumerate(tqdm(random_arr, desc='shuffling hdf', unit='rows encountered', colour=TQDM_COLOR)):
             write_set.resize((i+2, cols))
             write_set[i+1] = read['data'][j]
             
-def hdf_to_csv(hdf_filename: str, csv_filename: str):
+def h5_to_csv(hdf_filename: str, csv_filename: str):
     with h5py.File(hdf_filename, 'r') as read:
         data = read['data'][0]
-        # Convert the data to a list of strings
+        # Convert the header data to a list of strings and save it to CSV
         str_data = [s.decode('utf-8') for s in data]
         pd.DataFrame([str_data]).to_csv(csv_filename, mode='w', header=None, index=False)
+        # Loop through the rest of the data and save it to CSV
         for i in range(1, read['data'].shape[0], ROWS_PR_ITERATION):
             # Get the data from the HDF5 file
             data = read['data'][i:i+ROWS_PR_ITERATION]
-            # Convert the data to a list of strings
-            # Convert the data to a list of strings
+            # Convert the data to a list of list of strings
             str_data = []
             for d in data:
                 str_data.append([s.decode('utf-8') for s in d])
-            # Convert the list of strings to a DataFrame and save it to CSV
+            # Save the data to CSV:
             pd.DataFrame(str_data).to_csv(csv_filename, mode='a', header=None, index=False)
     
 
 def run(sample: bool):
     path = "../datasets/sample/" if sample else "../datasets/large/"
-    rows, cols = csv_to_hdf(csv_filename=path+"raw.csv", hdf_filename=path+"raw.h5")
-    shuffle_hdf(old_filename=path+"raw.h5", new_filename=path+"shuffled.h5", rows=rows, cols=cols)
-    hdf_to_csv(hdf_filename=path+"shuffled.h5", csv_filename=path+"dataset.csv")
+    rows, cols = csv_to_h5(csv_filename=path+"raw.csv", hdf_filename=path+"raw.h5")
+    shuffle_h5(old_filename=path+"raw.h5", new_filename=path+"shuffled.h5", rows=rows, cols=cols)
+    h5_to_csv(hdf_filename=path+"shuffled.h5", csv_filename=path+"dataset.csv")
     
 
 if __name__ == '__main__':
