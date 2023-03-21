@@ -10,7 +10,7 @@ import h5py
 TQDM_COLOR = 'magenta'
 TYPES = ['fake', 'conspiracy', 'junksci', 'hate', 'unreliable', 'bias', 
               'satire', 'state', 'reliable', 'clickbait', 'political']
-SAMPLE = True
+SAMPLE = False
 ROWS_PR_ITERATION = 20000
 FILE_SIZE = 10000
 PADDING = 3
@@ -149,13 +149,16 @@ def hdf_to_csv(hdf_filename: str, csv_filename: str):
         # Convert the data to a list of strings
         str_data = [s.decode('utf-8') for s in data]
         pd.DataFrame([str_data]).to_csv(csv_filename, mode='w', header=None, index=False)
-        for i in range(read['data'].shape[0]-1):
+        for i in range(1, read['data'].shape[0], ROWS_PR_ITERATION):
             # Get the data from the HDF5 file
-            data = read['data'][i+1]
+            data = read['data'][i:i+ROWS_PR_ITERATION]
             # Convert the data to a list of strings
-            str_data = [s.decode('utf-8') for s in data]
+            # Convert the data to a list of strings
+            str_data = []
+            for d in data:
+                str_data.append([s.decode('utf-8') for s in d])
             # Convert the list of strings to a DataFrame and save it to CSV
-            pd.DataFrame([str_data]).to_csv(csv_filename, mode='a', header=None, index=False)
+            pd.DataFrame(str_data).to_csv(csv_filename, mode='a', header=None, index=False)
     
 
 def run(sample: bool):
