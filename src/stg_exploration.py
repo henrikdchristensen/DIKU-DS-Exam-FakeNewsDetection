@@ -1,3 +1,4 @@
+from hashlib import new
 from xmlrpc.client import Binary
 from pytz import country_names
 import pipeline as pp
@@ -5,7 +6,10 @@ import matplotlib.pyplot as plt
 import re
 import pandas as pd
 import numpy as np
+from transformers import pipeline
 from nltk.stem import PorterStemmer
+import pipeline as pp
+
 
 #Count the number of times the <NUM> label occurs in content. Requires clean_data not to clean <NUM>
 class count_number_occurences_per_label(pp.FunctionApplier):
@@ -17,9 +21,32 @@ class count_number_occurences_per_label(pp.FunctionApplier):
         self.perTypeDict = {}
         self.binaryDict = {'Reliable': 0, 'Fake': 0}
         self.count_df = pd.DataFrame(columns=['id', 'label', 'length'])
+        self.fake = []
+        self.reliable = []
+        self.lookUpDict = pp.Binary_labels()
 
     #def as_panda(df):
         #df = read_csv()
+
+
+    def function_to_apply2(self, row):
+
+        # if(row["type"])
+
+        try:
+            self.countDict[row['type']] += row['content'].count("<number>")
+            self.typeDict[row['type']] += 1
+        except:
+            pass
+
+        for k, v in self.countDict.items():
+            try:
+                self.perTypeDict[k] = v/self.typeDict[k]
+            except:
+                self.perTypeDict[k] = 0
+        return row['content'].count("<number>")
+
+
 
     def function_to_apply(self, row):
         try:
@@ -34,6 +61,7 @@ class count_number_occurences_per_label(pp.FunctionApplier):
             except:
                 self.perTypeDict[k] = 0
         return row['content'].count("<number>")
+        #return "test"
 
     def print_stats(self):
         print(self.perTypeDict)
@@ -62,22 +90,39 @@ class count_number_occurences_per_label(pp.FunctionApplier):
         plt.xlabel("Label")
         plt.show()
     
-    def boxplot(self, file):
-        df = pd.read_csv(file)
-        plt.boxplot(df)
+    def boxplot(self, col_true, col_false):
+        # Set the figure size
+        plt.rcParams["figure.figsize"] = [7.50, 3.50]
+        plt.rcParams["figure.autolayout"] = True
+
+        # Pandas dataframe
+        data = pd.DataFrame({"Reliable": col_true, "Fake": col_false})
+
+        # Plot the dataframe
+        ax = data[['Reliable', 'Fake']].plot(kind='box', title='<NUM> count')
+
+        # Display the plot
         plt.show()
 
 def num_count():
     nc = count_number_occurences_per_label()
     pp.apply_pipeline("../datasets/tokenized-100k.csv", [
-        (nc, None)
-    ],
-    new_file="../datasets/clean-100k-num-count.csv"
+        (nc, None, "<num> count"),
+        (pp.Binary_labels(), "type")
+    ], new_file="../datasets/tokenized-100k-new.csv"
     )
-    #nc.print_stats()
+    df = pp.apply_pipeline("../datasets/tokenized-100k-new.csv", [
+    ],
+    batch_size=100000,
+    get_batch=True
+    )
+    nc.print_stats()
     #nc.plot_stats()
-    nc.plot_stats_binary()
-    nc.boxplot("../datasets/clean-100k-num-count.csv")
+    #nc.plot_stats_binary()
+    false = df[df["type"] == False]['<num> count']
+    true = df[df["type"] == True]['<num> count']
+    print(false)
+    nc.boxplot(true, false)
 
 #Clean data while keeping punctuation
 patterns_with_punctuation = {
@@ -94,8 +139,6 @@ patterns_with_punctuation = {
             re.compile(r'(\t+)'): ' ',
             #Punctuation
             re.compile(r'\!'): ' ! ',
-            re.compile(r'\.'): ' . ',
-            re.compile(r'\,'): ' , ',
             re.compile(r'\?'): ' ? ',
             #Other symbols
             re.compile(r'(\[|\])'): '',
@@ -105,7 +148,6 @@ patterns_with_punctuation = {
             #Spaces
             re.compile(r'( +)'): ' ',
         }
-
 class Clean_data_punct(pp.FunctionApplier):
     def function_to_apply(self, cell):
         # Apply patterns using list comprehension
@@ -208,21 +250,45 @@ class count_punctuation(pp.FunctionApplier):
         plt.legend(["Question marks", "Exclamation marks", "Combined"])
         plt.show()
 
+    def boxplot(self, col_true, col_false):
+        # Set the figure size
+        plt.rcParams["figure.figsize"] = [7.50, 3.50]
+        plt.rcParams["figure.autolayout"] = True
+
+        # Pandas dataframe
+        data = pd.DataFrame({"Reliable": col_true, "Fake": col_false})
+
+        # Plot the dataframe
+        ax = data[['Reliable', 'Fake']].plot(kind='box', title='\'?\' and \'!\' count')
+
+        # Display the plot
+        plt.show()
+
 def punct_count():
     pc = count_punctuation()
     pp.apply_pipeline("../datasets/1mio-raw-cleaned-punct.csv", [
-        (pc, None)
-    ], 
+        (pc, None, "punct count"),
+        (pp.Binary_labels(), "type")
+    ], new_file="../datasets/punct.csv"
     )
+    df = pp.apply_pipeline("../datasets/punct.csv", [
+    ],
+    batch_size=100000,
+    get_batch=True
+    )
+    false = df[df["type"] == False]['punct count']
+    true = df[df["type"] == True]['punct count']
     #pc.print_stats()
-    pc.plot_stats()
-    pc.plot_stats_binary()
+    #pc.plot_stats()
+    #pc.plot_stats_binary()
+    pc.boxplot(true, false)
 
 #Religious content occurrence
 class religious_content(pp.FunctionApplier):
     def __init__(self):
-        religious_words = ["chapel", "priest", "preacher", "nun", "saint", "st", 
-                            "holy", "pray", "hymn", "soul"]
+        #religious_words = ["chapel", "priest", "preacher", "nun", "saint", "st", 
+        #                   "holy", "pray", "hymn", "soul"]
+        religious_words = ["i"]
         ps = PorterStemmer()
         self.stem_religious_words = []
         for w in religious_words:
@@ -279,18 +345,38 @@ class religious_content(pp.FunctionApplier):
         plt.ylabel("Number of occurrences")
         plt.xlabel("Label")
         plt.show()
+
+    def boxplot(self, col_true, col_false):
+        # Set the figure size
+        plt.rcParams["figure.figsize"] = [7.50, 3.50]
+        plt.rcParams["figure.autolayout"] = True
+
+        # Pandas dataframe
+        data = pd.DataFrame({"Reliable": col_true, "Fake": col_false})
+
+        # Plot the dataframe
+        ax = data[['Reliable', 'Fake']].plot(kind='box', title='Religious word count')
+
+        # Display the plot
+        plt.show()
     
 def religious_count():
     rc = religious_content()
     pp.apply_pipeline("../datasets/1mio-raw-cleaned-punct.csv", [
-        (rc, None)
-    ], 
+        (rc, None, "Occurences of \'i\'"),
+        (pp.Binary_labels(), "type")
+    ], new_file="../datasets/1k_i.csv"
     )
+    df = pp.apply_pipeline("../datasets/religious1000.csv", [],
+        batch_size=1078, 
+        get_batch=True)
     rc.print_stats()
     rc.plot_stats()
     rc.plot_stats_binary()
-
-
+    true = df[df["type"] == True]["Religious words count"]
+    false = df[df["type"] == False]["Religious words count"]
+    rc.boxplot(true, false)
+    
 class content_length(pp.FunctionApplier):
     def __init__(self):
         keys = ['fake', 'conspiracy', 'junksci', 'hate', 'unreliable', 'bias', 'satire', 
@@ -343,38 +429,117 @@ class content_length(pp.FunctionApplier):
         plt.xlabel("Label")
         plt.show()
     
-    def boxplot(self):
-        plt.boxplot(self.len_dict)
+    def boxplot(self, col_true, col_false):
+        # Set the figure size
+        plt.rcParams["figure.figsize"] = [7.50, 3.50]
+        plt.rcParams["figure.autolayout"] = True
+
+        # Pandas dataframe
+        data = pd.DataFrame({"Reliable": col_true, "Fake": col_false})
+
+        # Plot the dataframe
+        ax = data[['Reliable', 'Fake']].plot(kind='box', title='Content length')
+
+        # Display the plot
         plt.show()
 
 def content_len():
     cl = content_length()
     pp.apply_pipeline("../datasets/1mio-raw-cleaned-punct.csv", [
-        (cl, None)
-    ], 
+        (cl, None, "content length"),
+        (pp.Binary_labels(), "type")
+    ], new_file="../datasets/content-len-1000.csv"
     )
-    cl.print_stats()
-    cl.plot_stats()
-    cl.plot_stats_binary()
-    cl.boxplot()
+    df = pp.apply_pipeline("../datasets/content-len-1000.csv", [], 
+        batch_size=1078,
+        get_batch=True
+    )
+    #cl.print_stats()
+    #cl.plot_stats()
+    #cl.plot_stats_binary()
+    true = df[df["type"] == True]["content length"]
+    false = df[df["type"] == False]["content length"]
+    
+    cl.boxplot(true, false)
 
+class sentiment(pp.FunctionApplier):
+    def __init__(self):
+        self.sentiment_pipeline = pipeline("sentiment-analysis")
+        self.sum_pos = 0
+        self.sum_neg = 0
 
+    def function_to_apply(self, row):
+        verdict = self.sentiment_pipeline(row[0:512])
+        return verdict[0]['label']
 
-#Convert to features
-def content_length(df : pd.DataFrame):
-    return df['content'].apply(lambda x : len(x))
+    def pie_chart(self, col_true, col_false):
+        true = len(col_true)
+        true_pos = len(col_true[col_true["sentiment"] == 'POSITIVE'])/true
+        true_neg = len(col_true[col_true["sentiment"] == 'NEGATIVE'])/true
 
-def binary():
-    bl = pp.Binary_labels()
-    pp.apply_pipeline("../datasets/clean-100k.csv", [
-        (bl, "type")
-    ],
-    new_file= "../datasets/clean-100k-binary.csv"
-    )    
+        false = len(col_false)
+        false_pos = len(col_false[col_false["sentiment"] == 'POSITIVE'])/false
+        false_neg = len(col_false[col_false["sentiment"] == 'NEGATIVE'])/false
+        print(col_true)
+
+        print(true)
+        print(false)
+        
+
+        print(col_true[col_true["sentiment"] == 'POSITIVE'])
+        print(len(col_true[col_true["sentiment"] == 'NEGATIVE']))
+
+        print(len(col_false[col_false["sentiment"] == 'POSITIVE']))
+        print(len(col_false[col_false["sentiment"] == 'NEGATIVE']))
+
+        fig = plt.figure(figsize=(4,3),dpi=144)
+        ax1 = fig.add_subplot(121)
+        ax1.pie([true_pos, true_neg], colors = ["green", "purple"])
+
+        ax2 = fig.add_subplot(122)
+        ax2.pie([false_pos, false_neg], colors = ["green", "purple"])
+
+        #plt.ylabel("Frequency of positive/negative")
+        #plt.xlabel("Label")
+        plt.show()
+
+    def boxplot(self, col_true, col_false):
+        # Set the figure size
+        plt.rcParams["figure.figsize"] = [7.50, 3.50]
+        plt.rcParams["figure.autolayout"] = True
+
+        # Pandas dataframe
+        data = pd.DataFrame({"Reliable": col_true, "Fake": col_false})
+
+        # Plot the dataframe
+        ax = data[['Reliable', 'Fake']].plot(kind='box', title='Content length')
+
+        # Display the plot
+        plt.show()
+
+def sentiment_analysis():
+    sa = sentiment()
+    """pp.apply_pipeline("../datasets/1mio-raw-cleaned.csv", [
+        (sa, "content", "sentiment"),
+        (pp.Binary_labels(), "type")
+    ], new_file="1k-sentiment.csv"
+    )"""
+    df = pp.apply_pipeline("1k-sentiment.csv", []
+    , batch_size=1078, get_batch=True)
+    true = df[df["type"] == True]
+    false = df[df["type"] == False]
+    sa.pie_chart(true, false)
+
 
 if __name__ == "__main__":
     ist_pipeline_punct()
-    num_count()
+
+
+    #num_count()
+    #punct_count()
+    religious_count()
+    #content_len()
+    #sentiment_analysis()
 
     """file = "../datasets/clean-100k.csv"
     df = pd.read_csv(file)
@@ -399,9 +564,3 @@ if __name__ == "__main__":
    
 
 
-    
-    #ist_pipeline_punct()
-    #num_count()
-    #punct_count()
-    #religious_count()
-    #content_len()
