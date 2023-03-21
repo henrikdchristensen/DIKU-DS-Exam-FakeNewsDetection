@@ -57,6 +57,15 @@ class FunctionApplier:
     def function_to_apply(self, row):
         pass
 
+class Filter(FunctionApplier):
+    def __init__(self, include):
+        self.include = include
+
+    def function_to_apply(self, type):
+        if type not in self.include:
+            return DELETE_TOKEN        
+        return type
+
 
 class Normalize(FunctionApplier):
     def function_to_apply(self, vector):
