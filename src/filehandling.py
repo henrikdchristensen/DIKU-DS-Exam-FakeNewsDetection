@@ -79,14 +79,13 @@ def csv_to_h5(csv_filename: str, hdf_filename: str):
         colnames.pop(0)
         cols = len(colnames)
         # Create a dataset:
-        data_set = store.create_dataset('data', data=create_empty_string_array(cols), maxshape=(
-            None, cols), dtype=h5py.string_dtype(encoding='utf-8'))#TODO
+        data_set = store.create_dataset('data', data=create_empty_string_array(cols), maxshape=(None, cols), dtype=h5py.string_dtype(encoding='utf-8'))#TODO
         # Set the header row:
         data_set[0] = colnames
         # Read the rest of the rows and assign to dataset:
         original_rows = retained_rows = 0
         for chunk in tqdm(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=ROWS_PR_ITERATION, lineterminator='\n'),
-                      desc='csv to hdf', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
+                      desc='csv to h5', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
             original_rows += chunk.shape[0]
             chunk = clean_chunk(chunk, retained_rows)
             # Append processed chunk to new file:
@@ -104,7 +103,8 @@ def h5_to_csv(hdf_filename: str, csv_filename: str):
         str_data = [s.decode('utf-8') for s in data]
         pd.DataFrame([str_data]).to_csv(csv_filename, mode='w', header=None, index=False)
         # Loop through the rest of the data and save it to CSV
-        for i in range(1, read['data'].shape[0], ROWS_PR_ITERATION):
+        for i in tqdm(range(1, read['data'].shape[0], ROWS_PR_ITERATION),
+                      desc='h5 to csv', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
             # Get the data from the HDF5 file
             data = read['data'][i:i+ROWS_PR_ITERATION]
             # Convert the data to a list of list of strings
@@ -120,15 +120,14 @@ def shuffle_h5(old_filename: str, new_filename: str):
         rows = read['data'].shape[0]-1
         cols = read['data'].shape[1]
         # Create a dataset:
-        write_set = write.create_dataset('data', data=create_empty_string_array(cols), maxshape=(
-            None, cols), dtype=h5py.string_dtype(encoding='utf-8'))
+        write_set = write.create_dataset('data', data=create_empty_string_array(cols), maxshape=(None, cols), dtype=h5py.string_dtype(encoding='utf-8'))
         # Create a random array of the given size:
         random_arr = create_random_array(size=rows)
         # Set the header row:
         write_set.resize((1, cols))
         write_set[0] = read['data'][0]
         # Loop through the old dataset and take out rows corresponding to randomly created array:
-        for i, x in enumerate(tqdm(random_arr, desc='shuffling hdf', unit='rows encountered', colour=TQDM_COLOR), start=1):
+        for i, x in enumerate(tqdm(random_arr, desc='shuffle h5', unit='rows', colour=TQDM_COLOR), start=1):
             write_set.resize((i+1, cols))
             write_set[i] = read['data'][x]
 
