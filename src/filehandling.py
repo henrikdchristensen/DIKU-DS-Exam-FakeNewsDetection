@@ -96,7 +96,6 @@ def csv_to_h5(csv_filename: str, hdf_filename: str):
             # Check if chunk is empty. If not, assign to dataset:
             if len(chunk) > 0:
                 data_set[-len(chunk):] = chunk.astype(str)
-        return retained_rows, cols
      
             
 def h5_to_csv(hdf_filename: str, csv_filename: str):
@@ -117,11 +116,13 @@ def h5_to_csv(hdf_filename: str, csv_filename: str):
             pd.DataFrame(str_data).to_csv(csv_filename, mode='a', header=None, index=False)
 
 
-def shuffle_h5(old_filename: str, new_filename: str, rows: int, cols: int):
-    with h5py.File(old_filename, 'r') as read , h5py.File(new_filename, 'w') as write:
+def shuffle_h5(old_filename: str, new_filename: str):
+    with h5py.File(old_filename, 'r') as read, h5py.File(new_filename, 'w') as write:
+        rows = read['data'].shape[0]
+        cols = read['data'].shape[1]
         # Create a dataset:
         write_set = write.create_dataset('data', data=create_empty_string_array(cols), maxshape=(
-            None, cols), dtype=h5py.string_dtype(encoding='utf-8'))#TODO: cols and maxshape
+            None, cols), dtype=h5py.string_dtype(encoding='utf-8'))
         # Create a random array of the given size:
         random_arr = create_random_array(size=rows)
         # Set the header row:
@@ -135,8 +136,8 @@ def shuffle_h5(old_filename: str, new_filename: str, rows: int, cols: int):
 
 def run(sample: bool):
     path = "../datasets/sample/" if sample else "../datasets/large/"
-    rows, cols = csv_to_h5(csv_filename=path+"raw.csv", hdf_filename=path+"raw.h5")
-    shuffle_h5(old_filename=path+"raw.h5", new_filename=path+"shuffled.h5", rows=rows, cols=cols)
+    csv_to_h5(csv_filename=path+"raw.csv", hdf_filename=path+"raw.h5")
+    shuffle_h5(old_filename=path+"raw.h5", new_filename=path+"shuffled.h5")
     h5_to_csv(hdf_filename=path+"shuffled.h5", csv_filename=path+"dataset.csv")
     
 
