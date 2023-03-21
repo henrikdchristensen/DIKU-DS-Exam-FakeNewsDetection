@@ -11,7 +11,7 @@ TQDM_COLOR = 'magenta'
 TYPES = ['fake', 'conspiracy', 'junksci', 'hate', 'unreliable', 'bias', 
               'satire', 'state', 'reliable', 'clickbait', 'political']
 SAMPLE = True
-ROWS_PR_ITERATION = 20000
+ROWS_PR_ITERATION = 11
 FILE_SIZE = 10000
 PADDING = 3
 
@@ -35,7 +35,7 @@ def remove_directory(dirname: str):
 
 def create_random_array(size:int) -> np.ndarray:
     # Create a numpy array of the given size and set values from 0 to size-1:
-    arr = np.arange(size)
+    arr = np.arange(1, size+1)
     # Shuffle the indexes of the array:
     np.random.shuffle(arr)
     return arr
@@ -118,7 +118,7 @@ def h5_to_csv(hdf_filename: str, csv_filename: str):
 
 def shuffle_h5(old_filename: str, new_filename: str):
     with h5py.File(old_filename, 'r') as read, h5py.File(new_filename, 'w') as write:
-        rows = read['data'].shape[0]
+        rows = read['data'].shape[0]-1
         cols = read['data'].shape[1]
         # Create a dataset:
         write_set = write.create_dataset('data', data=create_empty_string_array(cols), maxshape=(
@@ -129,9 +129,9 @@ def shuffle_h5(old_filename: str, new_filename: str):
         write_set.resize((1, cols))
         write_set[0] = read['data'][0]
         # Loop through the old dataset and take out rows corresponding to randomly created array:
-        for i, j in enumerate(tqdm(random_arr, desc='shuffling hdf', unit='rows encountered', colour=TQDM_COLOR)):
-            write_set.resize((i+2, cols))
-            write_set[i+1] = read['data'][j]
+        for i, x in enumerate(tqdm(random_arr, desc='shuffling hdf', unit='rows encountered', colour=TQDM_COLOR), start=1):
+            write_set.resize((i+1, cols))
+            write_set[i] = read['data'][x]
 
 
 def run(sample: bool):
