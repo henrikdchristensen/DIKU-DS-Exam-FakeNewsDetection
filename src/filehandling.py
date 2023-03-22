@@ -146,7 +146,7 @@ def remove_unwanted_rows(data_filename: str, retained_filename: str, removed_fil
     print(f"Original rows: {rows-1}, retained rows: {retained_rows}, rows with faulty content: {faulty_content_rows}, rows with faulty type: {faulty_type_rows}")
 
 
-def statistics(*h5_filenames: str):
+def statistics(*h5_filenames: str, output_file: str):
     # Initialize counters:
     total_rows = 0
     total_cols = 0
@@ -166,10 +166,21 @@ def statistics(*h5_filenames: str):
                 # Update counters:
                 domains_counter.update(domains)
                 types_counter.update(types)
-    # Print statistics:
-    print(f"Number of rows: {total_rows}, number of columns: {total_cols}")
-    print(f"Number of different domains: {dict(domains_counter)}")
-    print(f"Number of different types: {dict(types_counter)}")
+    # Write statistics to CSV file:
+    with open(output_file, 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['Statistic', 'Value'])
+        writer.writerow(['Number of rows', total_rows])
+        writer.writerow(['Number of columns', total_cols])
+        writer.writerow([])
+        writer.writerow(['Types:', ' '])
+        writer.writerows(types_counter.items())
+        writer.writerows([])
+        writer.writerow([])
+        writer.writerow(['Domains:', ' '])
+        writer.writerows(domains_counter.items())
+    # Print success message:
+    print(f"Statistics written to {output_file}")
 
      
 def h5_to_csv(h5_filename: str, csv_filename: str):
@@ -208,7 +219,7 @@ def shuffle_h5(old_filename: str, new_filename: str):
 def run(sample: bool):
     path = "../datasets/sample/" if sample else "../datasets/large/"
     csv_to_h5(csv_filename=path+"raw.csv", h5_filename=path+"raw.h5")
-    statistics(path+"raw.h5")
+    statistics(path+"raw.h5", output_file=path+"statistics.csv")
     remove_unwanted_rows(data_filename=path+"raw.h5", retained_filename=path+"retained.h5", removed_filename=path+"removed.h5")
     shuffle_h5(old_filename=path+"retained.h5", new_filename=path+"retained_shuffled.h5")
     h5_to_csv(h5_filename=path+"retained.h5", csv_filename=path+"retained.csv")
