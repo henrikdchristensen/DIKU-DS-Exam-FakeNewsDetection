@@ -84,12 +84,14 @@ class TF_IDF(FunctionApplier):
         return idf_vec
 
     def function_to_apply(self, row):
-        vector = row["content"]
+        vector = row["content"].copy()
         set = row["set"]
-        vector[vector == 0] = 1 # avoid division by zero in log - should not make any difference as the value will be multiplied by 0
-        return (np.log(vector) + 1) * self.idf_vec[set]
+        for i in range(len(vector)):
+            if vector[i] > 0:
+                vector[i] = (np.log(vector[i]) + 1) * self.idf_vec[set][i]
+        return vector
 
-def get_dataframe_with_distribution(file, total_size, splits, balanced, chunksize=ROWS_PR_ITERATION):
+def get_dataframe_with_distribution(file, total_size, splits, balanced, chunksize=ROWS_PR_ITERATION, out_file=None, get_frame=True):
     print("running")
     # empty dataframe
     data = None
@@ -131,23 +133,33 @@ def get_dataframe_with_distribution(file, total_size, splits, balanced, chunksiz
                 return DELETE_TOKEN
     
     entries_read = 0
-    with pd.read_csv(file, chunksize=chunksize, encoding='utf-8', lineterminator='\n') as reader:
+    with pd.read_csv(file, chunksize=chunksize, encoding='utf-8') as reader:
         for chunk in reader:
-            entries_read += len(chunk)
             chunk["set"] = chunk["type"].progress_apply(apply_to_rows)
             chunk = chunk[chunk["set"] != DELETE_TOKEN]
-            if data is None:
-                data = chunk
-            else:
-                data = pd.concat([data, chunk])
 
+            if out_file is not None:
+                if entries_read == 0:
+                    chunk.to_csv(out_file, mode='w', index=False)
+                else:
+                    # Append to csv file without header
+                    chunk.to_csv(out_file, mode='a', header=False, index=False)
+            if get_frame:
+                if data is None:
+                    data = chunk
+                else:
+                    data = pd.concat([data, chunk])
+
+            entries_read += chunksize
             finished = True
             for balanced, set in sets:
                 if (balanced and sum(set.values()) > 0) or (not balanced and set > 0):
                     finished = False
             if finished:
                 print("entries read:", entries_read)
-                return data
+                if get_frame:
+                    return data
+                return
     print("ERROR: not enough data to create sets")
     return data
 
@@ -156,7 +168,9 @@ class Create_word_vector(FunctionApplier):
         self.unique_words = unique_words
 
     def function_to_apply(self, words):
-        vector = np.zeros(len(self.unique_words), dtype=int)
+        if type(words) is not list:
+            words = literal_eval(words)
+        vector = np.zeros(len(self.unique_words), dtype=np.int32)
         words = sorted(words)
         i = 0
         j = 0
@@ -168,7 +182,19 @@ class Create_word_vector(FunctionApplier):
                 j += 1
             else:  # should never happen
                 i += 1
-        return np.array(vector)
+        return vector
+
+
+class Save_numpy_arr(FunctionApplier):
+    def function_to_apply(self, vector):
+        return ' '.join(map(str, vector.tolist()))
+
+class Read_numpy_arr(FunctionApplier):
+    def __init__(self, dtype):
+        self.dtype = dtype
+
+    def function_to_apply(self, row):
+        return np.fromstring(row, sep=" ", dtype=self.dtype)
 
 class Generate_unique_word_list(FunctionApplier):
     def __init__(self):
@@ -178,6 +204,8 @@ class Generate_unique_word_list(FunctionApplier):
 
     def function_to_apply(self, row):
         words = row["content"]
+        if type(words) is not list:
+            words = literal_eval(words)
         set = row["set"] if "set" in row else 0
         if len(self.n_t) <= set:
             self.n_t.append({})
@@ -483,17 +511,12 @@ def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_IT
     start_time = time()
 
     # Use Pandas chunksize and iterator to read the input file in batches
-    with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8', lineterminator='\n') as reader:
+    with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8') as reader:
         for chunk in reader:
             if function_cols is None:
                 return chunk
             # Apply the specified functions to each row in the batch
             chunk = applier(function_cols, chunk, progress_bar=progress_bar)
-
-            # If get_batch is True, return only the first batch of processed data
-            if get_batch:
-                print("Length", len(chunk))
-                return chunk
             
             # If an output file is specified, append the processed data to it
             if new_file is not None:
@@ -502,6 +525,11 @@ def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_IT
                 else:
                     # Append to csv file without header
                     chunk.to_csv(new_file, mode='a', header=False, index=False)
+
+            # If get_batch is True, return only the first batch of processed data
+            if get_batch:
+                print("Length", len(chunk))
+                return chunk
 
             i += batch_size
         # Print the time taken to process the data
