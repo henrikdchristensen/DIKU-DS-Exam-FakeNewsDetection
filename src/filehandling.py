@@ -1,11 +1,10 @@
-import shutil
-from typing import Tuple
-import numpy as np
-import csv
 import os
+import shutil
+import csv
+import numpy as np
 import pandas as pd
-from tqdm import tqdm
 import h5py
+from tqdm import tqdm
 from collections import Counter
 
 TQDM_COLOR = 'magenta'
@@ -15,8 +14,23 @@ SAMPLE = True
 ROWS_PR_ITERATION = 20
 FILE_SIZE = 10000
 PADDING = 3
-
-# TODO: Add h5py to requirements.txt
+COLS = {
+    'id': 0,
+    'domain': 1,
+    'type': 2,
+    'url': 3,
+    'content': 4,
+    'scraped_at': 5,
+    'inserted_at': 6,
+    'updated_at': 7,
+    'title': 8,
+    'authors': 9,
+    'keywords': 10,
+    'meta_keywords': 11,
+    'meta_description': 12,
+    'tags': 13,
+    'summary': 14
+}
 
 
 def remove_file(filename: str):
@@ -89,8 +103,8 @@ def csv_to_h5(csv_filename: str, h5_filename: str):
                       desc='csv to h5', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
             # Remove first column (unnamed), which is not used:
             chunk = chunk.drop(chunk.columns[[0]], axis=1)
-            # Set unique index for each row and remove index column:
-            chunk[chunk.columns[0]] = range(rows, rows+chunk.shape[0])
+            # Set unique index for each row in 'id' column and remove index column:
+            chunk[chunk.columns[COLS['id']]] = range(rows, rows+chunk.shape[0])
             # Resizing dataset:
             rows += chunk.shape[0]
             data_set.resize((rows+1, cols))
@@ -112,10 +126,10 @@ def remove_unwanted_rows(data_filename: str, retained_filename: str, removed_fil
         retained_rows = faulty_content_rows = faulty_type_rows = 0
         for i in tqdm(range(1, rows, ROWS_PR_ITERATION), desc=f'remove unwanted rows', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
             chunk = data_store['data'][i:i+ROWS_PR_ITERATION]
-            decoded = decode_1d_array(chunk[:,4])
+            decoded = decode_1d_array(chunk[:, COLS['content']])
             # Remove rows with empty content and incorrect/missing types:
-            mask_content = np.logical_and(chunk[:,4] != b'nan', ~np.char.startswith(decoded, 'ERROR'))
-            mask_type = np.isin(chunk[:, 2], TYPES)
+            mask_content = np.logical_and(chunk[:, COLS['content']] != b'nan', ~np.char.startswith(decoded, 'ERROR'))
+            mask_type = np.isin(chunk[:, COLS['type']], TYPES)
             mask = np.logical_and(mask_content, mask_type)
             retained_chunk = chunk[mask]
             removed_chunk = chunk[~mask]
@@ -147,8 +161,8 @@ def statistics(*h5_filenames: str):
             for i in tqdm(range(1, rows, ROWS_PR_ITERATION), desc=f'processing {h5_filename}', unit='rows', colour=TQDM_COLOR):
                 chunk = data_store['data'][i:i+ROWS_PR_ITERATION]
                 # Decode data:
-                domains = decode_1d_array(chunk[:,1])
-                types = decode_1d_array(chunk[:,2])
+                domains = decode_1d_array(chunk[:, COLS['domain']])
+                types = decode_1d_array(chunk[:, COLS['type']])
                 # Update counters:
                 domains_counter.update(domains)
                 types_counter.update(types)
