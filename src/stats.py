@@ -14,7 +14,7 @@ from multiprocessing import Process
 
 RAW_DATA = '../datasets/sample/1mio-raw.csv'
 CLEANED_DATA = '../datasets/sample/news_sample_cleaned.csv'
-CLEANED_DATA_NUM = '../datasets/sample/news_sample_cleaned_num.csv'
+CLEANED_DATA_NUM = '../datasets/sample/news_sample_cleaned_num_big.csv'
 
 
 class Word_frequency(FunctionApplier):
@@ -156,31 +156,43 @@ class Count_Items(FunctionApplier):
 
 
 class Contribution(FunctionApplier): 
-    def __init__(self):
+    def __init__(self, df: pd.DataFrame):
         # initialize the data as a pandas dataframe
         # self.data = pd.DataFrame(columns=['domain', 'type', 'content'])
-        self.data = []
+        self.data = df
         # self.data = pd.DataFrame()
 
 
     def function_to_apply(self, content: pd.DataFrame):
         # self.data.append(pd.DataFrame(content))
-        self.data.append(content)
+        #self.data.append(content)
+        print(content)
 
 
     def contributionPlot2(self):
         
-        threshold = 1
+        threshold = 3
         self.data = pd.DataFrame(self.data)
 
+        print("got keys: \n", len(self.data), self.data.iloc[0].keys())
+
         # group the articles by domain and category, and count the number of articles in each group
+        print("groupby: \n", self.data['domain'].unique())
         counts = self.data.groupby(['domain', 'type'])['content'].count().unstack()
+
+        print("counts: \n", counts)
+
         # convert the counts to percentages and round to two decimal places
         percentages = counts.apply(lambda x: x / x.sum() * 100).round(2)
         # filter the percentages to only show the contributions above the threshold
         percentages = percentages[percentages > threshold]
         # drop the rows with all NaN values
         percentages = percentages.dropna(how='all')
+
+        # rearrange the rows so that the order of the categories is consistent
+        for type in list(percentages.columns):
+            percentages.sort_values(type, na_position='first', ascending=False, inplace=True)
+
         # create a stacked horizontal bar chart of the percentages
         ax = percentages.plot(kind='barh', stacked=True, figsize=(10, 8))
         # set the x-axis label to show the percentages
@@ -194,6 +206,68 @@ class Contribution(FunctionApplier):
         # show the chart
         plt.show()
 
+    def contributionPlot1(self):
+
+        threshold = 3
+        self.data = pd.DataFrame(self.data)
+
+        # group the articles by type and domain, and count the number of articles in each group
+        type_groups = self.data.groupby(['type', 'domain'])['content'].count()
+        type_groups = type_groups.unstack().fillna(0)
+            
+        # iterate over each unique type to generate a new DataFrame with the count of each domain for that type
+        domain_counts = []
+        for typ in self.data['type'].unique():
+            type_counts = type_groups.loc[typ].rename(typ)
+            domain_counts.append(type_counts)
+
+        # combine the domain counts into a new DataFrame where the rows are each unique domain and the columns are the counts for each type
+        domain_counts = pd.concat(domain_counts, axis=1, sort=False)
+
+        # sum the counts for each domain across all types and sort the resulting Series in descending order
+        domain_totals = domain_counts.sum(axis=1)
+        domain_totals = domain_totals.sort_values(ascending=False)
+
+        # print domain_totals and domain_counts and compare the order of the domains
+        print(domain_totals)
+        print("\n\n")
+        print(domain_counts)
+        print("\n\n")
+
+        print("total index: ", domain_totals.index)
+
+        # reorder the columns of the DataFrame using the sorted Series
+        # domain_counts = domain_counts[domain_counts.index]
+
+        percentages = domain_counts.apply(lambda x: x / x.sum() * 100).round(2)
+
+        # filter the percentages to only show the contributions above the threshold
+        percentages = percentages[percentages > threshold]
+        # drop the rows with all NaN values
+        percentages = percentages.dropna(how='all')
+
+
+        # for 
+        # [reliable  political  conspiracy   fake   bias  unreliable  junksci  clickbait   hate  satire]
+
+        for type in self.data['type'].unique():
+            # print(type)
+            # print(domain_counts[type].sort_values(ascending=False))
+            percentages.sort_values(type, na_position='first', ascending=False, inplace=True)
+        
+        print("percentages: ", percentages)
+        # create a stacked horizontal bar chart of the percentages
+        ax = percentages.plot(kind='barh', stacked=True, figsize=(10, 8))
+        # set the x-axis label to show the percentages
+        ax.set_xlabel('Percentage')
+        # set the legend to display outside the chart
+        ax.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
+        
+        title = f'Contribution of Domains to Categories ( ≥ {threshold}%)'
+        ax.set_title(title)
+
+        # show the chart
+        plt.show()
 
 
 # make class to count each type fake, real, unreliable, reliable etc. and make a frequency plot
@@ -271,30 +345,30 @@ def runStats():
 
 
 
-    size = 10000
+    # size = 10000
     
-    wf = Word_frequency()
-    apply_pipeline(
-        CLEANED_DATA_NUM, 
-        [
-            (wf, "content"),
-        ],
-        batch_size=size,
-        get_batch=True,
-        type="fake"
-        # exclude=["reliable"]
-    )
+    # wf = Word_frequency()
+    # apply_pipeline(
+    #     CLEANED_DATA_NUM, 
+    #     [
+    #         (wf, "content"),
+    #     ],
+    #     batch_size=size,
+    #     get_batch=True,
+    #     type="fake"
+    #     # exclude=["reliable"]
+    # )
 
-    wf2 = Word_frequency()
-    apply_pipeline(
-        CLEANED_DATA_NUM, 
-        [
-            (wf2, "content"),
-        ],
-        batch_size=size,
-        get_batch=True,
-        type="reliable"
-    )
+    # wf2 = Word_frequency()
+    # apply_pipeline(
+    #     CLEANED_DATA_NUM, 
+    #     [
+    #         (wf2, "content"),
+    #     ],
+    #     batch_size=size,
+    #     get_batch=True,
+    #     type="reliable"
+    # )
 
     cp = Contribution()
     apply_pipeline(
@@ -302,8 +376,8 @@ def runStats():
         [
             (cp, None),
         ],
-        batch_size=size,
-        get_batch=True,
+        batch_size=100,
+        # get_batch=True,
         # type="reliable"
     )
 
@@ -315,6 +389,8 @@ def runStats():
     # wf.plot()
 
     # wf.plotVenn(wf2.sorted_frequency)
+
+    # print(cp.data.iloc[0:10])
 
     cp.contributionPlot2()
     # wf2.plot_fake_real(wf.sorted_frequency, set_labels=("Reliable", "Fake"))
