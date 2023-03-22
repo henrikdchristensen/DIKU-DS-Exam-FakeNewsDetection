@@ -8,8 +8,6 @@ from tqdm import tqdm
 from collections import Counter
 
 TQDM_COLOR = 'magenta'
-TYPES = [b'fake', b'conspiracy', b'junksci', b'hate', b'unreliable', b'bias', 
-            b'satire', b'state', b'reliable', b'clickbait', b'political']
 SAMPLE = True
 ROWS_PR_ITERATION = 20
 FILE_SIZE = 10000
@@ -75,15 +73,19 @@ def create_empty_string_array(cols: int) -> np.ndarray:
     return arr
 
 
-def decode_2d_array(data: np.ndarray) -> np.ndarray:
+def decode_2d(data: np.ndarray) -> list[list]:
     str_data = []
     for d in data:
         str_data.append([s.decode('utf-8') for s in d])
     return str_data
 
 
-def decode_1d_array(data: np.ndarray) -> np.ndarray:
+def decode_1d(data: np.ndarray) -> list:
     return [s.decode('utf-8') for s in data]
+
+
+def decode_dict(data: dict) -> dict:
+    return {k.decode('utf-8'): v for k, v in data.items()}
 
 
 def csv_to_h5(csv_filename: str, h5_filename: str):
@@ -122,14 +124,17 @@ def remove_unwanted_rows(data_filename: str, retained_filename: str, removed_fil
         removed_set = removed_store.create_dataset('data', data=create_empty_string_array(cols), maxshape=(None, cols), dtype=h5py.string_dtype(encoding='utf-8'))
         retained_set[0] = header
         removed_set[0] = header
+        # Types to keep:
+        types = [b'fake', b'conspiracy', b'junksci', b'hate', b'unreliable', b'bias', 
+                    b'satire', b'state', b'reliable', b'clickbait', b'political']
         # Initialize counters:
         retained_rows = faulty_content_rows = faulty_type_rows = 0
-        for i in tqdm(range(1, rows, ROWS_PR_ITERATION), desc=f'remove unwanted rows', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
+        for i in tqdm(range(1, rows, ROWS_PR_ITERATION), desc='remove unwanted rows', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
             chunk = data_store['data'][i:i+ROWS_PR_ITERATION]
-            decoded = decode_1d_array(chunk[:, COLS['content']])
+            decoded = decode_1d(chunk[:, COLS['content']])
             # Remove rows with empty content and incorrect/missing types:
             mask_content = np.logical_and(chunk[:, COLS['content']] != b'nan', ~np.char.startswith(decoded, 'ERROR'))
-            mask_type = np.isin(chunk[:, COLS['type']], TYPES)
+            mask_type = np.isin(chunk[:, COLS['type']], types)
             mask = np.logical_and(mask_content, mask_type)
             retained_chunk = chunk[mask]
             removed_chunk = chunk[~mask]
@@ -142,59 +147,65 @@ def remove_unwanted_rows(data_filename: str, retained_filename: str, removed_fil
                 retained_set[-retained_chunk.shape[0]:] = retained_chunk
             if removed_chunk.shape[0] > 0:
                 removed_set.resize(removed_set.shape[0] + removed_chunk.shape[0], axis=0)
-                removed_set[-removed_chunk.shape[0]:] = removed_chunk
+                removed_set[-removed_chunk.shape[0]:] = removed_chunk    
     print(f"Original rows: {rows-1}, retained rows: {retained_rows}, rows with faulty content: {faulty_content_rows}, rows with faulty type: {faulty_type_rows}")
 
 
-def statistics(*h5_filenames: str, output_file: str):
+def statistics(*h5_filenames: str, output_file: str = None):
     # Initialize counters:
     total_rows = 0
     total_cols = 0
-    domains_counter = Counter()
-    types_counter = Counter()
+    content_counter = Counter()
+    domain_counter = Counter()
+    type_counter = Counter()
     # Iterate over all files:
     for h5_filename in h5_filenames:
         with h5py.File(h5_filename, 'r') as data_store:
             rows, cols = data_store['data'].shape
             total_rows += rows - 1
             total_cols = cols
-            for i in tqdm(range(1, rows, ROWS_PR_ITERATION), desc=f'processing {h5_filename}', unit='rows', colour=TQDM_COLOR):
+            for i in tqdm(range(1, rows, ROWS_PR_ITERATION), desc='creating statistics', unit='rows', colour=TQDM_COLOR):
                 chunk = data_store['data'][i:i+ROWS_PR_ITERATION]
-                # Decode data:
-                domains = decode_1d_array(chunk[:, COLS['domain']])
-                types = decode_1d_array(chunk[:, COLS['type']])
                 # Update counters:
-                domains_counter.update(domains)
-                types_counter.update(types)
-    # Write statistics to CSV file:
-    with open(output_file, 'w', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow(['Statistic', 'Value'])
-        writer.writerow(['Number of rows', total_rows])
-        writer.writerow(['Number of columns', total_cols])
-        writer.writerow([])
-        writer.writerow(['Types:', ' '])
-        writer.writerows(types_counter.items())
-        writer.writerows([])
-        writer.writerow([])
-        writer.writerow(['Domains:', ' '])
-        writer.writerows(domains_counter.items())
-    # Print success message:
-    print(f"Statistics written to {output_file}")
+                content = decode_1d(chunk[:, COLS['content']])
+                content = [c.decode('utf-8').split(' ')[:10] for c in chunk[:, COLS['content']]]
+                content = [' '.join(c) for c in content]
+                content_counter.update(content)
+                domain_counter.update(chunk[:, COLS['domain']])
+                type_counter.update(chunk[:, COLS['type']])
+    domain_counter = decode_dict(domain_counter)
+    type_counter = decode_dict(type_counter)
+    # Add statistics to dataframes:
+    total_rows_df = pd.DataFrame([['Number of rows', total_rows]], columns=['Statistic', 'Count'])
+    total_cols_df = pd.DataFrame([['Number of cols', total_cols]], columns=['Statistic', 'Count'])
+    type_df = pd.DataFrame(list(type_counter.items()), columns = ['Types', 'Count']).sort_values(by='Count', ascending=False)
+    domain_df = pd.DataFrame(list(domain_counter.items()), columns = ['Domain', 'Count']).sort_values(by='Count', ascending=False)
+    content_df = pd.DataFrame(list(content_counter.items()), columns = ['Content', 'Count']).sort_values(by='Count', ascending=False)
+    print(total_rows_df)
+    print(total_cols_df)
+    print(type_df)
+    print(domain_df)
+    print(content_df)
+    if output_file is not None:
+        total_rows_df.to_csv(output_file, mode='w', index=False, header=True)
+        total_cols_df.to_csv(output_file, mode='a', index=False, header=False)
+        type_df.to_csv(output_file, mode='a', index=False, header=True)
+        domain_df.to_csv(output_file, mode='a', index=False, header=True)
+        print("Statistics added to csv file")
 
      
 def h5_to_csv(h5_filename: str, csv_filename: str):
     with h5py.File(h5_filename, 'r') as read:
         rows = read['data'].shape[0]
         # Save the header row to CSV
-        pd.DataFrame([decode_1d_array(read['data'][0])]).to_csv(csv_filename, mode='w', header=None, index=False)
+        pd.DataFrame([decode_1d(read['data'][0])]).to_csv(csv_filename, mode='w', header=None, index=False)
         # Loop through the rest of the data and save it to CSV
         for i in tqdm(range(1, rows, ROWS_PR_ITERATION),
                       desc='h5 to csv', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
             # Get the data from the HDF5 file
             data = read['data'][i:i+ROWS_PR_ITERATION]
             # Decode the data:
-            data = decode_2d_array(data)
+            data = decode_2d(data)
             # Save the data to CSV:
             pd.DataFrame(data).to_csv(csv_filename, mode='a', header=None, index=False)
 
