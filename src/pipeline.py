@@ -375,6 +375,7 @@ class Join_str_columns(FunctionApplier):
     def function_to_apply(self, row):
         return " ".join([row[col] for col in self.columns]).strip()
 
+#TODO: Change code coppied from Oliver and Daniel
 class Clean_author(FunctionApplier):
     def __init__(self):
         self.regex_oddcharacters = re.compile(r'[^A-Za-z0-9\s]')
@@ -386,6 +387,16 @@ class Clean_author(FunctionApplier):
         author_list = [(re.sub(self.regex_oddcharacters, "", author)) for author in author_list]
         author_list = "".join(author_list)
         return author_list
+
+class Clean_domain(FunctionApplier):
+    def __init__(self):
+        self.regex_oddcharacters = re.compile(r'[^A-Za-z0-9\s]')
+
+    def function_to_apply(self, domain):
+        domain = domain.split(".")[0]
+        domain = domain.lower()
+        domain = re.sub(self.regex_oddcharacters, "", domain)
+        return domain
 
 class Decode_to_str(FunctionApplier):
     def function_to_apply(self, row):
