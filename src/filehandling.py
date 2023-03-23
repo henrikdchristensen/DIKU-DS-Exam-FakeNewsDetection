@@ -9,7 +9,7 @@ from tqdm import tqdm
 from collections import Counter
 
 TQDM_COLOR = 'magenta'
-SAMPLE = True
+SAMPLE = False
 ROWS_PR_ITERATION = 20000
 FILE_SIZE = 10000
 PADDING = 3
@@ -134,7 +134,7 @@ def remove_unwanted_rows(data_filename: str, retained_filename: str, removed_fil
             chunk = data_store['data'][i:i+ROWS_PR_ITERATION]
             decoded = decode_1d(chunk[:, COLS['content']])
             # Remove rows with empty content and incorrect/missing types:
-            mask_content = np.logical_and(chunk[:, COLS['content']] != b'nan', ~np.char.startswith(decoded, 'ERROR'))
+            mask_content = np.logical_and(chunk[:, COLS['content']] != b'nan', ~np.char.startswith(decoded, 'ERROR')) #TODO: remove empty arrays & Remove ERROR pages
             mask_type = np.isin(chunk[:, COLS['type']], TYPES)
             mask = np.logical_and(mask_content, mask_type)
             retained_chunk = chunk[mask]
@@ -218,22 +218,7 @@ def statistics(*h5_filenames: str, output_file: str = None) -> Tuple[pd.DataFram
     return content_start_df, content_end_df
 
 
-def clean_content(old_filename: str, new_filename: str, df_start: pd.DataFrame, df_end: pd.DataFrame):
-    with h5py.File(old_filename, 'r') as read_store, h5py.File(new_filename, 'w') as write_store:
-        # Get the original data and create a new dataset:
-        data = read_store['data']
-        new_data = write_store.create_dataset('data', shape=data.shape, dtype=data.dtype)
-        new_data[0] = data[0]
-        # Copy the data to the new dataset, but remove the words that are in the DataFrame:
-        for i in range(1, data.shape[0]):
-            new_data[i] = data[i]
-            decoded = new_data[i, COLS['content']].decode('utf-8')
-            for w in df_start['Content start']:
-                if decoded.startswith(w):
-                    new_data[i, COLS['content']] = decoded[len(w):]
-            for w in df_end['Content end']:
-                if decoded.endswith(w):
-                    new_data[i, COLS['content']] = decoded[:-len(w)]
+
 
 
 def h5_to_csv(h5_filename: str, csv_filename: str):
@@ -271,18 +256,18 @@ def shuffle_h5(old_filename: str, new_filename: str):
 
 def run(sample: bool):
     path = "../datasets/sample/" if sample else "../datasets/large/"
-    csv_to_h5(csv_filename=path+"raw.csv", h5_filename=path+"raw.h5")
+    #csv_to_h5(csv_filename=path+"raw.csv", h5_filename=path+"raw.h5")#TODO
     # Copy the raw file to a new file:
     remove_file(path+"raw_copy.h5")
+    print("Copying raw file to raw_copy file")
     shutil.copyfile(path+"raw.h5", path+"raw_copy.h5")
-    
+    # Get the statistics:
     statistics(path+"raw_copy.h5", output_file=path+"statistics.csv")
-    
+    # Remove the unwanted rows:
     remove_unwanted_rows(data_filename=path+"raw_copy.h5", retained_filename=path+"retained.h5", removed_filename=path+"removed.h5")
-    
+    # Copy the retained file to a temp file:
     remove_file(path+"retained_tmp.h5")
     shutil.copyfile(path+"retained.h5", path+"retained_tmp.h5")
-    
     # Clean the data:
     clean_cnt = 0
     while clean_cnt < CLEAN_COUNT:
@@ -296,12 +281,13 @@ def run(sample: bool):
         # Remove the old file and rename the new file so it can be used again:
         remove_file(path+"retained_tmp.h5")
         os.rename(path+"retained_tmp_cleaned.h5", path+"retained_tmp.h5")
-    
+    # Remove the old file and rename the new file so it can be used again:
     remove_file(path+"retained_cleaned.h5")
     os.rename(path+"retained_tmp.h5", path+"retained_cleaned.h5")
     statistics(path+"retained_cleaned.h5", output_file=path+"statistics_cleaned.csv")
-    
+    # Shuffle the data:
     shuffle_h5(old_filename=path+"retained_cleaned.h5", new_filename=path+"retained_shuffled.h5")
+    # Convert h5 files to csv files:
     h5_to_csv(h5_filename=path+"retained.h5", csv_filename=path+"retained.csv")
     h5_to_csv(h5_filename=path+"retained_shuffled.h5", csv_filename=path+"retained_shuffled.csv")
     h5_to_csv(h5_filename=path+"removed.h5", csv_filename=path+"removed.csv")
