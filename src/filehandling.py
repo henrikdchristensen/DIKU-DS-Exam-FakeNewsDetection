@@ -31,6 +31,7 @@ COLS = {
     'summary': 14
 }
 WORDS_CONTENT = 5
+CLEAN_COUNT = 10
 TYPES = [b'fake', b'conspiracy', b'junksci', b'hate', b'unreliable', b'bias', 
          b'satire', b'state', b'reliable', b'clickbait', b'political']
 
@@ -265,10 +266,16 @@ def shuffle_h5(old_filename: str, new_filename: str):
 def run(sample: bool):
     path = "../datasets/sample/" if sample else "../datasets/large/"
     csv_to_h5(csv_filename=path+"raw.csv", h5_filename=path+"raw.h5")
+    
     remove_file(path+"raw_copy.h5")
     shutil.copyfile(path+"raw.h5", path+"raw_copy.h5")
-    while True:
-        df_start, df_end = statistics(path+"raw_copy.h5", output_file=path+"statistics_cleaned.csv")
+    
+    statistics(path+"raw_copy.h5", output_file=path+"statistics_cleaned.csv")
+    
+    cnt = 0
+    while cnt<CLEAN_COUNT:
+        cnt += 1
+        df_start, df_end = statistics(path+"raw_copy.h5")
         if df_start.iloc[0,0] == "" and df_end.iloc[0,0] == "":
             break
         clean_content(old_filename=path+"raw_copy.h5", new_filename=path+"raw_cleaned.h5", df_start=df_start, df_end=df_end)
@@ -279,7 +286,6 @@ def run(sample: bool):
     h5_to_csv(h5_filename=path+"retained.h5", csv_filename=path+"retained.csv")
     h5_to_csv(h5_filename=path+"retained_shuffled.h5", csv_filename=path+"retained_shuffled.csv")
     h5_to_csv(h5_filename=path+"removed.h5", csv_filename=path+"removed.csv")
-
 
 if __name__ == '__main__':
     run(sample=SAMPLE)
