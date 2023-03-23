@@ -206,8 +206,14 @@ def statistics(*h5_filenames: str, output_file: str = None) -> Tuple[pd.DataFram
         total_cols_df.to_csv(output_file, mode='a', index=False, header=False)
         type_df.to_csv(output_file, mode='a', index=False, header=True)
         domain_df.to_csv(output_file, mode='a', index=False, header=True)
-        content_start_df.to_csv(output_file, mode='a', index=False, header=True)
-        content_end_df.to_csv(output_file, mode='a', index=False, header=True)
+        if content_start_df.iloc[0,0] != "":
+            content_start_df.to_csv(output_file, mode='a', index=False, header=True)
+        else:
+            pd.DataFrame([['NONE', 'NONE']], columns=['Content start', 'Count']).to_csv(output_file, mode='a', index=False, header=True)
+        if content_end_df.iloc[0,0] != "":
+            content_end_df.to_csv(output_file, mode='a', index=False, header=True)
+        else:
+            pd.DataFrame([['NONE', 'NONE']], columns=['Content end', 'Count']).to_csv(output_file, mode='a', index=False, header=True)
         print("Statistics added to csv file")
     return content_start_df, content_end_df
 
@@ -266,30 +272,36 @@ def shuffle_h5(old_filename: str, new_filename: str):
 def run(sample: bool):
     path = "../datasets/sample/" if sample else "../datasets/large/"
     csv_to_h5(csv_filename=path+"raw.csv", h5_filename=path+"raw.h5")
-    
+    # Copy the raw file to a new file:
     remove_file(path+"raw_copy.h5")
     shutil.copyfile(path+"raw.h5", path+"raw_copy.h5")
     
-    statistics(path+"raw_copy.h5", output_file=path+"statistics_cleaned.csv")
+    statistics(path+"raw_copy.h5", output_file=path+"statistics.csv")
     
     remove_unwanted_rows(data_filename=path+"raw_copy.h5", retained_filename=path+"retained.h5", removed_filename=path+"removed.h5")
+    
+    remove_file(path+"retained_tmp.h5")
+    shutil.copyfile(path+"retained.h5", path+"retained_tmp.h5")
     
     # Clean the data:
     clean_cnt = 0
     while clean_cnt < CLEAN_COUNT:
         clean_cnt += 1
         # Get the statistics:
-        df_start, df_end = statistics(path+"retained_copy.h5")
+        df_start, df_end = statistics(path+"retained_tmp.h5")
         # If the dataframes are empty, break the loop:
         if df_start.iloc[0,0] == "" and df_end.iloc[0,0] == "":
             break
-        clean_content(old_filename=path+"retained_copy.h5", new_filename=path+"retained_cleaned.h5", df_start=df_start, df_end=df_end)
+        clean_content(old_filename=path+"retained_tmp.h5", new_filename=path+"retained_tmp_cleaned.h5", df_start=df_start, df_end=df_end)
         # Remove the old file and rename the new file so it can be used again:
-        remove_file(path+"retained_copy.h5")
-        os.rename(path+"retained_cleaned.h5", path+"retained_copy.h5")
+        remove_file(path+"retained_tmp.h5")
+        os.rename(path+"retained_tmp_cleaned.h5", path+"retained_tmp.h5")
     
+    remove_file(path+"retained_cleaned.h5")
+    os.rename(path+"retained_tmp.h5", path+"retained_cleaned.h5")
+    statistics(path+"retained_cleaned.h5", output_file=path+"statistics_cleaned.csv")
     
-    shuffle_h5(old_filename=path+"retained.h5", new_filename=path+"retained_shuffled.h5")
+    shuffle_h5(old_filename=path+"retained_cleaned.h5", new_filename=path+"retained_shuffled.h5")
     h5_to_csv(h5_filename=path+"retained.h5", csv_filename=path+"retained.csv")
     h5_to_csv(h5_filename=path+"retained_shuffled.h5", csv_filename=path+"retained_shuffled.csv")
     h5_to_csv(h5_filename=path+"removed.h5", csv_filename=path+"removed.csv")
