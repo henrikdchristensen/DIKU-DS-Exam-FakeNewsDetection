@@ -369,6 +369,24 @@ class Clean_data(FunctionApplier):
         return cell
 
 
+class Join_str_columns(FunctionApplier):
+    def __init__(self, columns):
+        self.columns = columns
+    def function_to_apply(self, row):
+        return " ".join([row[col] for col in self.columns]).strip()
+
+class Clean_author(FunctionApplier):
+    def __init__(self):
+        self.regex_oddcharacters = re.compile(r'[^A-Za-z0-9\s]')
+
+    def function_to_apply(self, authors):
+        author_list = authors.split(",") if type(authors) is str else []
+        author_list = [author.strip() for author in author_list]
+        author_list = [author.lower() for author in author_list]
+        author_list = [(re.sub(self.regex_oddcharacters, "", author)) for author in author_list]
+        author_list = "".join(author_list)
+        return author_list
+
 class Decode_to_str(FunctionApplier):
     def function_to_apply(self, row):
         return row.decode("utf-8")
