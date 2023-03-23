@@ -355,19 +355,20 @@ class Clean_data(FunctionApplier):
         # Create a list of patterns to remove.
         # Compile the patterns to speed up the process
         self.patterns = {
-            re.compile(r'[<>]'): '',
-            re.compile(r'((https?:\/\/)?(?:www\.)?[a-zA-Z0-9-_\+=.:~@#%]+\.[a-zA-Z0-9()]{1,6}\b(?:[a-zA-Z0-9-_.:\\/@#$%&()=+~?]*))'): ' <URL> ',
-            re.compile(r'(https?:\/\/)?w{0,3}\.?[a-z]+\.[a-z]\w*[\w\/-]*'): ' <URL> ',
-            re.compile(r'(\d{1,2}([\:\-/\\]|(,\s)?)){2}\d{2,4}|\d{2,4}(([\:\-/\\]|(,\s)?)\d{1,2}){2}'): ' <DATE> ',
-            re.compile(r'([Jj]an(uary)?|[Ff]eb(ruary)?|[Mm]ar(ch)?|[Aa]pr(il)?|[Mm]ay|[Jj]un(e)?|[Jj]ul(y)?|[Aa]ug(ust)?|[Ss]ep(tember)?|[Oo]ct(ober)?|[Nn]ov(ember)?|[Dd]ec(ember)?)([\:\-/\\]|(,\s)?)\d{1,2}([\:\-/\\]|(,\s)?)\d{1,4}'): ' <DATE> ',
-            re.compile(r'([\w.\-]+@(?:[\w-]+\.)+[\w-]{2,4})|@[\w\d]+'): ' <EMAIL> ',
-            re.compile(r'(\r\n|\n|\r)+'): ' ',
-            re.compile(r'(\t+)'): ' ',
-            re.compile(r'(\?)'): ' ? ',
-            re.compile(r'(\!)'): ' ! ',
-            re.compile(r'[^A-Za-z0-9\s<>\?\!]'): '',
-            re.compile(r'(\d+)(th)?'): ' <NUM> ',
-            re.compile(r'( +)'): ' ',
+            re.compile(r'(<.*?>)'): '', # remove html tags
+            re.compile(r'[<>]'): '', # TODO: Is this necessary with the previous pattern?
+            re.compile(r'((https?:\/\/)?(?:www\.)?[a-zA-Z0-9-_\+=.:~@#%]+\.[a-zA-Z0-9()]{1,6}\b(?:[a-zA-Z0-9-_.:\\/@#$%&()=+~?]*))'): ' <URL> ', # replace urls with <URL>
+            re.compile(r'(https?:\/\/)?w{0,3}\.?[a-z]+\.[a-z]\w*[\w\/-]*'): ' <URL> ', # replace urls with <URL>
+            re.compile(r'(\d{1,2}([\:\-/\\]|(,\s)?)){2}\d{2,4}|\d{2,4}(([\:\-/\\]|(,\s)?)\d{1,2}){2}'): ' <DATE> ', # replace dates with <DATE>
+            re.compile(r'([Jj]an(uary)?|[Ff]eb(ruary)?|[Mm]ar(ch)?|[Aa]pr(il)?|[Mm]ay|[Jj]un(e)?|[Jj]ul(y)?|[Aa]ug(ust)?|[Ss]ep(tember)?|[Oo]ct(ober)?|[Nn]ov(ember)?|[Dd]ec(ember)?)([\:\-/\\]|(,\s)?)\d{1,2}([\:\-/\\]|(,\s)?)\d{1,4}'): ' <DATE> ', # replace dates with <DATE>
+            re.compile(r'([\w.\-]+@(?:[\w-]+\.)+[\w-]{2,4})|@[\w\d]+'): ' <EMAIL> ', # replace email addresses with <EMAIL>
+            re.compile(r'(\r\n|\n|\r)+'): ' ', # remove new lines
+            re.compile(r'(\t+)'): ' ', # remove tabs
+            re.compile(r'(\?)'): ' ? ', # add space before and after question mark
+            re.compile(r'(\!)'): ' ! ', # add space before and after exclamation mark
+            re.compile(r'[^A-Za-z0-9\s<>\?\!]'): '', # remove all special characters, including non-ascii characters
+            re.compile(r'(\d+)(th)?'): ' <NUM> ', # replace numbers with <NUM>
+            re.compile(r'( +)'): ' ', # remove multiple spaces
         }
 
     def function_to_apply(self, cell):
