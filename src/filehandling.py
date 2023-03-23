@@ -73,8 +73,8 @@ def csv_split(filename: str, dirname: str):
 
 
 def create_empty_string_array(cols: int) -> np.ndarray:
-    arr = np.zeros((1, cols), dtype=object)
-    arr[0] = ["" for x in range(cols)]
+    arr = np.empty((1, cols), dtype=object)
+    arr.fill('')
     return arr
 
 
@@ -144,7 +144,7 @@ def statistics(*h5_filenames: str, output_file: str = None):
     # Sort dataframes by count and reset index:
     type_df = pd.DataFrame(list(type_counter.items()), columns = ['Types', 'Count']).sort_values(by='Count', ascending=False).reset_index(drop=True)
     domain_df = pd.DataFrame(list(domain_counter.items()), columns = ['Domain', 'Count']).sort_values(by='Count', ascending=False).reset_index(drop=True)
-    # Print and save to file:
+    # Print statistics to console:
     print(total_rows_df)
     print(total_cols_df)
     print(type_df)
