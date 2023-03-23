@@ -1,5 +1,5 @@
 import preprocessing as pp
-import pipeline
+import pipeline as pl
 from pipeline import FunctionApplier, apply_pipeline, ist_pipeline
 import matplotlib.pyplot as plt
 from collections import Counter
@@ -9,12 +9,20 @@ from scipy.stats import norm
 from matplotlib_venn import venn2
 import pandas as pd
 from multiprocessing import Process
+from sklearn.cluster import KMeans
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+# import StandardScaler
+from sklearn.preprocessing import StandardScaler
+
+# import count vectorizer
+from sklearn.feature_extraction.text import CountVectorizer
 
 
 
-RAW_DATA = '../datasets/sample/1mio-raw.csv'
+RAW_DATA = '../datasets/sample/dataset.csv'
 CLEANED_DATA = '../datasets/sample/news_sample_cleaned.csv'
-CLEANED_DATA_NUM = '../datasets/sample/news_sample_cleaned_num_big.csv'
+CLEANED_DATA_NUM = '../datasets/sample/news_sample_cleaned_num_100k.csv'
 
 
 class Word_frequency(FunctionApplier):
@@ -23,15 +31,33 @@ class Word_frequency(FunctionApplier):
         self.words = []
         self.frequency = Counter()
         self.sorted_frequency = []
+        self.totalRows = 0
 
     def function_to_apply(self, content):
         # Update/add list of word
-        content: list = literal_eval(  str(content) )
+        # print(type(content))
+        content: list = literal_eval( content )
         # content = [x for x in content if x != "<number>"]
+        # print(content)
         self.frequency.update(content)
         # Return the sorted dictionary based on the frequency of each word
         self.sorted_frequency = sorted(self.frequency.items(), key=lambda x: x[1], reverse=True)
         # print("sorted_frequency", self.sorted_frequency)
+        self.totalRows += 1
+        return content
+
+    def function_to_apply_df(self, content):
+        # Update/add list of word
+        # content: list = list[content]
+        # content = [x for x in content if x != "<number>"]
+        print(content)
+        content = content
+        print(content)
+        self.frequency.update(content)
+        # Return the sorted dictionary based on the frequency of each word
+        self.sorted_frequency = sorted(self.frequency.items(), key=lambda x: x[1], reverse=True)
+        # print("sorted_frequency", self.sorted_frequency)
+        self.totalRows += 1
         return content
     
     def plot(self):
@@ -72,8 +98,9 @@ class Word_frequency(FunctionApplier):
 
         # set the text of the disjoint words
         venn2_circles.get_label_by_id('01').set_text('\n'.join(list(disjoint_words1)))
+        
         venn2_circles.get_label_by_id('10').set_text('\n'.join(list(disjoint_words2)))
-        # set the text of the intersection int the middle of the venn diagram
+        # set the text of the intersection int the middle of the venn diagram 
         intersection_label.set_fontsize(10)
         # venn2_circles.get_label_by_id('10').set_fontsize(14)
 
@@ -156,22 +183,15 @@ class Count_Items(FunctionApplier):
 
 
 class Contribution(FunctionApplier): 
-    def __init__(self, df: pd.DataFrame):
-        # initialize the data as a pandas dataframe
-        # self.data = pd.DataFrame(columns=['domain', 'type', 'content'])
-        self.data = df
-        # self.data = pd.DataFrame()
-
+    def __init__(self):
+        self.data = []
 
     def function_to_apply(self, content: pd.DataFrame):
-        # self.data.append(pd.DataFrame(content))
-        #self.data.append(content)
-        print(content)
-
+        self.data.append(content.copy())
 
     def contributionPlot2(self):
         
-        threshold = 3
+        threshold = 1
         self.data = pd.DataFrame(self.data)
 
         print("got keys: \n", len(self.data), self.data.iloc[0].keys())
@@ -194,11 +214,16 @@ class Contribution(FunctionApplier):
             percentages.sort_values(type, na_position='first', ascending=False, inplace=True)
 
         # create a stacked horizontal bar chart of the percentages
-        ax = percentages.plot(kind='barh', stacked=True, figsize=(10, 8))
+        ax = percentages.plot(kind='barh', stacked=True, figsize=(10, 8), width=0.6)
         # set the x-axis label to show the percentages
         ax.set_xlabel('Percentage')
         # set the legend to display outside the chart
         ax.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
+
+        # make fontsize smaller of the domain labels
+        ax.set_yticklabels(ax.get_yticklabels(), fontsize=6)
+
+        
         
         title = f'Contribution of Domains to Categories ( ≥ {threshold}%)'
         ax.set_title(title)
@@ -326,6 +351,70 @@ class Article_Type_frequency(FunctionApplier):
         plt.title('Type Frequency Distribution')
         plt.show()
 
+class detectOutliers(FunctionApplier):
+    def __init__(self):
+        self.outliers = []
+        self.outliers_index = []
+        self.outliers_value = []
+
+    def function_to_apply(self, value):
+        # print(value)
+        if value > 0.5:
+            self.outliers.append(value)
+            self.outliers_index.append(self.index)
+            self.outliers_value.append(self.value)
+        return value
+    
+    def getDataFrame(self, csv):
+        df = pd.read_csv(csv, nrows=20000)
+        return df
+
+    
+    def kMeans(self):
+
+        df = self.getDataFrame("cleaned_fake_news.csv")
+
+        
+        # Load cleaned fake news corpus
+        # df = pd.read_csv("cleaned_fake_news.csv")
+
+        # Vectorize the corpus using TF-IDF
+        tfidf_vectorizer = TfidfVectorizer(stop_words='english')
+        tfidf = tfidf_vectorizer.fit_transform(df['text'])
+
+        # Perform K-Means clustering
+        num_clusters = 5
+        kmeans = KMeans(n_clusters=num_clusters, init='k-means++', max_iter=100, n_init=1)
+        kmeans.fit(tfidf)
+
+        # Print the top terms in each cluster
+        print("Top terms per cluster:")
+        order_centroids = kmeans.cluster_centers_.argsort()[:, ::-1]
+        terms = tfidf_vectorizer.get_feature_names()
+        for i in range(num_clusters):
+            print(f"Cluster {i} terms: ", end='')
+            for j in order_centroids[i, :10]:
+                print(f"{terms[j]}, ", end='')
+            print()
+
+        # Visualize the clusters
+        plt.scatter(tfidf[:, 0], tfidf[:, 1], c=kmeans.labels_, cmap='rainbow')
+        plt.show()
+
+        # X = fake_news_df[['type', 'title', 'text']]
+        # X_scaled = StandardScaler().fit_transform(X)
+        # # Initialize the k-means model with the desired number of clusters
+        # kmeans = KMeans(n_clusters=3)
+
+        # # Fit the model to the data
+        # kmeans.fit(X_scaled)
+
+        # # Identify the cluster labels for each data point
+        # labels = kmeans.labels_
+
+        # # Add the cluster labels to the original dataframe
+        # fake_news_df['cluster_label'] = labels
+
 
 def clean():
     ist_pipeline(RAW_DATA)
@@ -341,45 +430,68 @@ def plot_in_processes(plot_funcs):
         process.join()
 
 
-def runStats():
 
 
+def wordFrequency():
 
-    # size = 10000
+    size = 100000
+    blc = pl.Binary_labels()
+    bl = blc.binary_labels
+
+
+    # get all values that are true in the binary labels
+    trueFilterList = [k for k, v in bl.items() if v]
+    print(trueFilterList)
+
+    # get all values that are false in the binary labels
+    falseFilterList = [k for k, v in bl.items() if not v]
+    print(falseFilterList)
+
+    trueFilter = pl.Filter(trueFilterList)
+    falseFilter = pl.Filter(falseFilterList)
     
-    # wf = Word_frequency()
-    # apply_pipeline(
-    #     CLEANED_DATA_NUM, 
-    #     [
-    #         (wf, "content"),
-    #     ],
-    #     batch_size=size,
-    #     get_batch=True,
-    #     type="fake"
-    #     # exclude=["reliable"]
-    # )
-
-    # wf2 = Word_frequency()
-    # apply_pipeline(
-    #     CLEANED_DATA_NUM, 
-    #     [
-    #         (wf2, "content"),
-    #     ],
-    #     batch_size=size,
-    #     get_batch=True,
-    #     type="reliable"
-    # )
-
-    cp = Contribution()
+    wf = Word_frequency()
     apply_pipeline(
         CLEANED_DATA_NUM, 
         [
-            (cp, None),
+            (falseFilter, "type"),
+            (wf, "content"),
         ],
-        batch_size=100,
+        batch_size=size,
+        # get_batch=True,
+        # type="fake"
+        # exclude=["reliable"]
+        # total_rows=20000,
+        total_rows=20000,
+        progress_bar=True
+    )
+
+    wf2 = Word_frequency()
+    apply_pipeline(
+        CLEANED_DATA_NUM, 
+        [
+            (trueFilter, "type"),
+            (wf2, "content"),
+        ],
+        # batch_size=size,
+        total_rows=20000,
+        progress_bar=True
         # get_batch=True,
         # type="reliable"
     )
+
+    return wf, wf2
+    # cp = Contribution()
+    # apply_pipeline(
+    #     CLEANED_DATA_NUM, 
+    #     [
+    #         (cp, None),
+    #     ],
+    #     batch_size=10000,
+    #     progress_bar=True,
+    #     # get_batch=True,
+    #     # type="reliable"
+    # )
 
 
     # print(ss.count)
@@ -392,7 +504,7 @@ def runStats():
 
     # print(cp.data.iloc[0:10])
 
-    cp.contributionPlot2()
+    # cp.contributionPlot2()
     # wf2.plot_fake_real(wf.sorted_frequency, set_labels=("Reliable", "Fake"))
     # wf.plot()
 
@@ -413,8 +525,8 @@ def runStats2():
             (ss, "content"),
             (atf, "type")
         ],
-        batch_size=100,
-        get_batch=True
+        batch_size=10000,
+        # get_batch=True
     )
 
     print(ss.count)
@@ -424,7 +536,7 @@ def runStats2():
     wf.plot()
 
 
-runStats()
+# runStats()
 # clean()
 
 
