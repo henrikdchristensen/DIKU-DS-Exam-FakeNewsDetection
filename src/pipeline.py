@@ -91,7 +91,7 @@ class TF_IDF(FunctionApplier):
                 vector[i] = (np.log(vector[i]) + 1) * self.idf_vec[set][i]
         return vector
 
-def get_dataframe_with_distribution(file, total_size, splits, balanced, chunksize=ROWS_PR_ITERATION, out_file=None, get_frame=True, classes = labels):
+def get_dataframe_with_distribution(file, total_size, splits, balanced, chunksize=ROWS_PR_ITERATION, out_file=None, get_frame=True, classes = labels, delete=True):
     print("running")
     # empty dataframe
     data = None
@@ -136,7 +136,8 @@ def get_dataframe_with_distribution(file, total_size, splits, balanced, chunksiz
     with pd.read_csv(file, chunksize=chunksize, encoding='utf-8') as reader:
         for chunk in reader:
             chunk["set"] = chunk["type"].progress_apply(apply_to_rows)
-            chunk = chunk[chunk["set"] != DELETE_TOKEN]
+            if delete:
+                chunk = chunk[chunk["set"] != DELETE_TOKEN]
 
             if out_file is not None:
                 if entries_read == 0:
@@ -171,6 +172,8 @@ class Read_String_Lst(FunctionApplier):
     
 class Combine_Content(FunctionApplier):
     def function_to_apply(self, content_lst):
+        if content_lst == []: # to avoid nan
+            return " "
         return " ".join(content_lst)
 
 class Create_word_vector(FunctionApplier):
@@ -373,7 +376,11 @@ class Join_str_columns(FunctionApplier):
     def __init__(self, columns):
         self.columns = columns
     def function_to_apply(self, row):
-        return " ".join([row[col] for col in self.columns]).strip()
+        try:
+            return " ".join([row[col] for col in self.columns if type(row[col]) is str]).strip()
+        except:
+            print([row[col] for col in self.columns])
+            return ""
 
 #TODO: Change code coppied from Oliver and Daniel
 class Clean_author(FunctionApplier):
@@ -381,11 +388,13 @@ class Clean_author(FunctionApplier):
         self.regex_oddcharacters = re.compile(r'[^A-Za-z0-9\s]')
 
     def function_to_apply(self, authors):
-        author_list = authors.split(",") if type(authors) is str else []
+        author_list = authors.strip().split(",") if type(authors) is str else []
         author_list = [author.strip() for author in author_list]
         author_list = [author.lower() for author in author_list]
         author_list = [(re.sub(self.regex_oddcharacters, "", author)) for author in author_list]
         author_list = "".join(author_list)
+        if author_list == "": # to avoid nan
+            return " "
         return author_list
 
 class Clean_domain(FunctionApplier):
@@ -545,12 +554,12 @@ def apply_pipeline_pd_tqdm(df, function_cols):
     # Iterate through each row in the DataFrame and apply the functions
     return applier(function_cols, df.copy(), progress_bar=True)
 
-def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False, progress_bar=False):
+def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False, progress_bar=False, nrows=None):
     i = 0
     start_time = time()
 
     # Use Pandas chunksize and iterator to read the input file in batches
-    with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8') as reader:
+    with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8', nrows=nrows) as reader:
         for chunk in reader:
             if function_cols is None:
                 return chunk
