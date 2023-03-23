@@ -30,14 +30,17 @@ COLS = {
     'tags': 13,
     'summary': 14
 }
-WORDS_CONTENT = 5
-CLEAN_COUNT = 10
-TYPES = [b'fake', b'conspiracy', b'junksci', b'hate', b'unreliable', b'bias', 
-         b'satire', b'state', b'reliable', b'clickbait', b'political']
+
 
 def remove_file(filename: str):
     if os.path.exists(filename):
         os.remove(filename)
+
+
+def copy_file(old_filename: str, new_filename: str):
+    print("Copying file...")
+    remove_file(new_filename)
+    shutil.copyfile(old_filename, new_filename)
 
 
 def create_directory(dirname: str):
@@ -118,46 +121,11 @@ def csv_to_h5(csv_filename: str, h5_filename: str):
             if len(chunk) > 0:
                 data_set[-len(chunk):] = chunk.astype(str)
 
-    
-def remove_unwanted_rows(data_filename: str, retained_filename: str, removed_filename: str):
-    with h5py.File(data_filename, 'r') as data_store, h5py.File(retained_filename, 'w') as retained_store, h5py.File(removed_filename, 'w') as removed_store:
-        # Create dataset:
-        header = data_store['data'][0]
-        rows, cols = data_store['data'].shape
-        retained_set = retained_store.create_dataset('data', data=create_empty_string_array(cols), maxshape=(None, cols), dtype=h5py.string_dtype(encoding='utf-8'))
-        removed_set = removed_store.create_dataset('data', data=create_empty_string_array(cols), maxshape=(None, cols), dtype=h5py.string_dtype(encoding='utf-8'))
-        retained_set[0] = header
-        removed_set[0] = header
-        # Initialize counters:
-        retained_rows = faulty_content_rows = faulty_type_rows = 0
-        for i in tqdm(range(1, rows, ROWS_PR_ITERATION), desc='remove unwanted rows', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
-            chunk = data_store['data'][i:i+ROWS_PR_ITERATION]
-            decoded = decode_1d(chunk[:, COLS['content']])
-            # Remove rows with empty content and incorrect/missing types:
-            mask_content = np.logical_and(chunk[:, COLS['content']] != b'nan', ~np.char.startswith(decoded, 'ERROR')) #TODO: remove empty arrays & Remove ERROR pages
-            mask_type = np.isin(chunk[:, COLS['type']], TYPES)
-            mask = np.logical_and(mask_content, mask_type)
-            retained_chunk = chunk[mask]
-            removed_chunk = chunk[~mask]
-            # Update counters:
-            retained_rows += np.sum(mask)
-            faulty_content_rows += np.sum(~mask_content)
-            faulty_type_rows += np.sum(~mask_type)
-            if retained_chunk.shape[0] > 0:
-                retained_set.resize(retained_set.shape[0] + retained_chunk.shape[0], axis=0)
-                retained_set[-retained_chunk.shape[0]:] = retained_chunk
-            if removed_chunk.shape[0] > 0:
-                removed_set.resize(removed_set.shape[0] + removed_chunk.shape[0], axis=0)
-                removed_set[-removed_chunk.shape[0]:] = removed_chunk    
-    print(f"Original rows: {rows-1}, retained rows: {retained_rows}, rows with faulty content: {faulty_content_rows}, rows with faulty type: {faulty_type_rows}")
 
-
-def statistics(*h5_filenames: str, output_file: str = None) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def statistics(*h5_filenames: str, output_file: str = None):
     # Initialize counters:
     total_rows = 0
     total_cols = 0
-    content_start_counter = Counter()
-    content_end_counter = Counter()
     domain_counter = Counter()
     type_counter = Counter()
     # Iterate over all files:
@@ -169,12 +137,6 @@ def statistics(*h5_filenames: str, output_file: str = None) -> Tuple[pd.DataFram
             for i in tqdm(range(1, rows, ROWS_PR_ITERATION), desc='creating statistics', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
                 chunk = data_store['data'][i:i+ROWS_PR_ITERATION]
                 # Update counters:
-                content_start = [c.decode('utf-8').split(' ')[:WORDS_CONTENT] for c in chunk[:, COLS['content']]]
-                content_start = [' '.join(c) for c in content_start]
-                content_start_counter.update(content_start)
-                content_end = [c.decode('utf-8').split(' ')[:WORDS_CONTENT] for c in chunk[:, COLS['content']]]
-                content_end = [' '.join(c) for c in content_end]
-                content_end_counter.update(content_end)
                 domain_counter.update(chunk[:, COLS['domain']])
                 type_counter.update(chunk[:, COLS['type']])
     domain_counter = decode_dict(domain_counter)
@@ -184,41 +146,16 @@ def statistics(*h5_filenames: str, output_file: str = None) -> Tuple[pd.DataFram
     total_cols_df = pd.DataFrame([['Number of cols', total_cols]], columns=['Statistic', 'Count'])
     type_df = pd.DataFrame(list(type_counter.items()), columns = ['Types', 'Count']).sort_values(by='Count', ascending=False).reset_index(drop=True)
     domain_df = pd.DataFrame(list(domain_counter.items()), columns = ['Domain', 'Count']).sort_values(by='Count', ascending=False).reset_index(drop=True)
-    content_start_df = pd.DataFrame(list(content_start_counter.items()), columns = ['Content start', 'Count'])
-    content_end_df = pd.DataFrame(list(content_end_counter.items()), columns = ['Content end', 'Count'])
-    # Filter DataFrame to include only counts greater than 10:
-    content_start_df = content_start_df[content_start_df['Count'] > 5]
-    content_end_df = content_end_df[content_end_df['Count'] > 5]
-    # Sort DataFrame by count in descending order:
-    content_start_df = content_start_df.sort_values(by='Count', ascending=False)
-    content_end_df = content_end_df.sort_values(by='Count', ascending=False)
-    # Take the first 50 rows and drop the rest:
-    content_start_df = content_start_df.head(50).reset_index(drop=True)
-    content_end_df = content_end_df.head(50).reset_index(drop=True)
     print(total_rows_df)
     print(total_cols_df)
     print(type_df)
     print(domain_df)
-    print(content_start_df)
-    print(content_end_df)
     if output_file is not None:
         total_rows_df.to_csv(output_file, mode='w', index=False, header=True)
         total_cols_df.to_csv(output_file, mode='a', index=False, header=False)
         type_df.to_csv(output_file, mode='a', index=False, header=True)
         domain_df.to_csv(output_file, mode='a', index=False, header=True)
-        if content_start_df.iloc[0,0] != "":
-            content_start_df.to_csv(output_file, mode='a', index=False, header=True)
-        else:
-            pd.DataFrame([['NONE', 'NONE']], columns=['Content start', 'Count']).to_csv(output_file, mode='a', index=False, header=True)
-        if content_end_df.iloc[0,0] != "":
-            content_end_df.to_csv(output_file, mode='a', index=False, header=True)
-        else:
-            pd.DataFrame([['NONE', 'NONE']], columns=['Content end', 'Count']).to_csv(output_file, mode='a', index=False, header=True)
         print("Statistics added to csv file")
-    return content_start_df, content_end_df
-
-
-
 
 
 def h5_to_csv(h5_filename: str, csv_filename: str):
@@ -258,39 +195,13 @@ def run(sample: bool):
     path = "../datasets/sample/" if sample else "../datasets/large/"
     #csv_to_h5(csv_filename=path+"raw.csv", h5_filename=path+"raw.h5")#TODO
     # Copy the raw file to a new file:
-    remove_file(path+"raw_copy.h5")
-    print("Copying raw file to raw_copy file")
-    shutil.copyfile(path+"raw.h5", path+"raw_copy.h5")
+    copy_file(old_filename=path+"raw.h5", new_filename=path+"raw_copy.h5")
     # Get the statistics:
     statistics(path+"raw_copy.h5", output_file=path+"statistics.csv")
-    # Remove the unwanted rows:
-    remove_unwanted_rows(data_filename=path+"raw_copy.h5", retained_filename=path+"retained.h5", removed_filename=path+"removed.h5")
-    # Copy the retained file to a temp file:
-    remove_file(path+"retained_tmp.h5")
-    shutil.copyfile(path+"retained.h5", path+"retained_tmp.h5")
-    # Clean the data:
-    clean_cnt = 0
-    while clean_cnt < CLEAN_COUNT:
-        clean_cnt += 1
-        # Get the statistics:
-        df_start, df_end = statistics(path+"retained_tmp.h5")
-        # If the dataframes are empty, break the loop:
-        if df_start.iloc[0,0] == "" and df_end.iloc[0,0] == "":
-            break
-        clean_content(old_filename=path+"retained_tmp.h5", new_filename=path+"retained_tmp_cleaned.h5", df_start=df_start, df_end=df_end)
-        # Remove the old file and rename the new file so it can be used again:
-        remove_file(path+"retained_tmp.h5")
-        os.rename(path+"retained_tmp_cleaned.h5", path+"retained_tmp.h5")
-    # Remove the old file and rename the new file so it can be used again:
-    remove_file(path+"retained_cleaned.h5")
-    os.rename(path+"retained_tmp.h5", path+"retained_cleaned.h5")
-    statistics(path+"retained_cleaned.h5", output_file=path+"statistics_cleaned.csv")
     # Shuffle the data:
-    shuffle_h5(old_filename=path+"retained_cleaned.h5", new_filename=path+"retained_shuffled.h5")
+    shuffle_h5(old_filename=path+"raw_copy.h5", new_filename=path+"shuffled.h5")
     # Convert h5 files to csv files:
-    h5_to_csv(h5_filename=path+"retained.h5", csv_filename=path+"retained.csv")
-    h5_to_csv(h5_filename=path+"retained_shuffled.h5", csv_filename=path+"retained_shuffled.csv")
-    h5_to_csv(h5_filename=path+"removed.h5", csv_filename=path+"removed.csv")
+    h5_to_csv(h5_filename=path+"shuffled.h5", csv_filename=path+"shuffled.csv")
 
 if __name__ == '__main__':
     run(sample=SAMPLE)
