@@ -1,7 +1,6 @@
 import os
 import shutil
 import csv
-from typing import Tuple
 import numpy as np
 import pandas as pd
 import h5py
@@ -9,7 +8,6 @@ from tqdm import tqdm
 from collections import Counter
 
 TQDM_COLOR = 'magenta'
-SAMPLE = True
 ROWS_PR_ITERATION = 20000
 FILE_SIZE = 10000
 PADDING = 3
@@ -191,9 +189,19 @@ def shuffle_h5(old_filename: str, new_filename: str):
             write_set[i] = read['data'][x]
 
 
-def run(sample: bool):
-    path = "../datasets/sample/" if sample else "../datasets/large/"
-    csv_to_h5(csv_filename=path+"raw.csv", h5_filename=path+"raw.h5")#TODO
+def run():        
+    choice = input("Press 's' for sample or 'l' for large dataset: ")
+    if choice == 's':
+        print("You choose sample dataset")
+        path = "../datasets/sample/"
+    elif choice == 'l':
+        path = "../datasets/large/"
+    else:
+        print("Invalid choice - exiting")
+        return
+    choice = input("Press 'y' for convert csv to h5 or Enter to continue: ")
+    if choice == 'y':
+        csv_to_h5(csv_filename=path+"raw.csv", h5_filename=path+"raw.h5")
     # Copy the raw file to a new file:
     copy_file(old_filename=path+"raw.h5", new_filename=path+"raw_copy.h5")
     # Get the statistics:
@@ -205,4 +213,4 @@ def run(sample: bool):
 
 
 if __name__ == '__main__':
-    run(sample=SAMPLE)
+    run()
