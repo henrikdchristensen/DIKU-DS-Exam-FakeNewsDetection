@@ -9,7 +9,7 @@ from tqdm import tqdm
 from collections import Counter
 
 TQDM_COLOR = 'magenta'
-SAMPLE = False
+SAMPLE = True
 ROWS_PR_ITERATION = 20000
 FILE_SIZE = 10000
 PADDING = 3
@@ -149,7 +149,7 @@ def statistics(*h5_filenames: str, output_file: str = None):
     print(total_rows_df)
     print(total_cols_df)
     print(type_df)
-    print(domain_df)
+    print(domain_df[:10]) # Only print the top 10 domains
     if output_file is not None:
         total_rows_df.to_csv(output_file, mode='w', index=False, header=True)
         total_cols_df.to_csv(output_file, mode='a', index=False, header=False)
@@ -193,7 +193,7 @@ def shuffle_h5(old_filename: str, new_filename: str):
 
 def run(sample: bool):
     path = "../datasets/sample/" if sample else "../datasets/large/"
-    #csv_to_h5(csv_filename=path+"raw.csv", h5_filename=path+"raw.h5")#TODO
+    csv_to_h5(csv_filename=path+"raw.csv", h5_filename=path+"raw.h5")#TODO
     # Copy the raw file to a new file:
     copy_file(old_filename=path+"raw.h5", new_filename=path+"raw_copy.h5")
     # Get the statistics:
@@ -202,6 +202,7 @@ def run(sample: bool):
     shuffle_h5(old_filename=path+"raw_copy.h5", new_filename=path+"shuffled.h5")
     # Convert h5 files to csv files:
     h5_to_csv(h5_filename=path+"shuffled.h5", csv_filename=path+"shuffled.csv")
+
 
 if __name__ == '__main__':
     run(sample=SAMPLE)
