@@ -91,7 +91,7 @@ class TF_IDF(FunctionApplier):
                 vector[i] = (np.log(vector[i]) + 1) * self.idf_vec[set][i]
         return vector
 
-def get_dataframe_with_distribution(file, total_size, splits, balanced, chunksize=ROWS_PR_ITERATION, out_file=None, get_frame=True):
+def get_dataframe_with_distribution(file, total_size, splits, balanced, chunksize=ROWS_PR_ITERATION, out_file=None, get_frame=True, classes = labels):
     print("running")
     # empty dataframe
     data = None
@@ -102,14 +102,14 @@ def get_dataframe_with_distribution(file, total_size, splits, balanced, chunksiz
             sets.append([b, int(split * total_size)])
         else:
             split_dict = {}
-            label_num = int((split * total_size) / len(labels))
-            for label in labels:
+            label_num = int((split * total_size) / len(classes))
+            for label in classes:
                 split_dict[label] = label_num
             sets.append([b, split_dict])
 
     def apply_to_rows(label):
         nonlocal curr_index
-        if curr_index >= len(sets) or label not in labels:
+        if curr_index >= len(sets) or label not in classes:
             return DELETE_TOKEN
         
         balanced, curr_set = sets[curr_index]
@@ -162,6 +162,16 @@ def get_dataframe_with_distribution(file, total_size, splits, balanced, chunksiz
                 return
     print("ERROR: not enough data to create sets")
     return data
+
+class Read_String_Lst(FunctionApplier):
+    def function_to_apply(self, words):
+        if type(words) is not list:
+            words = literal_eval(words)
+        return words
+    
+class Combine_Content(FunctionApplier):
+    def function_to_apply(self, content_lst):
+        return " ".join(content_lst)
 
 class Create_word_vector(FunctionApplier):
     def __init__(self, unique_words):
