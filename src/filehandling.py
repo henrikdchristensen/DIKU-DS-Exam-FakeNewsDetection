@@ -122,10 +122,8 @@ def csv_to_h5(csv_filename: str, h5_filename: str):
 
 def statistics(*h5_filenames: str, output_file: str = None):
     # Initialize counters:
-    total_rows = 0
-    total_cols = 0
-    domain_counter = Counter()
-    type_counter = Counter()
+    total_rows = total_cols = 0
+    domain_counter = type_counter = Counter()
     # Iterate over all files:
     for h5_filename in h5_filenames:
         with h5py.File(h5_filename, 'r') as data_store:
@@ -137,17 +135,21 @@ def statistics(*h5_filenames: str, output_file: str = None):
                 # Update counters:
                 domain_counter.update(chunk[:, COLS['domain']])
                 type_counter.update(chunk[:, COLS['type']])
+    # Decode counters:
     domain_counter = decode_dict(domain_counter)
     type_counter = decode_dict(type_counter)
     # Add statistics to dataframes:
     total_rows_df = pd.DataFrame([['Number of rows', total_rows]], columns=['Statistic', 'Count'])
     total_cols_df = pd.DataFrame([['Number of cols', total_cols]], columns=['Statistic', 'Count'])
+    # Sort dataframes by count and reset index:
     type_df = pd.DataFrame(list(type_counter.items()), columns = ['Types', 'Count']).sort_values(by='Count', ascending=False).reset_index(drop=True)
     domain_df = pd.DataFrame(list(domain_counter.items()), columns = ['Domain', 'Count']).sort_values(by='Count', ascending=False).reset_index(drop=True)
+    # Print and save to file:
     print(total_rows_df)
     print(total_cols_df)
     print(type_df)
     print(domain_df[:10]) # Only print the top 10 domains
+    # Save to file if output_file is specified:
     if output_file is not None:
         total_rows_df.to_csv(output_file, mode='w', index=False, header=True)
         total_cols_df.to_csv(output_file, mode='a', index=False, header=False)

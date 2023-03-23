@@ -60,7 +60,5 @@ def remove_unwanted_rows(df: pd.DataFrame, types_to_keep: list) -> pd.DataFrame:
     return df
     
 df = get_pandas_df("../datasets/large/raw.csv", size=10000)
-#print(df.iloc[23])
 remove_similar_content_in_start_and_end(df)
-#print(df.iloc[23])
 df = remove_unwanted_rows(df, TYPES)
