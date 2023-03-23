@@ -272,16 +272,23 @@ def run(sample: bool):
     
     statistics(path+"raw_copy.h5", output_file=path+"statistics_cleaned.csv")
     
-    cnt = 0
-    while cnt<CLEAN_COUNT:
-        cnt += 1
-        df_start, df_end = statistics(path+"raw_copy.h5")
+    remove_unwanted_rows(data_filename=path+"raw_copy.h5", retained_filename=path+"retained.h5", removed_filename=path+"removed.h5")
+    
+    # Clean the data:
+    clean_cnt = 0
+    while clean_cnt < CLEAN_COUNT:
+        clean_cnt += 1
+        # Get the statistics:
+        df_start, df_end = statistics(path+"retained_copy.h5")
+        # If the dataframes are empty, break the loop:
         if df_start.iloc[0,0] == "" and df_end.iloc[0,0] == "":
             break
-        clean_content(old_filename=path+"raw_copy.h5", new_filename=path+"raw_cleaned.h5", df_start=df_start, df_end=df_end)
-        remove_file(path+"raw_copy.h5")
-        os.rename(path+"raw_cleaned.h5", path+"raw_copy.h5")
-    remove_unwanted_rows(data_filename=path+"raw_copy.h5", retained_filename=path+"retained.h5", removed_filename=path+"removed.h5")
+        clean_content(old_filename=path+"retained_copy.h5", new_filename=path+"retained_cleaned.h5", df_start=df_start, df_end=df_end)
+        # Remove the old file and rename the new file so it can be used again:
+        remove_file(path+"retained_copy.h5")
+        os.rename(path+"retained_cleaned.h5", path+"retained_copy.h5")
+    
+    
     shuffle_h5(old_filename=path+"retained.h5", new_filename=path+"retained_shuffled.h5")
     h5_to_csv(h5_filename=path+"retained.h5", csv_filename=path+"retained.csv")
     h5_to_csv(h5_filename=path+"retained_shuffled.h5", csv_filename=path+"retained_shuffled.csv")
