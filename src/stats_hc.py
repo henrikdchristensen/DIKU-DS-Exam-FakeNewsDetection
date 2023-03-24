@@ -32,10 +32,7 @@ class Word_frequency(pp.FunctionApplier):
         return words, frequency
 
     def plot_frequency(self, label=None):
-        if label is None:
-            words, frequency = self._sort_frequency(self.word_counter)
-        else:
-            words, frequency = self._sort_frequency(self.label_to_word_counter[label])
+        words, frequency = self._sort_frequency(self.word_counter) if label is None else self._sort_frequency(self.label_to_word_counter[label])
         plt.bar(words, frequency)
         plt.ylabel('Frequency')
         plt.title(f'Frequency of the {self.nwords} most frequent words')
