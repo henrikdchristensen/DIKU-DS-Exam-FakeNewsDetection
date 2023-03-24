@@ -27,8 +27,8 @@ def get_dataset(input_filename: str = None, output_filename: str = None, size: i
             break
     if s < size:
         warnings.warn(f'WARNING: The dataset is smaller than the size specified. Size: {s}')
-    if output_filenme:
-        df.to_csv(output_filenme, index=False)
+    if output_filename:
+        df.to_csv(output_filename, index=False)
     return df
 
 def remove_similar_content_in_start_and_end(words_compare: int = 10, min_similar: int = 10, max_iterations: int = -1) -> pd.DataFrame:
