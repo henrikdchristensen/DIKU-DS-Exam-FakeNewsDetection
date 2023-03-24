@@ -1,15 +1,37 @@
 import pandas as pd
+import warnings
 
 TYPES = ['fake', 'conspiracy', 'junksci', 'hate', 'unreliable', 'bias', 
          'satire', 'state', 'reliable', 'clickbait', 'political']
+ROWS_PR_ITERATION = 20
 
+def get_dataset(input_filename: str = None, output_filenme: str = None, size: int = None, remove_unwanted: bool = True) -> pd.DataFrame:
+    print("\nGetting dataset...")
+    s = 0
+    df = pd.DataFrame()
+    for chunk in pd.read_csv(input_filename, encoding='utf-8', chunksize=ROWS_PR_ITERATION, lineterminator='\n'):
+        if remove_unwanted:
+            # Remove rows which have empty content or start with 'ERROR':
+            chunk.drop(chunk[chunk['content'].eq('') | chunk['content'].str.startswith('ERROR')].index, inplace=True)
+            # Remove rows which does not have a type in types_to_keep:
+            chunk.drop(chunk[~chunk['type'].isin(TYPES)].index, inplace=True)
+        s += chunk.shape[0]
+        # If the size of the dataframe is larger than the size we want, remove the extra rows
+        if s > size:
+            chunk = chunk.iloc[:size - s]
+            s = size
+        # Concatenate the chunk to the dataframe
+        df = pd.concat([df, chunk], ignore_index=True)
+        # If the size of the dataframe is equal to the size we want, break out of the loop
+        if s == size:
+            break
+    if s < size:
+        warnings.warn(f'WARNING: The dataset is smaller than the size specified. Size: {s}')
+    if output_filenme:
+        df.to_csv(output_filenme, index=False)
+    return df
 
-def get_pandas_df(path: str, size: int) -> pd.DataFrame:
-    print(f"Reading csv file...")
-    with pd.read_csv(path, encoding='utf-8', dtype=str, chunksize=size, lineterminator='\n') as reader:
-        return reader.get_chunk()
-
-def remove_similar_content_in_start_and_end(df: pd.DataFrame, words_compare: int = 10, min_similar: int = 10, max_iterations: int = -1) -> pd.DataFrame:
+def remove_similar_content_in_start_and_end(words_compare: int = 10, min_similar: int = 10, max_iterations: int = -1) -> pd.DataFrame:
     words_before = df['content'].str.split().apply(len).sum()
     iteration = 0
     while iteration < max_iterations or max_iterations == -1:
@@ -47,18 +69,7 @@ def remove_similar_content_in_start_and_end(df: pd.DataFrame, words_compare: int
     print(f'\nNumber of words before: {words_before} and after: {words_after}. Difference: {words_before - words_after}')
     return df
 
-
-def remove_unwanted_rows(df: pd.DataFrame, types_to_keep: list) -> pd.DataFrame:
-    print("\nRemoving unwanted content...")
-    print(f"Original shape: {df.shape}")
-    # Remove rows which have empty content or start with 'ERROR':
-    print(df[df['content'].eq('')]['id'])
-    df.drop(df[df['content'].eq('') | df['content'].str.startswith('ERROR')].index, inplace=True)
-    # Remove rows which does not have a type in types_to_keep:
-    df.drop(df[~df['type'].isin(types_to_keep)].index, inplace=True)
-    print(f"Cleaned shape: {df.shape}")
-    return df
     
-df = get_pandas_df("../datasets/large/raw.csv", size=10000)
-remove_similar_content_in_start_and_end(df)
-df = remove_unwanted_rows(df, TYPES)
+df = get_dataset(input_filename="../datasets/large/dataset.csv", output_filenme="../datasets/large/dataset_cleaned.csv" size=200, remove_unwanted=True)
+#remove_similar_content_in_start_and_end(df)
+#df = remove_unwanted_rows(df, TYPES)

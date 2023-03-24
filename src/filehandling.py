@@ -234,6 +234,7 @@ def run():
     # Convert h5 files to csv files:
     h5_to_csv(h5_filename=path+"shuffled.h5", csv_filename=path+"shuffled.csv")
 
+    h5_to_csv(h5_filename=path+"raw.h5", csv_filename=path+"raw_id_reset.csv")
 
 if __name__ == '__main__':
     run()
