@@ -10,12 +10,12 @@ CLEANED_DATA_NUM = '../datasets/sample/news_sample_cleaned_num_100k.csv'
 
 
 class Word_frequency(pp.FunctionApplier):
-    def __init__(self, nwords=50, types=('reliable', 'fake')):
+    def __init__(self, nwords=50, labels=('reliable', 'fake')):
         self.nwords = nwords
         self.word_list = []
         self.word_counter = Counter()
-        self.label_list = types
-        self.label_to_word_counter = {label: Counter() for label in types}
+        self.label_list = labels
+        self.label_to_word_counter = {label: Counter() for label in labels}
 
     def function_to_apply(self, row):
         word = row['content']
