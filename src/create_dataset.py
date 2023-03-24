@@ -36,7 +36,7 @@ class Clean_data():
             df = df.apply(lambda x: pattern.sub(replacement, x))
         return df
 
-def create_dataset(input_filename: str = None, output_filename: str = None, size: int = None, clean: bool = True, split: Tuple[int, int, int] = None, balancing: bool = False, columns: list = ['content'], remove_unwanted: bool = True) -> pd.DataFrame:
+def create_dataset(input_filename: str = None, output_filename: str = None, size: int = None, clean: bool = True, columns_to_clean: list = ['content'], split: Tuple[int, int, int] = None, balancing: bool = False, remove_unwanted_rows: bool = True) -> pd.DataFrame:
     print("\nGenerating dataset...")
     s = 0
     df1 = pd.DataFrame()
@@ -45,7 +45,7 @@ def create_dataset(input_filename: str = None, output_filename: str = None, size
         df3 = pd.DataFrame()
     clean_data = Clean_data()
     for chunk in pd.read_csv(input_filename, encoding='utf-8', chunksize=ROWS_PR_ITERATION, lineterminator='\n'):
-        if remove_unwanted:
+        if remove_unwanted_rows:
             print("removing unwanted... ", end="", flush=True)
             # Remove rows which have empty content or start with 'ERROR':
             chunk.drop(chunk[chunk['content'].eq('') | chunk['content'].str.startswith('ERROR')].index, inplace=True)
@@ -141,13 +141,13 @@ def run():
     if choice == 'x':
         return
     size = int(choice)
-    choice = input("Remove unwanted? Press 'y' for yes or 'n' for no or 'x' to Exit: ")
+    choice = input("Remove unwanted rows? Press 'y' for yes or 'n' for no or 'x' to Exit: ")
     if choice == 'x':
         return
     elif choice == 'y':
-        remove_unwanted = True
+        remove_unwanted_rows = True
     elif choice == 'n':
-        remove_unwanted = False
+        remove_unwanted_rows = False
     else:
         print("Invalid choice - exiting")
         return
@@ -194,7 +194,7 @@ def run():
     else:
         print("Invalid choice - exiting")
         return
-    df = create_dataset(input_filename, output_filename, size, remove_unwanted=remove_unwanted, clean=clean, split=split, balancing=balancing)
+    df = create_dataset(input_filename=input_filename, output_filename=output_filename, size=size, clean=clean, remove_unwanted_rows=remove_unwanted_rows, split=split, balancing=balancing)
     #remove_similar_content_in_start_and_end(df)
     #df = remove_unwanted_rows(df, TYPES)
 
