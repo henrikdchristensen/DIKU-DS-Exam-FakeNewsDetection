@@ -36,7 +36,8 @@ class Clean_data():
             df = df.apply(lambda x: pattern.sub(replacement, x))
         return df
 
-def create_dataset(input_filename: str = None, output_filename: str = None, size: int = None, clean: bool = True, columns_to_clean: list = ['content'], split: Tuple[int, int, int] = None, balancing: bool = False, remove_unwanted_rows: bool = True) -> pd.DataFrame:
+
+def create_dataset(input_filename: str = None, output_path: str = None, size: int = None, clean: bool = True, columns_to_clean: list = ['content'], split: Tuple[int, int, int] = None, balancing: bool = False, remove_unwanted_rows: bool = True) -> pd.DataFrame:
     print("\nGenerating dataset...")
     s = 0
     df1 = pd.DataFrame()
@@ -53,7 +54,7 @@ def create_dataset(input_filename: str = None, output_filename: str = None, size
             chunk.drop(chunk[~chunk['type'].isin(TYPES)].index, inplace=True)
         if clean:
             print("cleaning... ", end="", flush=True)
-            for col in columns:
+            for col in columns_to_clean:
                 chunk[col] = clean_data.apply(chunk[col])
         s += chunk.shape[0]
         # If the size of the dataframe is larger than the size we want, remove the extra rows
@@ -62,17 +63,25 @@ def create_dataset(input_filename: str = None, output_filename: str = None, size
             s = size
         # Concatenate the chunk to the dataframe
         if split:
+            # Split the dataset into train, validation and test
             print("TODO")
         if balancing:
+            # Balance the dataset according to the types
             print("TODO")
-        df1 = pd.concat([df1, chunk], ignore_index=True)
+        else:
+            df1 = pd.concat([df1, chunk], ignore_index=True)
         # If the size of the dataframe is equal to the size we want, break out of the loop
         if s == size:
             break
     if s < size:
         print(f'\nWARNING: The dataset is smaller than the size specified size: {s} < {size}')
-    if output_filename:
-        df1.to_csv(output_filename, index=False)
+    if output_path:
+        if split:
+            df1.to_csv(output_path+"train.csv", index=False)
+            df2.to_csv(output_path+"vali.csv", index=False)
+            df3.to_csv(output_path+"test.csv", index=False)
+        else:
+            df1.to_csv(output_path+"dataset.csv", index=False)
     print("\nDataset created!")
     return df1
 
@@ -131,9 +140,9 @@ def run():
     if choice == 'x':
         return
     elif choice == 'y':
-        output_filename = path+"dataset.csv"
+        output_path = path
     elif choice == 'n':
-        output_filename = None
+        output_path = None
     else:
         print("Invalid choice - exiting")
         return
@@ -194,7 +203,7 @@ def run():
     else:
         print("Invalid choice - exiting")
         return
-    df = create_dataset(input_filename=input_filename, output_filename=output_filename, size=size, clean=clean, remove_unwanted_rows=remove_unwanted_rows, split=split, balancing=balancing)
+    df = create_dataset(input_filename=input_filename, output_path=output_path, size=size, clean=clean, remove_unwanted_rows=remove_unwanted_rows, split=split, balancing=balancing)
     #remove_similar_content_in_start_and_end(df)
     #df = remove_unwanted_rows(df, TYPES)
 
