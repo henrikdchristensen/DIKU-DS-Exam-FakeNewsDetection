@@ -31,7 +31,7 @@ def get_dataset(input_filename: str = None, output_filename: str = None, size: i
         df.to_csv(output_filename, index=False)
     return df
 
-def remove_similar_content_in_start_and_end(words_compare: int = 10, min_similar: int = 10, max_iterations: int = -1) -> pd.DataFrame:
+def remove_similar_content_in_start_and_end(df: pd.DataFrame, words_compare: int = 10, min_similar: int = 10, max_iterations: int = -1) -> pd.DataFrame:
     words_before = df['content'].str.split().apply(len).sum()
     iteration = 0
     while iteration < max_iterations or max_iterations == -1:
