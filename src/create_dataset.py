@@ -1,36 +1,80 @@
+from typing import Tuple
 import pandas as pd
 import warnings
+import re
 
 TYPES = ['fake', 'conspiracy', 'junksci', 'hate', 'unreliable', 'bias', 
          'satire', 'state', 'reliable', 'clickbait', 'political']
 ROWS_PR_ITERATION = 20000
 
-def get_dataset(input_filename: str = None, output_filename: str = None, size: int = None, remove_unwanted: bool = True) -> pd.DataFrame:
-    print("\nGetting dataset...")
+class Clean_data():
+    def __init__(self):
+        # Create a list of patterns to remove.
+        # Compile the patterns to speed up the process
+        self.patterns = {
+            re.compile(r'(<.*?>)'): '', # remove html tags
+            re.compile(r'[<>]'): '', # TODO: Is this necessary with the previous pattern?
+            re.compile(r'((https?:\/\/)?(?:www\.)?[a-zA-Z0-9-_\+=.:~@#%]+\.[a-zA-Z0-9()]{1,6}\b(?:[a-zA-Z0-9-_.:\\/@#$%&()=+~?]*))'): ' <URL> ', # replace urls with <URL>
+            re.compile(r'(https?:\/\/)?w{0,3}\.?[a-z]+\.[a-z]\w*[\w\/-]*'): ' <URL> ', # replace urls with <URL>
+            re.compile(r'(\d{1,2}([\:\-/\\]|(,\s)?)){2}\d{2,4}|\d{2,4}(([\:\-/\\]|(,\s)?)\d{1,2}){2}'): ' <DATE> ', # replace dates with <DATE>
+            re.compile(r'([Jj]an(uary)?|[Ff]eb(ruary)?|[Mm]ar(ch)?|[Aa]pr(il)?|[Mm]ay|[Jj]un(e)?|[Jj]ul(y)?|[Aa]ug(ust)?|[Ss]ep(tember)?|[Oo]ct(ober)?|[Nn]ov(ember)?|[Dd]ec(ember)?)([\:\-/\\]|(,\s)?)\d{1,2}([\:\-/\\]|(,\s)?)\d{1,4}'): ' <DATE> ', # replace dates with <DATE>
+            re.compile(r'([\w.\-]+@(?:[\w-]+\.)+[\w-]{2,4})|@[\w\d]+'): ' <EMAIL> ', # replace email addresses with <EMAIL>
+            re.compile(r'(\r\n|\n|\r)+'): ' ', # remove new lines
+            re.compile(r'(\t+)'): ' ', # remove tabs
+            re.compile(r'(\?)'): ' ? ', # add space before and after question mark
+            re.compile(r'(\!)'): ' ! ', # add space before and after exclamation mark
+            re.compile(r'[^A-Za-z0-9\s<>\?\!]'): '', # remove all special characters, including non-ascii characters
+            re.compile(r'(\d+)(th)?'): ' <NUM> ', # replace numbers with <NUM>
+            re.compile(r'( +)'): ' ', # remove multiple spaces
+        }
+
+    def apply(self, df):
+        # Apply patterns using list comprehension
+        df = df.apply(lambda x: str(x).lower())
+        # Loop through each pattern and apply the pattern to each row and do replacement if needed
+        for pattern, replacement in self.patterns.items():
+            df = df.apply(lambda x: pattern.sub(replacement, x))
+        return df
+
+def create_dataset(input_filename: str = None, output_filename: str = None, size: int = None, clean: bool = True, split: Tuple[int, int, int] = None, balancing: bool = False, columns: list = ['content'], remove_unwanted: bool = True) -> pd.DataFrame:
+    print("\nGenerating dataset...")
     s = 0
-    df = pd.DataFrame()
+    df1 = pd.DataFrame()
+    if split:
+        df2 = pd.DataFrame()
+        df3 = pd.DataFrame()
+    clean_data = Clean_data()
     for chunk in pd.read_csv(input_filename, encoding='utf-8', chunksize=ROWS_PR_ITERATION, lineterminator='\n'):
         if remove_unwanted:
+            print("removing unwanted... ", end="", flush=True)
             # Remove rows which have empty content or start with 'ERROR':
             chunk.drop(chunk[chunk['content'].eq('') | chunk['content'].str.startswith('ERROR')].index, inplace=True)
             # Remove rows which does not have a type in types_to_keep:
             chunk.drop(chunk[~chunk['type'].isin(TYPES)].index, inplace=True)
+        if clean:
+            print("cleaning... ", end="", flush=True)
+            for col in columns:
+                chunk[col] = clean_data.apply(chunk[col])
         s += chunk.shape[0]
         # If the size of the dataframe is larger than the size we want, remove the extra rows
         if s > size:
             chunk = chunk.iloc[:size - s]
             s = size
         # Concatenate the chunk to the dataframe
-        df = pd.concat([df, chunk], ignore_index=True)
+        if split:
+            print("TODO")
+        if balancing:
+            print("TODO")
+        df1 = pd.concat([df, chunk], ignore_index=True)
         # If the size of the dataframe is equal to the size we want, break out of the loop
         if s == size:
             break
     if s < size:
-        warnings.warn(f'WARNING: The dataset is smaller than the size specified. Size: {s}')
+        print(f'\nWARNING: The dataset is smaller than the size specified size: {s} < {size}')
     if output_filename:
-        df.to_csv(output_filename, index=False)
-    print("\nDataset created")
-    return df
+        df1.to_csv(output_filename, index=False)
+    print("\nDataset created!")
+    return df1
 
 def remove_similar_content_in_start_and_end(df: pd.DataFrame, words_compare: int = 10, min_similar: int = 10, max_iterations: int = -1) -> pd.DataFrame:
     words_before = df['content'].str.split().apply(len).sum()
@@ -107,7 +151,7 @@ def run():
     else:
         print("Invalid choice - exiting")
         return
-    df = get_dataset(input_filename=input_filename, output_filename=output_filename, size=size, remove_unwanted=remove_unwanted)
+    df = create_dataset(input_filename, output_filename, size, remove_unwanted=remove_unwanted, clean=True, split=False, balancing=False)
     #remove_similar_content_in_start_and_end(df)
     #df = remove_unwanted_rows(df, TYPES)
 
