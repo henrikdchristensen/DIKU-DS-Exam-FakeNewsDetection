@@ -10,3 +10,4 @@ torch==2.0.0
 tensorflow==2.11.0 
 transformers==4.27.1
 h5py==3.8.0
+matplotlib_venn==0.11.9

@@ -307,35 +307,6 @@ class Generate_unique_word_list(FunctionApplier):
         plt.show()
 
 
-class Word_frequency(FunctionApplier):
-    def __init__(self, nwords=50):
-        self.swords = nwords
-        self.words = []
-        self.frequency = Counter()
-        self.sorted_frequency = []
-
-    def function_to_apply(self, content):
-        # Update/add list of word
-        content = literal_eval(content)
-        self.frequency.update(content)
-        # Return the sorted dictionary based on the frequency of each word
-        self.sorted_frequency = sorted(
-            self.frequency.items(), key=lambda x: x[1], reverse=True)
-        return content
-
-    def plot(self):
-        # Extract the words and their frequency from the sorted list
-        words = [x[0] for x in self.sorted_frequency[:self.swords]]
-        frequency = [x[1] for x in self.sorted_frequency[:self.swords]]
-        # Plot a barplot using matplotlib
-        plt.bar(words, frequency)
-        plt.ylabel('Frequency')
-        plt.title(f'Frequency of the {self.swords} most frequent words')
-        plt.xticks(rotation=90)
-        plt.tight_layout()
-        plt.show()
-
-
 class Tokenizer(FunctionApplier):
     def function_to_apply(self, cell):
         return cell.split()

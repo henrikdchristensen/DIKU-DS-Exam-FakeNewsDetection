@@ -1,0 +1,11 @@
+- En fordeling labels
+- En fordeling domæner
+- Forfattere
+- Content længde (+)
+- Box plot: Negativ/positivt ladede ord - sentiment analysis (+)
+    - https://github.com/shekhargulati/sentiment-analysis-python/tree/master/opinion-lexicon-English 
+- Frekvensplot af ord hyppighed (+)
+- 
+- Balancering ift. antal ord
+- Plot af boxplot content længde
+- 

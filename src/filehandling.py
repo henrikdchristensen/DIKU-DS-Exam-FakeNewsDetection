@@ -120,7 +120,7 @@ def csv_to_h5(csv_filename: str, h5_filename: str):
                 data_set[-len(chunk):] = chunk.astype(str)
 
 
-def statistics(*h5_filenames: str, output_file: str = None):
+def statistics(*h5_filenames: str, output_path: str = None):
     # Initialize counters:
     total_rows = total_cols = 0
     domain_counter = Counter()
@@ -141,7 +141,6 @@ def statistics(*h5_filenames: str, output_file: str = None):
                 for word in content:
                      content_word_counter.append(len(word.split()))
                 # Concatenate with the existing DataFrame
-                
                 domain_counter.update(chunk[:, COLS['domain']])
                 type_counter.update(chunk[:, COLS['type']])
                 author_counter.update(chunk[:, COLS['authors']])
@@ -156,7 +155,7 @@ def statistics(*h5_filenames: str, output_file: str = None):
     type_df = pd.DataFrame(list(type_counter.items()), columns = ['Types', 'Count']).sort_values(by='Count', ascending=False).reset_index(drop=True)
     domain_df = pd.DataFrame(list(domain_counter.items()), columns = ['Domain', 'Count']).sort_values(by='Count', ascending=False).reset_index(drop=True)
     author_df = pd.DataFrame(list(author_counter.items()), columns = ['Author', 'Count']).sort_values(by='Count', ascending=False).reset_index(drop=True)
-    content_counter_df = pd.DataFrame(content_word_counter, columns=['ContentWords']).sort_values(by='ContentWords', ascending=False)
+    content_counter_df = pd.DataFrame(content_word_counter, columns=['Count']).sort_values(by='Count', ascending=False)
     # Print statistics to console:
     print(total_rows_df)
     print(total_cols_df)
@@ -165,13 +164,13 @@ def statistics(*h5_filenames: str, output_file: str = None):
     print(author_df[:10]) # Only print the top 10 authors
     print(content_counter_df[:10]) # Only print the top 10 words
     # Save to file if output_file is specified:
-    if output_file is not None:
-        total_rows_df.to_csv(output_file, mode='w', index=False, header=True)
-        total_cols_df.to_csv(output_file, mode='a', index=False, header=False)
-        type_df.to_csv(output_file, mode='a', index=False, header=True)
-        domain_df.to_csv(output_file, mode='a', index=False, header=True)
-        author_df.to_csv(output_file, mode='a', index=False, header=True)
-        content_counter_df.to_csv(output_file, mode='a', index=True, header=True)
+    if output_path is not None:
+        total_rows_df.to_csv(output_path+"rows_cols.csv", mode='w', index=False, header=True)
+        total_cols_df.to_csv(output_path+"rows_cols.csv", mode='a', index=False, header=False)
+        type_df.to_csv(output_path+"rows_cols.csv", mode='w', index=False, header=True)
+        domain_df.to_csv(output_path, mode='w', index=False, header=True)
+        author_df.to_csv(output_path+"rows_cols.csv", mode='w', index=False, header=True)
+        content_counter_df.to_csv(output_path+"rows_cols.csv", mode='a', index=True, header=True)
         print("Statistics added to csv file")
 
 
