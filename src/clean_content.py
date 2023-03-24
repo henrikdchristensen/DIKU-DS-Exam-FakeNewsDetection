@@ -5,7 +5,7 @@ TYPES = ['fake', 'conspiracy', 'junksci', 'hate', 'unreliable', 'bias',
          'satire', 'state', 'reliable', 'clickbait', 'political']
 ROWS_PR_ITERATION = 20
 
-def get_dataset(input_filename: str = None, output_filenme: str = None, size: int = None, remove_unwanted: bool = True) -> pd.DataFrame:
+def get_dataset(input_filename: str = None, output_filename: str = None, size: int = None, remove_unwanted: bool = True) -> pd.DataFrame:
     print("\nGetting dataset...")
     s = 0
     df = pd.DataFrame()
@@ -70,6 +70,6 @@ def remove_similar_content_in_start_and_end(words_compare: int = 10, min_similar
     return df
 
     
-df = get_dataset(input_filename="../datasets/large/dataset.csv", output_filenme="../datasets/large/dataset_cleaned.csv", size=200, remove_unwanted=True)
+df = get_dataset(input_filename="../datasets/large/shuffled.csv", output_filename="../datasets/large/dataset.csv", size=200, remove_unwanted=True)
 #remove_similar_content_in_start_and_end(df)
 #df = remove_unwanted_rows(df, TYPES)
