@@ -65,7 +65,7 @@ def create_dataset(input_filename: str = None, output_filename: str = None, size
             print("TODO")
         if balancing:
             print("TODO")
-        df1 = pd.concat([df, chunk], ignore_index=True)
+        df1 = pd.concat([df1, chunk], ignore_index=True)
         # If the size of the dataframe is equal to the size we want, break out of the loop
         if s == size:
             break
@@ -151,7 +151,50 @@ def run():
     else:
         print("Invalid choice - exiting")
         return
-    df = create_dataset(input_filename, output_filename, size, remove_unwanted=remove_unwanted, clean=True, split=False, balancing=False)
+    choice = input("Clean? Press 'y' for yes or 'n' for no or 'x' to Exit: ")
+    if choice == 'x':
+        return
+    elif choice == 'y':
+        clean = True
+    elif choice == 'n':
+        clean = False
+    else:
+        print("Invalid choice - exiting")
+        return
+    choice = input("Split? Press 'y' for yes or 'n' for no or 'x' to Exit: ")
+    if choice == 'x':
+        return
+    elif choice == 'y':
+        split = True
+        choice = input("Size train (percent). Press 'x' to Exit: ")
+        if choice == 'x':
+            return
+        train_size = float(choice)/100
+        choice = input("Size validation (percent). Press 'x' to Exit: ")
+        if choice == 'x':
+            return
+        vali_size = float(choice)/100
+        choice = input("Size test (percent). Press 'x' to Exit: ")
+        if choice == 'x':
+            return
+        test_size = float(choice)/100
+        split = (train_size, vali_size, test_size)
+    elif choice == 'n':
+        split = None
+    else:
+        print("Invalid choice - exiting")
+        return
+    choice = input("Balancing? Press 'y' for yes or 'n' for no or 'x' to Exit: ")
+    if choice == 'x':
+        return
+    elif choice == 'y':
+        balancing = True
+    elif choice == 'n':
+        balancing = False
+    else:
+        print("Invalid choice - exiting")
+        return
+    df = create_dataset(input_filename, output_filename, size, remove_unwanted=remove_unwanted, clean=clean, split=split, balancing=balancing)
     #remove_similar_content_in_start_and_end(df)
     #df = remove_unwanted_rows(df, TYPES)
 
