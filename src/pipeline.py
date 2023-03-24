@@ -365,7 +365,7 @@ class Clean_data(FunctionApplier):
         # Compile the patterns to speed up the process
         self.patterns = {
             re.compile(r'(<.*?>)'): '', # remove html tags
-            re.compile(r'[<>]'): '', # TODO: Is this necessary with the previous pattern?
+            re.compile(r'[<>]'): '', # remove < and >
             re.compile(r'((https?:\/\/)?(?:www\.)?[a-zA-Z0-9-_\+=.:~@#%]+\.[a-zA-Z0-9()]{1,6}\b(?:[a-zA-Z0-9-_.:\\/@#$%&()=+~?]*))'): ' <URL> ', # replace urls with <URL>
             re.compile(r'(https?:\/\/)?w{0,3}\.?[a-z]+\.[a-z]\w*[\w\/-]*'): ' <URL> ', # replace urls with <URL>
             re.compile(r'(\d{1,2}([\:\-/\\]|(,\s)?)){2}\d{2,4}|\d{2,4}(([\:\-/\\]|(,\s)?)\d{1,2}){2}'): ' <DATE> ', # replace dates with <DATE>
@@ -390,9 +390,13 @@ class Clean_data(FunctionApplier):
 
         return cell
 
-class Drop(FunctionApplier):
-    def function_to_apply(self, content):
-        if content == "ERROR":
+class Valid_row(FunctionApplier):
+    def __init__(self):
+        self.types = ['fake', 'conspiracy', 'junksci', 'hate', 'unreliable', 'bias', 
+                        'satire', 'state', 'reliable', 'clickbait', 'political']
+    def function_to_apply(self, row):
+        # Remove rows which have empty content or start with 'ERROR':
+        if row['content'] == '' or row['content'].startswith('ERROR') or row['type'] not in self.types:
             return DELETE_TOKEN
 
 class Join_str_columns(FunctionApplier):
