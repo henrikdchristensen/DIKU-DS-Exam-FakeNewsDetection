@@ -3,7 +3,7 @@ import warnings
 
 TYPES = ['fake', 'conspiracy', 'junksci', 'hate', 'unreliable', 'bias', 
          'satire', 'state', 'reliable', 'clickbait', 'political']
-ROWS_PR_ITERATION = 20
+ROWS_PR_ITERATION = 20000
 
 def get_dataset(input_filename: str = None, output_filename: str = None, size: int = None, remove_unwanted: bool = True) -> pd.DataFrame:
     print("\nGetting dataset...")
