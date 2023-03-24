@@ -123,7 +123,10 @@ def csv_to_h5(csv_filename: str, h5_filename: str):
 def statistics(*h5_filenames: str, output_file: str = None):
     # Initialize counters:
     total_rows = total_cols = 0
-    domain_counter = type_counter = Counter()
+    domain_counter = Counter()
+    type_counter = Counter()
+    author_counter = Counter()
+    content_word_counter = []
     # Iterate over all files:
     for h5_filename in h5_filenames:
         with h5py.File(h5_filename, 'r') as data_store:
@@ -133,28 +136,42 @@ def statistics(*h5_filenames: str, output_file: str = None):
             for i in tqdm(range(1, rows, ROWS_PR_ITERATION), desc='creating statistics', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
                 chunk = data_store['data'][i:i+ROWS_PR_ITERATION]
                 # Update counters:
+                content = decode_1d(chunk[:, COLS['content']])
+                # Count the occurrence of each word in the content list
+                for word in content:
+                     content_word_counter.append(len(word.split()))
+                # Concatenate with the existing DataFrame
+                
                 domain_counter.update(chunk[:, COLS['domain']])
                 type_counter.update(chunk[:, COLS['type']])
+                author_counter.update(chunk[:, COLS['authors']])
     # Decode counters:
     domain_counter = decode_dict(domain_counter)
     type_counter = decode_dict(type_counter)
+    author_counter = decode_dict(author_counter)
     # Add statistics to dataframes:
     total_rows_df = pd.DataFrame([['Number of rows', total_rows]], columns=['Statistic', 'Count'])
     total_cols_df = pd.DataFrame([['Number of cols', total_cols]], columns=['Statistic', 'Count'])
     # Sort dataframes by count and reset index:
     type_df = pd.DataFrame(list(type_counter.items()), columns = ['Types', 'Count']).sort_values(by='Count', ascending=False).reset_index(drop=True)
     domain_df = pd.DataFrame(list(domain_counter.items()), columns = ['Domain', 'Count']).sort_values(by='Count', ascending=False).reset_index(drop=True)
+    author_df = pd.DataFrame(list(author_counter.items()), columns = ['Author', 'Count']).sort_values(by='Count', ascending=False).reset_index(drop=True)
+    content_counter_df = pd.DataFrame(content_word_counter, columns=['ContentWords']).sort_values(by='ContentWords', ascending=False)
     # Print statistics to console:
     print(total_rows_df)
     print(total_cols_df)
     print(type_df)
     print(domain_df[:10]) # Only print the top 10 domains
+    print(author_df[:10]) # Only print the top 10 authors
+    print(content_counter_df[:10]) # Only print the top 10 words
     # Save to file if output_file is specified:
     if output_file is not None:
         total_rows_df.to_csv(output_file, mode='w', index=False, header=True)
         total_cols_df.to_csv(output_file, mode='a', index=False, header=False)
         type_df.to_csv(output_file, mode='a', index=False, header=True)
         domain_df.to_csv(output_file, mode='a', index=False, header=True)
+        author_df.to_csv(output_file, mode='a', index=False, header=True)
+        content_counter_df.to_csv(output_file, mode='a', index=True, header=True)
         print("Statistics added to csv file")
 
 
@@ -192,8 +209,10 @@ def shuffle_h5(old_filename: str, new_filename: str):
 
 
 def run():        
-    choice = input("Press 's' for sample or 'l' for large dataset: ")
-    if choice == 's':
+    choice = input("Press 's' for sample or 'l' for large dataset or 'x' to Exit: ")
+    if choice == 'x':
+        return
+    elif choice == 's':
         print("You choose sample dataset")
         path = "../datasets/sample/"
     elif choice == 'l':
@@ -201,9 +220,11 @@ def run():
     else:
         print("Invalid choice - exiting")
         return
-    choice = input("Press 'y' for convert csv to h5 or Enter to continue: ")
+    choice = input("Press 'y' for convert csv to h5 or 'Enter' to continue or 'x' to Exit: ")
     if choice == 'y':
         csv_to_h5(csv_filename=path+"raw.csv", h5_filename=path+"raw.h5")
+    elif choice == 'x':
+        return
     # Copy the raw file to a new file:
     copy_file(old_filename=path+"raw.h5", new_filename=path+"raw_copy.h5")
     # Get the statistics:
