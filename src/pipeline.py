@@ -91,8 +91,7 @@ class TF_IDF(FunctionApplier):
                 vector[i] = (np.log(vector[i]) + 1) * self.idf_vec[set][i]
         return vector
 
-def get_dataframe_with_distribution(file, total_size, splits, balanced, chunksize=ROWS_PR_ITERATION, out_file=None, get_frame=True, classes = labels, delete=True):
-    print("running")
+def get_dataframe_with_distribution(file, total_size, splits, balanced, end_col = "set", type_col ="type",  chunksize=ROWS_PR_ITERATION, out_file=None, get_frame=True, classes = labels, delete=True):
     # empty dataframe
     data = None
     curr_index = 0
@@ -106,7 +105,7 @@ def get_dataframe_with_distribution(file, total_size, splits, balanced, chunksiz
             for label in classes:
                 split_dict[label] = label_num
             sets.append([b, split_dict])
-
+    print(sets)
     def apply_to_rows(label):
         nonlocal curr_index
         if curr_index >= len(sets) or label not in classes:
@@ -135,9 +134,9 @@ def get_dataframe_with_distribution(file, total_size, splits, balanced, chunksiz
     entries_read = 0
     with pd.read_csv(file, chunksize=chunksize, encoding='utf-8') as reader:
         for chunk in reader:
-            chunk["set"] = chunk["type"].progress_apply(apply_to_rows)
+            chunk[end_col] = chunk[type_col].progress_apply(apply_to_rows)
             if delete:
-                chunk = chunk[chunk["set"] != DELETE_TOKEN]
+                chunk = chunk[chunk[end_col] != DELETE_TOKEN]
 
             if out_file is not None:
                 if entries_read == 0:
@@ -158,11 +157,21 @@ def get_dataframe_with_distribution(file, total_size, splits, balanced, chunksiz
                     finished = False
             if finished:
                 print("entries read:", entries_read)
+                print(sets)
                 if get_frame:
                     return data
                 return
     print("ERROR: not enough data to create sets")
     return data
+
+class Debug(FunctionApplier):
+    def __init__(self):
+        self.i=0
+    def function_to_apply(self, row):
+        if type(row) != str:
+            print(self.i, row)
+        self.i += 1
+        return row
 
 class Read_String_Lst(FunctionApplier):
     def function_to_apply(self, words):
@@ -371,16 +380,17 @@ class Clean_data(FunctionApplier):
 
         return cell
 
+class Drop(FunctionApplier):
+    def function_to_apply(self, content):
+        if content == "ERROR":
+            return DELETE_TOKEN
 
 class Join_str_columns(FunctionApplier):
     def __init__(self, columns):
         self.columns = columns
     def function_to_apply(self, row):
-        try:
-            return " ".join([row[col] for col in self.columns if type(row[col]) is str]).strip()
-        except:
-            print([row[col] for col in self.columns])
-            return ""
+        combined = " ".join([row[col] for col in self.columns if type(row[col]) is str]).strip()
+        return combined if combined != "" else " " # to avoid nan
 
 #TODO: Change code coppied from Oliver and Daniel
 class Clean_author(FunctionApplier):
