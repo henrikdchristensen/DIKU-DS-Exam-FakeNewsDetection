@@ -213,7 +213,6 @@ def run():
     if choice == 'x':
         return
     elif choice == 's':
-        print("You choose sample dataset")
         path = "../datasets/sample/"
     elif choice == 'l':
         path = "../datasets/large/"

@@ -29,6 +29,7 @@ def get_dataset(input_filename: str = None, output_filename: str = None, size: i
         warnings.warn(f'WARNING: The dataset is smaller than the size specified. Size: {s}')
     if output_filename:
         df.to_csv(output_filename, index=False)
+    print("\nDataset created")
     return df
 
 def remove_similar_content_in_start_and_end(df: pd.DataFrame, words_compare: int = 10, min_similar: int = 10, max_iterations: int = -1) -> pd.DataFrame:
@@ -69,7 +70,46 @@ def remove_similar_content_in_start_and_end(df: pd.DataFrame, words_compare: int
     print(f'\nNumber of words before: {words_before} and after: {words_after}. Difference: {words_before - words_after}')
     return df
 
-    
-df = get_dataset(input_filename="../datasets/large/shuffled.csv", output_filename="../datasets/large/dataset.csv", size=200, remove_unwanted=True)
-#remove_similar_content_in_start_and_end(df)
-#df = remove_unwanted_rows(df, TYPES)
+
+def run():        
+    choice = input("Press 's' for sample or 'l' for large dataset or 'x' to Exit: ")
+    if choice == 'x':
+        return
+    elif choice == 's':
+        path = "../datasets/sample/"
+    elif choice == 'l':
+        path = "../datasets/large/"
+    else:
+        print("Invalid choice - exiting")
+        return
+    input_filename = path+"shuffled.csv"
+    choice = input("Output to file? Press 'y' for yes or 'n' for no or 'x' to Exit: ")
+    if choice == 'x':
+        return
+    elif choice == 'y':
+        output_filename = path+"dataset.csv"
+    elif choice == 'n':
+        output_filename = None
+    else:
+        print("Invalid choice - exiting")
+        return
+    choice = input("Size to generate. Press 'x' to Exit: ")
+    if choice == 'x':
+        return
+    size = int(choice)
+    choice = input("Remove unwanted? Press 'y' for yes or 'n' for no or 'x' to Exit: ")
+    if choice == 'x':
+        return
+    elif choice == 'y':
+        remove_unwanted = True
+    elif choice == 'n':
+        remove_unwanted = False
+    else:
+        print("Invalid choice - exiting")
+        return
+    df = get_dataset(input_filename=input_filename, output_filename=output_filename, size=size, remove_unwanted=remove_unwanted)
+    #remove_similar_content_in_start_and_end(df)
+    #df = remove_unwanted_rows(df, TYPES)
+
+if __name__ == '__main__':
+    run()
