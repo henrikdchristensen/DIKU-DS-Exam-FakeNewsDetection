@@ -70,6 +70,6 @@ def remove_similar_content_in_start_and_end(words_compare: int = 10, min_similar
     return df
 
     
-df = get_dataset(input_filename="../datasets/large/dataset.csv", output_filenme="../datasets/large/dataset_cleaned.csv" size=200, remove_unwanted=True)
+df = get_dataset(input_filename="../datasets/large/dataset.csv", output_filenme="../datasets/large/dataset_cleaned.csv", size=200, remove_unwanted=True)
 #remove_similar_content_in_start_and_end(df)
 #df = remove_unwanted_rows(df, TYPES)
