@@ -10,6 +10,11 @@ RAW_DATA = '../datasets/sample/dataset.csv'
 CLEANED_DATA = '../datasets/sample/news_sample_cleaned.csv'
 CLEANED_DATA_NUM = '../datasets/sample/news_sample_cleaned_num_100k.csv'
 
+def _sort_frequency(num, counter):
+    sorted_frequency = sorted(counter.items(), key=lambda x: x[1], reverse=True)
+    words = [x[0] for x in sorted_frequency[:num]]
+    frequency = [x[1] for x in sorted_frequency[:num]]
+    return words, frequency
 
 class Word_frequency(pp.FunctionApplier):
     def __init__(self, nwords=50, labels=('reliable', 'fake')):
@@ -28,14 +33,8 @@ class Word_frequency(pp.FunctionApplier):
             self.label_to_word_counter[label].update(word)
         return row
 
-    def _sort_frequency(self, counter):
-        sorted_frequency = sorted(counter.items(), key=lambda x: x[1], reverse=True)
-        words = [x[0] for x in sorted_frequency[:self.nwords]]
-        frequency = [x[1] for x in sorted_frequency[:self.nwords]]
-        return words, frequency
-
     def plot_frequency(self, label=None):
-        words, frequency = self._sort_frequency(self.word_counter) if label is None else self._sort_frequency(self.label_to_word_counter[label])
+        words, frequency = _sort_frequency(self.nwords, self.word_counter) if label is None else _sort_frequency(self.label_to_word_counter[label])
         plt.bar(words, frequency, color='magenta')
         plt.ylabel('Frequency')
         plt.title(f'Frequency of the {self.nwords} most frequent words')
@@ -44,8 +43,8 @@ class Word_frequency(pp.FunctionApplier):
         plt.show()
         
     def plot_fake_real(self, labels: tuple[str, str] = ("fake", "reliable") ):
-        words1, frequency1 = self._sort_frequency(self.label_to_word_counter[labels[0]])
-        words2, frequency2 = self._sort_frequency(self.label_to_word_counter[labels[1]])
+        words1, frequency1 = _sort_frequency(self.nwords, self.label_to_word_counter[labels[0]])
+        words2, frequency2 = _sort_frequency(self.nwords, self.label_to_word_counter[labels[1]])
         # map the word frequency from the fake news word list to the words from the real news
         for i in range(len(words1)):
             if not words1[i] in words2:
@@ -126,57 +125,47 @@ class Contribution(pp.FunctionApplier):
 
 
 # make class to count each type fake, real, unreliable, reliable etc. and make a frequency plot
-class Article_Type_frequency(pp.FunctionApplier):
+class Article_type_frequency(pp.FunctionApplier):
     # kg = 20
     def __init__(self):
-        self.frequency = Counter()
-        self.sorted_frequency = []
+        self.counter = Counter()
         self.items = 13
 
     def function_to_apply(self, type):
         # Update/add list of word
         type = str(type)
         # print(self.frequency)
-        self.frequency.update({type: 1})
-        # Return the sorted dictionary based on the frequency of each word
-        self.sorted_frequency = sorted(self.frequency.items(), key=lambda x: x[1], reverse=True)
-        # print("sorted_frequency", self.sorted_frequency)
+        self.counter.update({type: 1})
         return type
 
     def plot(self):
         # print(self.sorted_frequency)
         # Extract the words and their frequency from the sorted list
-        words = [x[0] for x in self.sorted_frequency[:self.items]]
-        frequency = [x[1] for x in self.sorted_frequency[:self.items]]
+        words, frequency = _sort_frequency(self.items, self.counter)
+        
         # Plot a barplot using matplotlib
         plt.bar(words, frequency)
         plt.ylabel('Frequency')
-        plt.title(f'Frequency of the {self.items} most frequent words')
+        plt.title('Type Frequency Distribution')
         plt.xticks(rotation=90)
         plt.tight_layout()
         plt.show()
 
     def plotDistribution(self):
         # Extract the words and their frequency from the sorted list
-        words = [x[0] for x in self.sorted_frequency]
-        frequency = [x[1] for x in self.sorted_frequency]
-
+        words, frequency = _sort_frequency(self.items, self.counter)
         total_frequency = sum(frequency)
-
         # Compute the probability of each word.
         probabilities = [x / total_frequency for x in frequency]
-
         # sort the words by their probability
         # sorted_probability = sorted(probability, reverse=True)
         # Sort the words based on their probability.
         sorted_indices = np.argsort(probabilities)[::-1]
         sorted_probabilities = [probabilities[i] for i in sorted_indices]
 
-        # Compute the cumulative probability of each word.
-        cumulative_probabilities = np.cumsum(sorted_probabilities)
-
         plt.bar(words, sorted_probabilities)
-        plt.xlabel('Type')
         plt.ylabel('Frequency')
         plt.title('Type Frequency Distribution')
+        plt.xticks(rotation=90)
+        plt.tight_layout()
         plt.show()
