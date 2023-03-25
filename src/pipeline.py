@@ -105,7 +105,7 @@ def get_dataframe_with_distribution(file, total_size, splits, balanced, end_col 
             for label in classes:
                 split_dict[label] = label_num
             sets.append([b, split_dict])
-    print(sets)
+    
     def apply_to_rows(label):
         nonlocal curr_index
         if curr_index >= len(sets) or label not in classes:
@@ -157,7 +157,6 @@ def get_dataframe_with_distribution(file, total_size, splits, balanced, end_col 
                     finished = False
             if finished:
                 print("entries read:", entries_read)
-                print(sets)
                 if get_frame:
                     return data
                 return
