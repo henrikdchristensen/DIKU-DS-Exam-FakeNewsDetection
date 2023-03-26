@@ -1,11 +1,9 @@
 import matplotlib.pyplot as plt
 from collections import Counter
-from matplotlib_venn import venn2
 import pipeline as pp
 import numpy as np
 import pandas as pd
 from ast import literal_eval
-import seaborn as sns
 
 
 RAW_DATA = '../datasets/sample/dataset.csv'
@@ -35,6 +33,10 @@ class Statistics():
         # Convert text-list-of-strins to list of strings 
         self.data["content"] = self.data["content"].apply(literal_eval)
         
+        self.pos_neg_words = pd.read_csv('../datasets/sample/statistics/pos_neg_words.csv')
+        self.pos_words = self.pos_neg_words['Positive words'].tolist()
+        self.neg_words = self.pos_neg_words['Negative words'].tolist()
+        
     def _sort_frequency(self, text, percentage: bool):
         counter = Counter(text)
         sorted_frequency = sorted(counter.items(), key=lambda x: x[1], reverse=True)
@@ -45,7 +47,7 @@ class Statistics():
             measure = [(freq/length)*100 for freq in measure]
         return words, measure
     
-    def barplot_word_frequency(self, nwords: int = 25, percentage: bool = False):
+    def barplot_word_frequency(self, nwords: int = 25, percentage: bool = True):
         words_list = self.data['content'].explode().tolist()
         words, measure = self._sort_frequency(text=words_list, percentage=percentage)
         plt.bar(words[:nwords], measure[:nwords], color='red', alpha=0.5)
@@ -65,7 +67,7 @@ class Statistics():
         plt.tight_layout()
         plt.show()
         
-    def barplot_word_frequency_fake_vs_real(self, nwords: int = 25, binary_label: str = "binary_label", percentage: bool = False):
+    def barplot_word_frequency_fake_vs_real(self, nwords: int = 25, binary_label: str = "binary_label", percentage: bool = True):
         real_words_list = self.data[self.data[binary_label] == True]['content'].explode().tolist()
         fake_words_list = self.data[self.data[binary_label] == False]['content'].explode().tolist()
         real_words, real_meausre = self._sort_frequency(text=real_words_list, percentage=percentage)
@@ -99,8 +101,29 @@ class Statistics():
         plt.suptitle('Fake vs. Real\n# of words per article')
         plt.tight_layout()
         plt.show()
+        
+    def barplot_type_distribution(self, percentage: bool = True):
+        types = self.data['type'].explode().tolist()
+        types, measure = self._sort_frequency(text=types, percentage=percentage)
+        color_list = [TYPE_COLORS[tp] for tp in types]
+        plt.barh(types, measure, color=color_list, alpha=0.6)
+        plt.xlabel('% of total labels' if percentage else '# of labels')
+        plt.title(f'Percentage of total labels' if percentage else f'Frequency of the labels')
+        plt.tight_layout()
+        plt.show()
     
-    def barplot_domain_contribution(self, threshold: float = 1, percentage: bool = False):
+    def barplot_domain_distribution(self, percentage: bool = True):
+        types = self.data['domain'].explode().tolist()
+        types, measure = self._sort_frequency(text=types, percentage=percentage)
+        colors = plt.cm.tab20(np.arange(len(types)))
+        fig, ax = plt.subplots()
+        ax.barh(types, measure, color=colors, alpha=0.6)
+        ax.set_xlabel('% of domain' if percentage else '# of domain')
+        ax.set_title('Domain distribution')
+        plt.tight_layout()
+        plt.show()
+    
+    def barplot_domain_contribution(self, threshold: float = 0, percentage: bool = True):
         counts = self.data.groupby(['domain', 'type'])['content'].count().unstack()
         percentages = counts.apply(lambda x: x / x.sum() * 100)
         percentages = percentages[percentages > threshold]
@@ -120,17 +143,7 @@ class Statistics():
         plt.tight_layout()
         plt.show()
         
-    def barplot_type_distribution(self, percentage: bool = False):
-        types = self.data['type'].explode().tolist()
-        types, measure = self._sort_frequency(text=types, percentage=percentage)
-        color_list = [TYPE_COLORS[tp] for tp in types]
-        plt.barh(types, measure, color=color_list, alpha=0.6)
-        plt.xlabel('% of total labels' if percentage else '# of labels')
-        plt.title(f'Percentage of total labels' if percentage else f'Frequency of the labels')
-        plt.tight_layout()
-        plt.show()
-        
-    def barplot_authors_contribution(self, threshold: float = 1, percentage: bool = False):
+    def barplot_authors_contribution(self, threshold: float = 0, percentage: bool = True):
         counts = self.data.groupby(['authors', 'type'])['content'].count().unstack()
         percentages = counts.apply(lambda x: x / x.sum() * 100)
         percentages = percentages[percentages > threshold]
@@ -149,11 +162,49 @@ class Statistics():
         plt.tight_layout()
         plt.show()
         
-    def barplot_authors_distribution(self, percentage: bool = False):
+    def barplot_authors_distribution(self, percentage: bool = True):
         types = self.data['authors'].explode().tolist()
         types, measure = self._sort_frequency(text=types, percentage=percentage)
         plt.barh(types, measure, alpha=0.6)
         plt.xlabel('% of total labels' if percentage else '# of labels')
         plt.title(f'Percentage of total authors' if percentage else f'Frequency of the authors')
+        plt.tight_layout()
+        plt.show()
+        
+    def barplot_pos_vs_neg_in_fake(self, nwords: int = 25, binary_label: str = "binary_label", percentage: bool = True):
+        real_words_list = self.data[self.data[binary_label] == False]['content'].explode().tolist()
+        pos_words_list = [word for word in real_words_list if word in self.pos_words]
+        neg_words_list = [word for word in real_words_list if word in self.neg_words]
+        pos_words, pos_measure = self._sort_frequency(text=pos_words_list, percentage=percentage)
+        neg_words, neg_measure = self._sort_frequency(text=neg_words_list, percentage=percentage)
+        fig, (ax1, ax2) = plt.subplots(1, 2)
+        ax1.set_title('Positive words')
+        ax2.set_title('Negative words')
+        ax1.bar(pos_words[:nwords], pos_measure[:nwords], color='red', alpha=0.5, label="Real")
+        ax2.bar(neg_words[:nwords], neg_measure[:nwords], color='blue', alpha=0.5, label="Fake")
+        ax1.set_ylabel('% of words' if percentage else '# of words')
+        ax2.set_ylabel('% of words' if percentage else '# of words')
+        plt.setp(ax1.get_xticklabels(), rotation=90)
+        plt.setp(ax2.get_xticklabels(), rotation=90)
+        plt.title(f'Fake articles. Number of positive and negative words')
+        plt.tight_layout()
+        plt.show()
+        
+    def barplot_pos_vs_neg_in_real(self, nwords: int = 25, binary_label: str = "binary_label", percentage: bool = True):
+        real_words_list = self.data[self.data[binary_label] == True]['content'].explode().tolist()
+        pos_words_list = [word for word in real_words_list if word in self.pos_words]
+        neg_words_list = [word for word in real_words_list if word in self.neg_words]
+        pos_words, pos_measure = self._sort_frequency(text=pos_words_list, percentage=percentage)
+        neg_words, neg_measure = self._sort_frequency(text=neg_words_list, percentage=percentage)
+        fig, (ax1, ax2) = plt.subplots(1, 2)
+        ax1.set_title('Positive words')
+        ax2.set_title('Negative words')
+        ax1.bar(pos_words[:nwords], pos_measure[:nwords], color='red', alpha=0.5, label="Real")
+        ax2.bar(neg_words[:nwords], neg_measure[:nwords], color='blue', alpha=0.5, label="Fake")
+        ax1.set_ylabel('% of words' if percentage else '# of words')
+        ax2.set_ylabel('% of words' if percentage else '# of words')
+        plt.setp(ax1.get_xticklabels(), rotation=90)
+        plt.setp(ax2.get_xticklabels(), rotation=90)
+        plt.title(f'Real articles. Number of positive and negative words')
         plt.tight_layout()
         plt.show()
