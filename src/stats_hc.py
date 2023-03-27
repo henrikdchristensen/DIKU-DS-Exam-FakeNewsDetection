@@ -214,11 +214,10 @@ class Statistics():
 
     
     def barplot_polarity(self, binary_label: str = "binary_label"):
-        self.data['sentiment'] = self.data['content'].apply(lambda x: sum([TextBlob(str(y)).sentiment.polarity for y in x])/len(x))
-            
+        self.data['TextBlob_Polarity'] = self.data['content'].apply(lambda x: sum([TextBlob(str(y)).sentiment.polarity for y in x])/len(x))
         fig, (ax1, ax2) = plt.subplots(1, 2)
-        ax1.hist(self.data[self.data[binary_label] == True]['sentiment'], color='red', alpha=0.5, label="Real")
-        ax2.hist(self.data[self.data[binary_label] == False]['sentiment'], color='blue', alpha=0.5, label="Fake")
+        ax1.hist(self.data[self.data[binary_label] == True]['TextBlob_Polarity'], color='red', alpha=0.5, label="Real")
+        ax2.hist(self.data[self.data[binary_label] == False]['TextBlob_Polarity'], color='blue', alpha=0.5, label="Fake")
         ax1.set_xlabel('Real')
         ax2.set_xlabel('Fake')
         ax1.set_ylabel('# of articles')
@@ -226,13 +225,14 @@ class Statistics():
         plt.suptitle('Polarity distribution')
         plt.tight_layout()
         plt.show()
-        self.data.to_csv('data.csv')
+        print(f"Polarity real: {self.data[self.data[binary_label] == True]['TextBlob_Polarity'].median()}")
+        print(f"Polarity fake: {self.data[self.data[binary_label] == False]['TextBlob_Polarity'].median()}")
     
     def barplot_subjectivity(self, binary_label: str = "binary_label"):
-        self.data['TextBlob_Subjectivity'] = self.data['content'].apply(lambda x: TextBlob(x).sentiment.subjectivity)
+        self.data['TextBlob_Subjectivity'] = self.data['content'].apply(lambda x: sum([TextBlob(str(y)).sentiment.subjectivity for y in x])/len(x))
         fig, (ax1, ax2) = plt.subplots(1, 2)
-        ax1.hist(self.data[self.data[binary_label] == True]['TextBlob_Subjectivity'].median(), color='red', alpha=0.5, label="Real")
-        ax2.hist(self.data[self.data[binary_label] == False]['TextBlob_Subjectivity'].median(), color='blue', alpha=0.5, label="Fake")
+        ax1.hist(self.data[self.data[binary_label] == True]['TextBlob_Subjectivity'], color='red', alpha=0.5, label="Real")
+        ax2.hist(self.data[self.data[binary_label] == False]['TextBlob_Subjectivity'], color='blue', alpha=0.5, label="Fake")
         ax1.set_xlabel('Real')
         ax2.set_xlabel('Fake')
         ax1.set_ylabel('# of articles')
@@ -240,4 +240,6 @@ class Statistics():
         plt.suptitle('Subjectivity distribution')
         plt.tight_layout()
         plt.show()
+        print(f"Subjectivity real: {self.data[self.data[binary_label] == True]['TextBlob_Subjectivity'].median()}")
+        print(f"Subjectivity fake: {self.data[self.data[binary_label] == False]['TextBlob_Subjectivity'].median()}")
     
