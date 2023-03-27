@@ -340,7 +340,7 @@ class Remove_stopwords(FunctionApplier):
 
 
 class Stem(FunctionApplier):
-    def function_to_apply(self, words: list[str]):
+    def function_to_apply(self, words):
         # Create a PorterStemmer object, which remove morphological affixes from words, leaving only the word stem.
         ps = PorterStemmer()
         stemmed_words = []
