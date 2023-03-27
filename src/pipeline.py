@@ -1,4 +1,5 @@
 #import filehandling as fh
+import csv
 import preprocessing as pp
 import pandas as pd
 import re
@@ -13,6 +14,7 @@ from ast import literal_eval
 import numpy as np
 from sklearn.preprocessing import normalize
 import bisect
+import filehandling as fh
 
 tqdm.pandas()
 
@@ -32,7 +34,6 @@ labels: dict = {
 }
 
 ROWS_PR_ITERATION = 200000
-ROWS = 8529853
 TQDM_COLOR = 'magenta'
 DELETE_TOKEN = '<DELETE>'
 
@@ -359,19 +360,6 @@ class Clean_data(FunctionApplier):
         return cell
 
 
-class Valid_row(FunctionApplier):
-    def __init__(self):
-        self.types = ['fake', 'conspiracy', 'junksci', 'hate', 'unreliable', 'bias',
-                      'satire', 'state', 'reliable', 'clickbait', 'political']
-
-    def function_to_apply(self, row):
-        # Remove rows which have empty content or start with 'ERROR':
-        if row['content'] == '' or row['content'].startswith('ERROR') or row['type'] not in self.types or row['domain'] == 'nan':
-            return DELETE_TOKEN
-        else:
-            return row
-
-
 class Join_str_columns(FunctionApplier):
     def __init__(self, columns):
         self.columns = columns
@@ -580,22 +568,72 @@ def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_IT
         print(f'finish time: {time()-start_time}')
 
 
-def read_rows_of_csv(file, n=None):
-    return pd.read_csv(file, nrows=n) if n is not None else pd.read_csv(file)
+class Remove_unwanted_rows_and_cols():
+    def __init__(self, filename, new_filename):
+        self.headers_to_keep = {
+            'id': True,
+            'domain': True,
+            'type': True,
+            'url': False,
+            'content': True,
+            'scraped_at': False,
+            'inserted_at': False,
+            'updated_at': False,
+            'title': True,
+            'authors': True,
+            'keywords': False,
+            'meta_keywords': False,
+            'meta_description': False,
+            'tags': False,
+            'summary\r': False,
+        }
+
+        self.labels: dict = {
+            'fake': False,
+            'conspiracy': False,
+            'junksci': False,
+            'hate': False,
+            'unreliable': False,
+            'bias': False,
+            'satire': False,
+            # 'state': False,
+            'reliable': True,
+            'clickbait': True,
+            'political': True
+        }
+        self.filename = filename
+        self.new_filename = new_filename
+
+    def run(self):
+        # Remove output file if it already exists
+        fh.remove_file(self.new_filename)
+        # Create a file for each chunk in the directory:
+        first_iteration = True
+        for c in tqdm(pd.read_csv(self.filename, encoding='utf-8', chunksize=1000, lineterminator='\n'),
+                      desc='remove unwanted rows and cols', unit='rows', colour='green'):
+            # Remove columns which are not True in self.headers_to_keep:
+            c = c[[k for k, v in self.headers_to_keep.items() if v]]
+            # Remove rows which have empty content or start with 'ERROR' or have a type not in self.labels or have a nan domain:
+            c = c[c['content'].notna() & ~c['content'].str.startswith('ERROR') &
+                  c['type'].isin(self.labels.keys()) & c['domain'].notna()]
+            c.to_csv(self.new_filename, index=False, mode='a', header=first_iteration)
+            first_iteration = False
+            print('done')
 
 
-def remove_unwanted(file, new_file):
-    apply_pipeline(
-        file,
-        [(Valid_row(), None)],
-        new_file=new_file,
-        progress_bar=True
-    )
+def simple_model_test():
+    sm = Simple_model()
+    apply_pipeline("../datasets/big/news_sample_cleaned.csv", [
+        (sm, None)
+    ], )
+    sm.get_metrics()
 
 
-def create_dataset(file, new_file):
+def create_dataset(file, unwanted_removed_file, cleaned_file, cleaned_file_combined):
+    Remove_unwanted_rows_and_cols(file, unwanted_removed_file).run()
+
     stopwords_lst = stopwords.words('english')
-    apply_pipeline(file, [
+    apply_pipeline(unwanted_removed_file, [
         # Binary labels
         (Binary_labels(), 'type', 'type_binary'),
         # Clean content
@@ -624,22 +662,29 @@ def create_dataset(file, new_file):
         (Join_str_columns(["content_combined", "domain",
                            "authors", "title"]), None, "content_domain_authors_title")
     ],
-        new_file=new_file,
+        new_file=cleaned_file,
         progress_bar=True,
     )
 
-
-def simple_model_test():
-    sm = Simple_model()
-    apply_pipeline("../datasets/big/news_sample_cleaned.csv", [
-        (sm, None)
-    ], )
-    sm.get_metrics()
+    apply_pipeline(cleaned_file, [
+        (Join_str_columns(
+            ["content_combined", "authors"]), None, "content_authors"),
+        (Join_str_columns(
+            ["content_combined", "title"]), None, "content_title"),
+        (Join_str_columns(
+            ["content_combined", "domain"]), None, "content_domain"),
+        (Join_str_columns(["content_combined", "domain",
+                           "authors", "title"]), None, "content_domain_authors_title")
+    ],
+        new_file=cleaned_file_combined,
+        progress_bar=True,
+    )
 
 
 def run():
     choice = input("Press 's' for sample or 'l' for large dataset or 'x' to Exit: ")
     if choice == 'x':
+        print("exiting")
         return
     elif choice == 's':
         path = "../datasets/sample/"
@@ -648,8 +693,8 @@ def run():
     else:
         print("Invalid choice - exiting")
         return
-    remove_unwanted(file=path+"shuffled.csv", new_file=path+"unwanted_removed.csv")
-    create_dataset(file=path+"unwanted_removed.csv", new_file=path+"dataset.csv")
+    create_dataset(file=path+"shuffled.csv", unwanted_removed_file=path +
+                   "unwanted_removed.csv", cleaned_file=path+"dataset.csv", cleaned_file_combined=path+"dataset_combined.csv")
 
 
 if __name__ == '__main__':

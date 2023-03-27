@@ -190,6 +190,7 @@ def shuffle_h5(filename: str, new_filename: str):
 def run():
     choice = input("Press 's' for sample or 'l' for large dataset or 'x' to Exit: ")
     if choice == 'x':
+        print("exiting")
         return
     elif choice == 's':
         path = "../datasets/sample/"
@@ -202,6 +203,7 @@ def run():
     if choice == 'y':
         csv_to_h5(csv_filename=path+"raw.csv", h5_filename=path+"raw.h5")
     elif choice == 'x':
+        print("exiting")
         return
     # Copy the raw file to a new file:
     copy_file(filename=path+"raw.h5", new_filename=path+"raw_copy.h5")
