@@ -11,6 +11,7 @@ from nltk.stem import PorterStemmer
 import pipeline as pp
 
 
+
 #Count the number of times the <NUM> label occurs in content. Requires clean_data not to clean <NUM>
 class count_number_occurences_per_label(pp.FunctionApplier):
     def __init__(self):
@@ -538,7 +539,7 @@ if __name__ == "__main__":
     #num_count()
     #punct_count()
     religious_count()
-    #content_len()
+    content_len()
     #sentiment_analysis()
 
     """file = "../datasets/clean-100k.csv"
