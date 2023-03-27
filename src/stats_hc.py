@@ -28,19 +28,17 @@ TYPE_COLORS = {
     'unknown': 'black',
     'nan': 'black'
 }
-
-
 class Statistics():
     
     def __init__(self, filename: str):
         self.data = pd.read_csv(filename, index_col=False)
         # Convert text-list-of-strins to list of strings 
         self.data["content"] = self.data["content"].apply(literal_eval)
-        
-        self.pos_neg_words = pd.read_csv('../datasets/sample/statistics/pos_neg_words.csv')
-        self.pos_words = self.pos_neg_words['Positive words'].tolist()
-        self.neg_words = self.pos_neg_words['Negative words'].tolist()
-
+        self.data['TextBlob_Polarity'] = self.data['content'].apply(lambda x: TextBlob(str(x)).sentiment.polarity)
+        self.data['TextBlob_Subjectivity'] = self.data['content'].apply(lambda x: TextBlob(str(x)).sentiment.subjectivity)
+        self.data["content"] = self.data["content"].apply(lambda x: " ".join(x))
+        self.data["content"] = self.data["content"].apply(lambda x: x.split())
+    
     def _sort_frequency(self, text, percentage: bool):
         counter = Counter(text)
         sorted_frequency = sorted(counter.items(), key=lambda x: x[1], reverse=True)
@@ -145,79 +143,11 @@ class Statistics():
         ax.set_title(f'Domain contribution to label ( ≥ {threshold}%)' if percentage else f'Domain contribution to label ( {threshold} most frequent)')
         plt.tight_layout()
         plt.show()
-        
-    def barplot_authors_contribution(self, threshold: float = 0, percentage: bool = True):
-        counts = self.data.groupby(['authors', 'type'])['content'].count().unstack()
-        percentages = counts.apply(lambda x: x / x.sum() * 100)
-        percentages = percentages[percentages > threshold]
-        counts = counts[counts > threshold]
-        for type in list(percentages.columns):
-            percentages.sort_values(type, na_position='first', ascending=False, inplace=True)
-        if percentage:
-            ax = percentages.plot(kind='barh', stacked=True, figsize=(10, 8), width=0.6, alpha=0.6)
-            ax.set_xlabel('Percentage')
-        else:
-            ax = counts.plot(kind='barh', stacked=True, figsize=(10, 8), width=0.6, alpha=0.6)
-            ax.set_xlabel('# of articles')
-        ax.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
-        ax.set_yticklabels(ax.get_yticklabels(), fontsize=6)
-        ax.set_title(f'Author contribution to label ( ≥ {threshold})')
-        plt.tight_layout()
-        plt.show()
-        
-    def barplot_authors_distribution(self, percentage: bool = True):
-        types = self.data['authors'].explode().tolist()
-        types, measure = self._sort_frequency(text=types, percentage=percentage)
-        plt.barh(types, measure, alpha=0.6)
-        plt.xlabel('% of total labels' if percentage else '# of labels')
-        plt.title(f'Percentage of total authors' if percentage else f'Frequency of the authors')
-        plt.tight_layout()
-        plt.show()
-        
-    def barplot_pos_vs_neg_in_fake(self, nwords: int = 25, binary_label: str = "binary_label", percentage: bool = True):
-        real_words_list = self.data[self.data[binary_label] == False]['content'].explode().tolist()
-        pos_words_list = [word for word in real_words_list if word in self.pos_words]
-        neg_words_list = [word for word in real_words_list if word in self.neg_words]
-        pos_words, pos_measure = self._sort_frequency(text=pos_words_list, percentage=percentage)
-        neg_words, neg_measure = self._sort_frequency(text=neg_words_list, percentage=percentage)
-        fig, (ax1, ax2) = plt.subplots(1, 2)
-        ax1.set_xlabel('Positive words')
-        ax2.set_xlabel('Negative words')
-        ax1.bar(pos_words[:nwords], pos_measure[:nwords], color='red', alpha=0.5, label="Real")
-        ax2.bar(neg_words[:nwords], neg_measure[:nwords], color='blue', alpha=0.5, label="Fake")
-        ax1.set_ylabel('% of words' if percentage else '# of words')
-        ax2.set_ylabel('% of words' if percentage else '# of words')
-        plt.setp(ax1.get_xticklabels(), rotation=90)
-        plt.setp(ax2.get_xticklabels(), rotation=90)
-        plt.suptitle('Fake articles')
-        plt.tight_layout()
-        plt.show()
-        
-    def barplot_pos_vs_neg_in_real(self, nwords: int = 25, binary_label: str = "binary_label", percentage: bool = True):
-        real_words_list = self.data[self.data[binary_label] == True]['content'].explode().tolist()
-        pos_words_list = [word for word in real_words_list if word in self.pos_words]
-        neg_words_list = [word for word in real_words_list if word in self.neg_words]
-        pos_words, pos_measure = self._sort_frequency(text=pos_words_list, percentage=percentage)
-        neg_words, neg_measure = self._sort_frequency(text=neg_words_list, percentage=percentage)
-        fig, (ax1, ax2) = plt.subplots(1, 2)
-        ax1.set_xlabel('Positive words')
-        ax2.set_xlabel('Negative words')
-        ax1.bar(pos_words[:nwords], pos_measure[:nwords], color='red', alpha=0.5, label="Real")
-        ax2.bar(neg_words[:nwords], neg_measure[:nwords], color='blue', alpha=0.5, label="Fake")
-        ax1.set_ylabel('% of words' if percentage else '# of words')
-        ax2.set_ylabel('% of words' if percentage else '# of words')
-        plt.setp(ax1.get_xticklabels(), rotation=90)
-        plt.setp(ax2.get_xticklabels(), rotation=90)
-        plt.suptitle('Real articles')
-        plt.tight_layout()
-        plt.show()
 
-    
-    def barplot_polarity(self, binary_label: str = "binary_label"):
-        self.data['TextBlob_Polarity'] = self.data['content'].apply(lambda x: sum([TextBlob(str(y)).sentiment.polarity for y in x])/len(x))
+    def boxplot_polarity(self, binary_label: str = "binary_label"):
         fig, (ax1, ax2) = plt.subplots(1, 2)
-        ax1.hist(self.data[self.data[binary_label] == True]['TextBlob_Polarity'], color='red', alpha=0.5, label="Real")
-        ax2.hist(self.data[self.data[binary_label] == False]['TextBlob_Polarity'], color='blue', alpha=0.5, label="Fake")
+        ax1.boxplot(self.data[self.data[binary_label] == True]['TextBlob_Polarity'])
+        ax2.boxplot(self.data[self.data[binary_label] == False]['TextBlob_Polarity'])
         ax1.set_xlabel('Real')
         ax2.set_xlabel('Fake')
         ax1.set_ylabel('# of articles')
@@ -225,14 +155,13 @@ class Statistics():
         plt.suptitle('Polarity distribution')
         plt.tight_layout()
         plt.show()
-        print(f"Polarity real: {self.data[self.data[binary_label] == True]['TextBlob_Polarity'].median()}")
-        print(f"Polarity fake: {self.data[self.data[binary_label] == False]['TextBlob_Polarity'].median()}")
+        print(f"Median of Polarity real: {self.data[self.data[binary_label] == True]['TextBlob_Polarity'].median()}")
+        print(f"Median of Polarity fake: {self.data[self.data[binary_label] == False]['TextBlob_Polarity'].median()}")
     
-    def barplot_subjectivity(self, binary_label: str = "binary_label"):
-        self.data['TextBlob_Subjectivity'] = self.data['content'].apply(lambda x: sum([TextBlob(str(y)).sentiment.subjectivity for y in x])/len(x))
+    def boxplot_subjectivity(self, binary_label: str = "binary_label"):
         fig, (ax1, ax2) = plt.subplots(1, 2)
-        ax1.hist(self.data[self.data[binary_label] == True]['TextBlob_Subjectivity'], color='red', alpha=0.5, label="Real")
-        ax2.hist(self.data[self.data[binary_label] == False]['TextBlob_Subjectivity'], color='blue', alpha=0.5, label="Fake")
+        ax1.boxplot(self.data[self.data[binary_label] == True]['TextBlob_Subjectivity'])
+        ax2.boxplot(self.data[self.data[binary_label] == False]['TextBlob_Subjectivity'])
         ax1.set_xlabel('Real')
         ax2.set_xlabel('Fake')
         ax1.set_ylabel('# of articles')
@@ -240,6 +169,7 @@ class Statistics():
         plt.suptitle('Subjectivity distribution')
         plt.tight_layout()
         plt.show()
-        print(f"Subjectivity real: {self.data[self.data[binary_label] == True]['TextBlob_Subjectivity'].median()}")
-        print(f"Subjectivity fake: {self.data[self.data[binary_label] == False]['TextBlob_Subjectivity'].median()}")
+        print(f"Median of Subjectivity real: {self.data[self.data[binary_label] == True]['TextBlob_Subjectivity'].median()}")
+        print(f"Median of Subjectivity fake: {self.data[self.data[binary_label] == False]['TextBlob_Subjectivity'].median()}")
+        
     

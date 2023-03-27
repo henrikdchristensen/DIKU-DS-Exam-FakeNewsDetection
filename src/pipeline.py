@@ -13,8 +13,6 @@ from ast import literal_eval
 import numpy as np
 from sklearn.preprocessing import normalize
 import bisect
-import nltk
-nltk.download('punkt')
 
 tqdm.pandas()
 
@@ -310,31 +308,8 @@ class Generate_unique_word_list(FunctionApplier):
 
 
 class Tokenizer(FunctionApplier):
-    def __init__(self, sentences=False):
-        self.sentences = sentences
-        
     def function_to_apply(self, cell):
-        if self.sentences:
-            # Tokenize sentences using 
-            return nltk.sent_tokenize(cell)
-        else:
-            # Tokenize words using str.split()
-            return cell.split()
-
-class Untokenizer(FunctionApplier):
-    def __init__(self, sentences=False):
-        self.sentences = sentences
-        
-    def function_to_apply(self, cell):
-        # Join tokens back into text
-        if self.sentences:
-            # Join tokens in each sentence
-            untokenized_sentences = [" ".join(tokens) for tokens in cell]
-            # Join sentences into text
-            return " ".join(untokenized_sentences)
-        else:
-            # Join tokens into text
-            return " ".join(cell)
+        return cell.split()
 
 class Remove_stopwords(FunctionApplier):
     def __init__(self, swords):
