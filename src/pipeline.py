@@ -114,7 +114,7 @@ def get_dataframe_with_distribution(file, total_size, splits, balanced, end_col 
             for label in classes:
                 split_dict[label] = label_num
             sets.append([b, split_dict])
-    print(sets)
+    
     def apply_to_rows(label):
         nonlocal curr_index
         if curr_index >= len(sets) or label not in classes:
@@ -166,7 +166,6 @@ def get_dataframe_with_distribution(file, total_size, splits, balanced, end_col 
                     finished = False
             if finished:
                 print("entries read:", entries_read)
-                print(sets)
                 if get_frame:
                     return data
                 return
@@ -345,6 +344,7 @@ class Clean_data(FunctionApplier):
             re.compile(r'(\t+)'): ' ', # remove tabs
             re.compile(r'(\?)'): ' ? ', # add space before and after question mark
             re.compile(r'(\!)'): ' ! ', # add space before and after exclamation mark
+            re.compile(r'(\-)'): ' ',
             re.compile(r'[^A-Za-z0-9\s<>\?\!]' if remove_punct else r'[^A-Za-z0-9\s<>\?!\.,]'): '', # remove all special characters, including non-ascii characters and punctuation if remove_punct is True
             re.compile(r'(\d+)(th)?'): ' <NUM> ', # replace numbers with <NUM>
             re.compile(r'( +)'): ' ', # remove multiple spaces
@@ -451,6 +451,23 @@ class Print_content_to_csv(FunctionApplier):
 
         return row
 
+class Binary_labels_LIAR(FunctionApplier):
+    def __init__(self):
+        self.binary_labels: dict = {
+            'pants-fire': False,
+            'false': False,
+            'barely-true': False,
+            'half-true': True,
+            'mostly-true': True,
+            'True': True
+        }
+
+    def function_to_apply(self, cell):
+        try:
+            binary_label = self.binary_labels[cell]
+        except:
+            binary_label = True
+        return binary_label
 
 class Binary_labels(FunctionApplier):
     def __init__(self):
@@ -574,6 +591,7 @@ def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_IT
                 return chunk
 
             i += batch_size
+            print(f'processed {i} rows')
         # Print the time taken to process the data
         print(f'finish time: {time()-start_time}')
 
