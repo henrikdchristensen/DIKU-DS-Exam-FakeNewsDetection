@@ -117,7 +117,7 @@ class Statistics():
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
         self.barplot_type_distribution(percentage=True, ax=ax1)
         self.barplot(data=self.data["type_binary"].tolist(),
-                     percentage=True, boolean=True, ax=ax2)
+                     percentage=True, boolean=True, title="real vs. fake distribution", label="% of total labels", ax=ax2)
         fig.tight_layout()
         plt.show()
 
