@@ -49,24 +49,33 @@ class Statistics():
             measure = [(freq/length)*100 for freq in measure]
         return words, measure
     
-    def barplot_word_frequency(self, nwords: int = 25, percentage: bool = True):
+    def _barplot_word_frequency(self, nwords: int = 25, percentage: bool = True):
         words_list = self.data['content'].explode().tolist()
         words, measure = self._sort_frequency(text=words_list, percentage=percentage)
-        plt.bar(words[:nwords], measure[:nwords], color='red', alpha=0.5)
-        plt.ylabel('% of total words' if percentage else '# of words')
-        plt.title(f'Percentage of total words ({nwords} most frequent)' if percentage else f'Frequency of the {nwords} most frequent words')
-        plt.xticks(rotation=90)
-        plt.tight_layout()
-        plt.show()
+        fig, ax = plt.subplots()
+        ax.bar(words[:nwords], measure[:nwords], color='red', alpha=0.5)
+        ax.set_ylabel('% of total words' if percentage else '# of words')
+        ax.set_title(f'Percentage of total words ({nwords} most frequent)' if percentage else f'Frequency of the {nwords} most frequent words')
+        ax.tick_params(axis='x', rotation=90)
+        return fig
     
-    def boxplot_word_frequency(self):
+    def _boxplot_word_frequency(self):
         word_counts = [len(article) for article in self.data['content']]
         boxprops = dict(linewidth=2, color='red', facecolor='lightsalmon')
-        plt.boxplot(word_counts, patch_artist=True, boxprops=boxprops) # patch_artist must be True to change color the boxes
-        plt.ylabel('# of words')
-        plt.title('# of words per article')
-        plt.tight_layout()
-        plt.show()
+        fig, ax = plt.subplots()
+        ax.boxplot(word_counts, patch_artist=True, boxprops=boxprops) # patch_artist must be True to change color the boxes
+        ax.set_ylabel('# of words')
+        ax.set_title('# of words per article')
+        return fig
+    
+    def plot_word_frequency(self):
+        # plot bar and box plot together:
+        fig, (ax1, ax2) = plt.subplots(1, 2)
+        ax1 = self._barplot_word_frequency(nwords=25, percentage=True)
+        ax2 = self._boxplot_word_frequency()
+        fig.tight_layout()
+        fig.show()
+
         
     def barplot_word_frequency_fake_vs_real(self, nwords: int = 25, binary_label: str = "binary_label", percentage: bool = True):
         real_words_list = self.data[self.data[binary_label] == True]['content'].explode().tolist()

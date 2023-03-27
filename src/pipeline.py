@@ -590,7 +590,7 @@ def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_IT
                 print("Length", len(chunk))
                 return chunk
 
-            i += batch_size
+            i += len(chunk)
             print(f'processed {i} rows')
         # Print the time taken to process the data
         print(f'finish time: {time()-start_time}')
