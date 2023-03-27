@@ -615,14 +615,14 @@ def create_dataset(file, new_file):
         # Clean domain
         (Clean_domain(), 'domain'),
         # Combine columns (used as features)
-        (pp.Join_str_columns(
+        (Join_str_columns(
             ["content_combined", "authors"]), None, "content_authors"),
-        (pp.Join_str_columns(
+        (Join_str_columns(
             ["content_combined", "title"]), None, "content_title"),
-        (pp.Join_str_columns(
+        (Join_str_columns(
             ["content_combined", "domain"]), None, "content_domain"),
-        (pp.Join_str_columns(["content_combined", "domain",
-                              "authors", "title"]), None, "content_domain_authors_title")
+        (Join_str_columns(["content_combined", "domain",
+                           "authors", "title"]), None, "content_domain_authors_title")
     ],
         new_file=new_file,
         progress_bar=True,
