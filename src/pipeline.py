@@ -16,23 +16,7 @@ import bisect
 
 tqdm.pandas()
 
-headers = {
-    'row': 0,
-    'id': 1,
-    'domain': 2,
-    'type': 3,
-    'url': 4,
-    'content': 5,
-    'scraped_at': 6,
-    'inserted_at': 7,
-    'updated_at': 8,
-    'title': 9,
-    'authors': 10,
-    'keywords': 11,
-    'meta_keywords': 12,
-    'tags': 13,
-    'summary': 14
-}
+
 
 labels: dict = {
     'fake': False,
@@ -428,29 +412,6 @@ class Print_first_row(FunctionApplier):
             print(r)
 
 
-class Print_content_to_csv(FunctionApplier):
-    def __init__(self, num_to_print, csv_file):
-        self.has_printed = False
-        self.table = []
-        self.data_frame = pd.DataFrame()
-        self.csv_file = csv_file
-        self.num_to_print = num_to_print
-
-    def function_to_apply(self, row):
-        if self.num_to_print > 0:
-            self.num_to_print -= 1
-            item = {}
-            for h, i in headers.items():
-                item[h] = row[i]
-            self.table.append(item)
-
-        elif not self.has_printed:
-            self.has_printed = True
-            self.data_frame = pd.DataFrame(data=self.table)
-            self.data_frame.to_csv(self.csv_file)
-
-        return row
-
 class Binary_labels_LIAR(FunctionApplier):
     def __init__(self):
         self.binary_labels: dict = {
@@ -600,40 +561,48 @@ def read_rows_of_csv(file, n=None):
     return pd.read_csv(file, nrows=n) if n is not None else pd.read_csv(file)
 
 
-def create_csv_from_existing_with_n_rows(file, new_file, n):
-    df = read_rows_of_csv(file, n)
-    df.to_csv(new_file)
-
-
-def create_test_file():
-    create_csv_from_existing_with_n_rows(
-        "../datasets/big/news_cleaned_2018_02_13.csv", "../datasets/big/news_sample.csv", 100)
-    print(read_rows_of_csv("../datasets/big/news_sample.csv")["content"])
-
-
-def ist_pipeline(srcFile):
-    stopwords_lst = stopwords.words('english') 
-    # + ["<NUM>", "<DATE>", "<URL>"]
-    apply_pipeline(srcFile, [
-        (Clean_data(), "content"),
-        (Tokenizer(), "content"),
-        (Remove_stopwords(stopwords_lst), "content"),
-        (Stem(), "content"),
-    ], 
-    new_file="../datasets/sample/news_sample_cleaned_num_100k.csv",
-    progress_bar=True,
-    batch_size=100000
+def remove_unwanted(file, new_file):
+    apply_pipeline(
+        file,
+        [(Valid_row(), None)],
+        new_file=new_file,
+        progress_bar=True
     )
 
-
-def word_freq_pipeline():
-    wf = Word_frequency()
-    apply_pipeline("../datasets/big/news_sample_cleaned.csv", [
-        (wf, "content")
+def create_dataset(file, new_file):
+    stopwords_lst = stopwords.words('english')
+    apply_pipeline(file, [
+        # Binary labels
+        (Binary_labels(), 'type', 'type_binary'),
+        # Clean content
+        (Clean_data(), 'content', 'content_cleaned'),
+        (Tokenizer(), "content_cleaned"),
+        (Remove_stopwords(stopwords_lst), "content_cleaned"),
+        (Stem(), "content_cleaned"),
+        (Combine_Content(), "content_cleaned", "content_combined"),
+        # Clean authors
+        (Clean_author(), "authors"),
+        # Clean title
+        (Clean_data(), 'title'),
+        (Tokenizer(), "title"),
+        (Remove_stopwords(stopwords_lst), "title"),
+        (Stem(), "title"),
+        (Combine_Content(), "title"),
+        # Clean domain
+        (Clean_domain(), 'domain'),
+        # Combine columns (used as features)
+        (pp.Join_str_columns(
+            ["content_combined", "authors"]), None, "content_authors"),
+        (pp.Join_str_columns(
+            ["content_combined", "title"]), None, "content_title"),
+        (pp.Join_str_columns(
+            ["content_combined", "domain"]), None, "content_domain"),
+        (pp.Join_str_columns(["content_combined", "domain",
+                              "authors", "title"]), None, "content_domain_authors_title")
     ],
-        new_file="../datasets/1mio-raw-cleaned-freq.csv"
+        new_file=new_file,
+        progress_bar=True,
     )
-    wf.plot()
 
 
 def simple_model_test():
@@ -644,4 +613,6 @@ def simple_model_test():
     sm.get_metrics()
 
 
-#unique_words = Generate_unique_word_list()
+if __name__ == '__main__':
+    remove_unwanted(file="../datasets/large/shuffled.csv", new_file="../datasets/large/unwanted_removed.csv")
+    create_dataset(file="../datasets/large/unwanted_removed.csv", new_file="../datasets/large/dataset.csv")
