@@ -310,13 +310,31 @@ class Generate_unique_word_list(FunctionApplier):
 
 
 class Tokenizer(FunctionApplier):
+    def __init__(self, sentences=False):
+        self.sentences = sentences
+        
     def function_to_apply(self, cell):
-        return cell.split()
+        if self.sentences:
+            # Tokenize sentences using 
+            return nltk.sent_tokenize(cell)
+        else:
+            # Tokenize words using str.split()
+            return cell.split()
 
 class Untokenizer(FunctionApplier):
+    def __init__(self, sentences=False):
+        self.sentences = sentences
+        
     def function_to_apply(self, cell):
         # Join tokens back into text
-        return " ".join(cell)
+        if self.sentences:
+            # Join tokens in each sentence
+            untokenized_sentences = [" ".join(tokens) for tokens in cell]
+            # Join sentences into text
+            return " ".join(untokenized_sentences)
+        else:
+            # Join tokens into text
+            return " ".join(cell)
 
 class Remove_stopwords(FunctionApplier):
     def __init__(self, swords):
@@ -373,8 +391,10 @@ class Valid_row(FunctionApplier):
                         'satire', 'state', 'reliable', 'clickbait', 'political']
     def function_to_apply(self, row):
         # Remove rows which have empty content or start with 'ERROR':
-        if row['content'] == '' or row['content'].startswith('ERROR') or row['type'] not in self.types:
+        if row['content'] == '' or row['content'].startswith('ERROR') or row['type'] not in self.types or row['domain'] == 'nan':
             return DELETE_TOKEN
+        else:
+            return row
 
 class Join_str_columns(FunctionApplier):
     def __init__(self, columns):
@@ -519,6 +539,7 @@ def applier(function_cols, chunk, progress_bar=False):
             if to_col is None:
                 if progress_bar:
                     chunk = chunk.progress_apply(function.function_to_apply, axis=1)
+                    chunk = chunk[chunk['content'] != DELETE_TOKEN]
                 else:
                     chunk = chunk.apply(function.function_to_apply, axis=1)
             else:
@@ -540,9 +561,6 @@ def applier(function_cols, chunk, progress_bar=False):
                 else:
                     chunk[to_col] = chunk[from_col].apply(function.function_to_apply)
                 chunk = chunk[chunk[to_col] != DELETE_TOKEN]
-
-    # delete rows equal to DELETE_TOKEN
-   
     return chunk
 
 

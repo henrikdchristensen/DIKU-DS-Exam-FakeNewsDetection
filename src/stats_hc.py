@@ -4,7 +4,8 @@ import pipeline as pp
 import numpy as np
 import pandas as pd
 from ast import literal_eval
-from nltk.sentiment.vader import SentimentIntensityAnalyzer as SIA
+from textblob import TextBlob
+
 
 
 RAW_DATA = '../datasets/sample/dataset.csv'
@@ -24,21 +25,22 @@ TYPE_COLORS = {
     'junksci': 'yellow',
     'political': 'magenta',
     'unreliable': 'cyan',
+    'unknown': 'black',
+    'nan': 'black'
 }
 
 
 class Statistics():
     
     def __init__(self, filename: str):
-        self.data = pd.read_csv(filename, index_col=False).iloc[:100]
+        self.data = pd.read_csv(filename, index_col=False)
         # Convert text-list-of-strins to list of strings 
         self.data["content"] = self.data["content"].apply(literal_eval)
         
         self.pos_neg_words = pd.read_csv('../datasets/sample/statistics/pos_neg_words.csv')
         self.pos_words = self.pos_neg_words['Positive words'].tolist()
         self.neg_words = self.pos_neg_words['Negative words'].tolist()
-        self.sent_analyzer = SIA.SentimentIntensityAnalyzer()
-        
+
     def _sort_frequency(self, text, percentage: bool):
         counter = Counter(text)
         sorted_frequency = sorted(counter.items(), key=lambda x: x[1], reverse=True)
@@ -210,15 +212,10 @@ class Statistics():
         plt.tight_layout()
         plt.show()
 
-
-
-    def get_sentiment(text):
-        scores = self.sent_analyzer.polarity_scores(text)
-        sentiment = 1 if scores['pos'] > 0 else 0
-        return sentiment
     
     def barplot_polarity(self, binary_label: str = "binary_label"):
-        self.data['sentiment'] = self.data['content'].apply(self.get_sentiment)
+        self.data['sentiment'] = self.data['content'].apply(lambda x: sum([TextBlob(str(y)).sentiment.polarity for y in x])/len(x))
+            
         fig, (ax1, ax2) = plt.subplots(1, 2)
         ax1.hist(self.data[self.data[binary_label] == True]['sentiment'], color='red', alpha=0.5, label="Real")
         ax2.hist(self.data[self.data[binary_label] == False]['sentiment'], color='blue', alpha=0.5, label="Fake")
