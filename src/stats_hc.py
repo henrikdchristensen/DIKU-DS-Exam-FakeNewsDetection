@@ -4,7 +4,7 @@ import pipeline as pp
 import numpy as np
 import pandas as pd
 from ast import literal_eval
-from textblob import TextBlob
+from nltk.sentiment.vader import SentimentIntensityAnalyzer as SIA
 
 
 RAW_DATA = '../datasets/sample/dataset.csv'
@@ -37,6 +37,7 @@ class Statistics():
         self.pos_neg_words = pd.read_csv('../datasets/sample/statistics/pos_neg_words.csv')
         self.pos_words = self.pos_neg_words['Positive words'].tolist()
         self.neg_words = self.pos_neg_words['Negative words'].tolist()
+        self.sent_analyzer = SIA.SentimentIntensityAnalyzer()
         
     def _sort_frequency(self, text, percentage: bool):
         counter = Counter(text)
@@ -208,22 +209,27 @@ class Statistics():
         plt.suptitle('Real articles')
         plt.tight_layout()
         plt.show()
+
+
+
+    def get_sentiment(text):
+        scores = self.sent_analyzer.polarity_scores(text)
+        sentiment = 1 if scores['pos'] > 0 else 0
+        return sentiment
     
     def barplot_polarity(self, binary_label: str = "binary_label"):
-        # Calculate polarity score for each article. Every sentence is a list in the content column:
-        self.data['TextBlob_Polarity'] = self.data['content'].apply(lambda x: TextBlob(str(x)).sentiment.polarity)
-        
-        # Plot histograms of polarity scores for each group of articles
+        self.data['sentiment'] = self.data['content'].apply(self.get_sentiment)
         fig, (ax1, ax2) = plt.subplots(1, 2)
-        ax1.hist(self.data[self.data[binary_label] == True]['TextBlob_Polarity'], color='red', alpha=0.5, label="Real")
-        ax2.hist(self.data[self.data[binary_label] == False]['TextBlob_Polarity'], color='blue', alpha=0.5, label="Fake")
-        ax1.set_xlabel('Polarity score')
-        ax2.set_xlabel('Polarity score')
+        ax1.hist(self.data[self.data[binary_label] == True]['sentiment'], color='red', alpha=0.5, label="Real")
+        ax2.hist(self.data[self.data[binary_label] == False]['sentiment'], color='blue', alpha=0.5, label="Fake")
+        ax1.set_xlabel('Real')
+        ax2.set_xlabel('Fake')
         ax1.set_ylabel('# of articles')
         ax2.set_ylabel('# of articles')
         plt.suptitle('Polarity distribution')
         plt.tight_layout()
         plt.show()
+        self.data.to_csv('data.csv')
     
     def barplot_subjectivity(self, binary_label: str = "binary_label"):
         self.data['TextBlob_Subjectivity'] = self.data['content'].apply(lambda x: TextBlob(x).sentiment.subjectivity)
@@ -237,3 +243,4 @@ class Statistics():
         plt.suptitle('Subjectivity distribution')
         plt.tight_layout()
         plt.show()
+    
