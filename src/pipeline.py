@@ -35,7 +35,6 @@ labels: dict = {
 }
 
 ROWS_PR_ITERATION = 20000
-ROWS = 8529853
 TQDM_COLOR = 'magenta'
 DELETE_TOKEN = '<DELETE>'
 
