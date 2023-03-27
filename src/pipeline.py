@@ -35,6 +35,10 @@ labels: dict = {
 }
 
 ROWS_PR_ITERATION = 20000
+<< << << < HEAD
+== == == =
+ROWS = 8529853
+>>>>>> > origin/adv-models
 TQDM_COLOR = 'magenta'
 DELETE_TOKEN = '<DELETE>'
 
@@ -314,7 +318,7 @@ class Remove_stopwords(FunctionApplier):
 
 
 class Stem(FunctionApplier):
-    def function_to_apply(self, words: list[str]):
+    def function_to_apply(self, words):
         # Create a PorterStemmer object, which remove morphological affixes from words, leaving only the word stem.
         ps = PorterStemmer()
         stemmed_words = []
@@ -543,12 +547,12 @@ def apply_pipeline_pd_tqdm(df, function_cols):
     return applier(function_cols, df.copy(), progress_bar=True)
 
 
-def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False, progress_bar=False, nrows=None):
+def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False, progress_bar=True, total_rows=20000):
     i = 0
     start_time = time()
 
     # Use Pandas chunksize and iterator to read the input file in batches
-    with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8', nrows=nrows) as reader:
+    with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8', lineterminator='\n', nrows=total_rows) as reader:
         for chunk in reader:
             if function_cols is None:
                 return chunk
