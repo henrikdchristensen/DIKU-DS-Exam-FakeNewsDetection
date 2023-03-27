@@ -17,7 +17,6 @@ import bisect
 tqdm.pandas()
 
 
-
 labels: dict = {
     'fake': False,
     'conspiracy': False,
@@ -26,7 +25,7 @@ labels: dict = {
     'unreliable': False,
     'bias': False,
     'satire': False,
-    #'state': False,
+    # 'state': False,
     'reliable': True,
     'clickbait': True,
     'political': True
@@ -37,9 +36,11 @@ ROWS = 8529853
 TQDM_COLOR = 'magenta'
 DELETE_TOKEN = '<DELETE>'
 
+
 class FunctionApplier:
     def function_to_apply(self, row):
         pass
+
 
 class Filter(FunctionApplier):
     def __init__(self, include):
@@ -47,7 +48,7 @@ class Filter(FunctionApplier):
 
     def function_to_apply(self, type):
         if type not in self.include:
-            return DELETE_TOKEN        
+            return DELETE_TOKEN
         return type
 
 
@@ -61,12 +62,13 @@ class Normalize(FunctionApplier):
         # Normalize the input vector by dividing each element by the sum
         return vector / sum
 
+
 class TF_IDF(FunctionApplier):
     def __init__(self, n, n_t, unique_words):
         self.unique_words = unique_words
         self.idf_vec = self.get_idf(n, n_t)
 
-    def get_idf(self, n, n_t):        
+    def get_idf(self, n, n_t):
         idf_vec = [np.zeros(len(self.unique_words), dtype=int) for _ in range(len(n))]
         for i in range(len(n)):
             for j, word in enumerate(self.unique_words):
@@ -84,7 +86,8 @@ class TF_IDF(FunctionApplier):
                 vector[i] = (np.log(vector[i]) + 1) * self.idf_vec[set][i]
         return vector
 
-def get_dataframe_with_distribution(file, total_size, splits, balanced, end_col = "set", type_col ="type",  chunksize=ROWS_PR_ITERATION, out_file=None, get_frame=True, classes = labels, delete=True):
+
+def get_dataframe_with_distribution(file, total_size, splits, balanced, end_col="set", type_col="type",  chunksize=ROWS_PR_ITERATION, out_file=None, get_frame=True, classes=labels, delete=True):
     # empty dataframe
     data = None
     curr_index = 0
@@ -98,12 +101,12 @@ def get_dataframe_with_distribution(file, total_size, splits, balanced, end_col 
             for label in classes:
                 split_dict[label] = label_num
             sets.append([b, split_dict])
-    
+
     def apply_to_rows(label):
         nonlocal curr_index
         if curr_index >= len(sets) or label not in classes:
             return DELETE_TOKEN
-        
+
         balanced, curr_set = sets[curr_index]
         if balanced:
             if sum(curr_set.values()) == 0:
@@ -119,11 +122,11 @@ def get_dataframe_with_distribution(file, total_size, splits, balanced, end_col 
                 curr_index += 1
                 return apply_to_rows(label)
             elif curr_set > 0:
-                sets[curr_index][1] -= 1 
+                sets[curr_index][1] -= 1
                 return curr_index
             else:
                 return DELETE_TOKEN
-    
+
     entries_read = 0
     with pd.read_csv(file, chunksize=chunksize, encoding='utf-8') as reader:
         for chunk in reader:
@@ -156,26 +159,31 @@ def get_dataframe_with_distribution(file, total_size, splits, balanced, end_col 
     print("ERROR: not enough data to create sets")
     return data
 
+
 class Debug(FunctionApplier):
     def __init__(self):
-        self.i=0
+        self.i = 0
+
     def function_to_apply(self, row):
         if type(row) != str:
             print(self.i, row)
         self.i += 1
         return row
 
+
 class Read_String_Lst(FunctionApplier):
     def function_to_apply(self, words):
         if type(words) is not list:
             words = literal_eval(words)
         return words
-    
+
+
 class Combine_Content(FunctionApplier):
     def function_to_apply(self, content_lst):
-        if content_lst == []: # to avoid nan
+        if content_lst == []:  # to avoid nan
             return " "
         return " ".join(content_lst)
+
 
 class Create_word_vector(FunctionApplier):
     def __init__(self, unique_words):
@@ -203,12 +211,14 @@ class Save_numpy_arr(FunctionApplier):
     def function_to_apply(self, vector):
         return ' '.join(map(str, vector.tolist()))
 
+
 class Read_numpy_arr(FunctionApplier):
     def __init__(self, dtype):
         self.dtype = dtype
 
     def function_to_apply(self, row):
         return np.fromstring(row, sep=" ", dtype=self.dtype)
+
 
 class Generate_unique_word_list(FunctionApplier):
     def __init__(self):
@@ -233,8 +243,6 @@ class Generate_unique_word_list(FunctionApplier):
                 n_t[word] += 1
             else:
                 n_t[word] = 1
-        
-
 
     def get_unique_words(self, low, high):
         # Get the sum of all words
@@ -294,6 +302,7 @@ class Tokenizer(FunctionApplier):
     def function_to_apply(self, cell):
         return cell.split()
 
+
 class Remove_stopwords(FunctionApplier):
     def __init__(self, swords):
         self.swords = swords
@@ -317,21 +326,26 @@ class Clean_data(FunctionApplier):
         # Create a list of patterns to remove.
         # Compile the patterns to speed up the process
         self.patterns = {
-            re.compile(r'(<.*?>)'): '', # remove html tags
-            re.compile(r'[<>]'): '', # remove < and >
-            re.compile(r'((https?:\/\/)?(?:www\.)?[a-zA-Z0-9-_\+=.:~@#%]+\.[a-zA-Z0-9()]{1,6}\b(?:[a-zA-Z0-9-_.:\\/@#$%&()=+~?]*))'): ' <URL> ', # replace urls with <URL>
-            re.compile(r'(https?:\/\/)?w{0,3}\.?[a-z]+\.[a-z]\w*[\w\/-]*'): ' <URL> ', # replace urls with <URL>
-            re.compile(r'(\d{1,2}([\:\-/\\]|(,\s)?)){2}\d{2,4}|\d{2,4}(([\:\-/\\]|(,\s)?)\d{1,2}){2}'): ' <DATE> ', # replace dates with <DATE>
-            re.compile(r'([Jj]an(uary)?|[Ff]eb(ruary)?|[Mm]ar(ch)?|[Aa]pr(il)?|[Mm]ay|[Jj]un(e)?|[Jj]ul(y)?|[Aa]ug(ust)?|[Ss]ep(tember)?|[Oo]ct(ober)?|[Nn]ov(ember)?|[Dd]ec(ember)?)([\:\-/\\]|(,\s)?)\d{1,2}([\:\-/\\]|(,\s)?)\d{1,4}'): ' <DATE> ', # replace dates with <DATE>
-            re.compile(r'([\w.\-]+@(?:[\w-]+\.)+[\w-]{2,4})|@[\w\d]+'): ' <EMAIL> ', # replace email addresses with <EMAIL>
-            re.compile(r'(\r\n|\n|\r)+'): ' ', # remove new lines
-            re.compile(r'(\t+)'): ' ', # remove tabs
-            re.compile(r'(\?)'): ' ? ', # add space before and after question mark
-            re.compile(r'(\!)'): ' ! ', # add space before and after exclamation mark
+            re.compile(r'(<.*?>)'): '',  # remove html tags
+            re.compile(r'[<>]'): '',  # remove < and >
+            # replace urls with <URL>
+            re.compile(r'((https?:\/\/)?(?:www\.)?[a-zA-Z0-9-_\+=.:~@#%]+\.[a-zA-Z0-9()]{1,6}\b(?:[a-zA-Z0-9-_.:\\/@#$%&()=+~?]*))'): ' <URL> ',
+            re.compile(r'(https?:\/\/)?w{0,3}\.?[a-z]+\.[a-z]\w*[\w\/-]*'): ' <URL> ',  # replace urls with <URL>
+            # replace dates with <DATE>
+            re.compile(r'(\d{1,2}([\:\-/\\]|(,\s)?)){2}\d{2,4}|\d{2,4}(([\:\-/\\]|(,\s)?)\d{1,2}){2}'): ' <DATE> ',
+            # replace dates with <DATE>
+            re.compile(r'([Jj]an(uary)?|[Ff]eb(ruary)?|[Mm]ar(ch)?|[Aa]pr(il)?|[Mm]ay|[Jj]un(e)?|[Jj]ul(y)?|[Aa]ug(ust)?|[Ss]ep(tember)?|[Oo]ct(ober)?|[Nn]ov(ember)?|[Dd]ec(ember)?)([\:\-/\\]|(,\s)?)\d{1,2}([\:\-/\\]|(,\s)?)\d{1,4}'): ' <DATE> ',
+            # replace email addresses with <EMAIL>
+            re.compile(r'([\w.\-]+@(?:[\w-]+\.)+[\w-]{2,4})|@[\w\d]+'): ' <EMAIL> ',
+            re.compile(r'(\r\n|\n|\r)+'): ' ',  # remove new lines
+            re.compile(r'(\t+)'): ' ',  # remove tabs
+            re.compile(r'(\?)'): ' ? ',  # add space before and after question mark
+            re.compile(r'(\!)'): ' ! ',  # add space before and after exclamation mark
             re.compile(r'(\-)'): ' ',
-            re.compile(r'[^A-Za-z0-9\s<>\?\!]' if remove_punct else r'[^A-Za-z0-9\s<>\?!\.,]'): '', # remove all special characters, including non-ascii characters and punctuation if remove_punct is True
-            re.compile(r'(\d+)(th)?'): ' <NUM> ', # replace numbers with <NUM>
-            re.compile(r'( +)'): ' ', # remove multiple spaces
+            # remove all special characters, including non-ascii characters and punctuation if remove_punct is True
+            re.compile(r'[^A-Za-z0-9\s<>\?\!]' if remove_punct else r'[^A-Za-z0-9\s<>\?!\.,]'): '',
+            re.compile(r'(\d+)(th)?'): ' <NUM> ',  # replace numbers with <NUM>
+            re.compile(r'( +)'): ' ',  # remove multiple spaces
         }
 
     def function_to_apply(self, cell):
@@ -344,10 +358,12 @@ class Clean_data(FunctionApplier):
 
         return cell
 
+
 class Valid_row(FunctionApplier):
     def __init__(self):
-        self.types = ['fake', 'conspiracy', 'junksci', 'hate', 'unreliable', 'bias', 
-                        'satire', 'state', 'reliable', 'clickbait', 'political']
+        self.types = ['fake', 'conspiracy', 'junksci', 'hate', 'unreliable', 'bias',
+                      'satire', 'state', 'reliable', 'clickbait', 'political']
+
     def function_to_apply(self, row):
         # Remove rows which have empty content or start with 'ERROR':
         if row['content'] == '' or row['content'].startswith('ERROR') or row['type'] not in self.types or row['domain'] == 'nan':
@@ -355,14 +371,18 @@ class Valid_row(FunctionApplier):
         else:
             return row
 
+
 class Join_str_columns(FunctionApplier):
     def __init__(self, columns):
         self.columns = columns
+
     def function_to_apply(self, row):
         combined = " ".join([row[col] for col in self.columns if type(row[col]) is str]).strip()
-        return combined if combined != "" else " " # to avoid nan
+        return combined if combined != "" else " "  # to avoid nan
 
-#TODO: Change code coppied from Oliver and Daniel
+# TODO: Change code coppied from Oliver and Daniel
+
+
 class Clean_author(FunctionApplier):
     def __init__(self):
         self.regex_oddcharacters = re.compile(r'[^A-Za-z0-9\s]')
@@ -373,9 +393,10 @@ class Clean_author(FunctionApplier):
         author_list = [author.lower() for author in author_list]
         author_list = [(re.sub(self.regex_oddcharacters, "", author)) for author in author_list]
         author_list = "".join(author_list)
-        if author_list == "": # to avoid nan
+        if author_list == "":  # to avoid nan
             return " "
         return author_list
+
 
 class Clean_domain(FunctionApplier):
     def __init__(self):
@@ -386,6 +407,7 @@ class Clean_domain(FunctionApplier):
         domain = domain.lower()
         domain = re.sub(self.regex_oddcharacters, "", domain)
         return domain
+
 
 class Decode_to_str(FunctionApplier):
     def function_to_apply(self, row):
@@ -430,6 +452,7 @@ class Binary_labels_LIAR(FunctionApplier):
             binary_label = True
         return binary_label
 
+
 class Binary_labels(FunctionApplier):
     def __init__(self):
         self.binary_labels: dict = {
@@ -467,7 +490,6 @@ class Simple_model(FunctionApplier):
 
     def get_metrics(self):
         pass
-
 
 
 def get_batch(df, batch_size):
@@ -526,6 +548,7 @@ def apply_pipeline_pd_tqdm(df, function_cols):
     # Iterate through each row in the DataFrame and apply the functions
     return applier(function_cols, df.copy(), progress_bar=True)
 
+
 def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False, progress_bar=False, nrows=None):
     i = 0
     start_time = time()
@@ -537,7 +560,7 @@ def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_IT
                 return chunk
             # Apply the specified functions to each row in the batch
             chunk = applier(function_cols, chunk, progress_bar=progress_bar)
-            
+
             # If an output file is specified, append the processed data to it
             if new_file is not None:
                 if i == 0:
@@ -568,6 +591,7 @@ def remove_unwanted(file, new_file):
         new_file=new_file,
         progress_bar=True
     )
+
 
 def create_dataset(file, new_file):
     stopwords_lst = stopwords.words('english')
@@ -616,3 +640,5 @@ def simple_model_test():
 if __name__ == '__main__':
     remove_unwanted(file="../datasets/large/shuffled.csv", new_file="../datasets/large/unwanted_removed.csv")
     create_dataset(file="../datasets/large/unwanted_removed.csv", new_file="../datasets/large/dataset.csv")
+    #remove_unwanted(file="../datasets/large/shuffled.csv", new_file="../datasets/large/unwanted_removed.csv")
+    #create_dataset(file="../datasets/large/unwanted_removed.csv", new_file="../datasets/large/dataset.csv")
