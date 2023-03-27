@@ -12,6 +12,7 @@ from time import time
 from ast import literal_eval
 import numpy as np
 from sklearn.preprocessing import normalize
+import bisect
 
 tqdm.pandas()
 
@@ -47,7 +48,7 @@ labels: dict = {
     'political': True
 }
 
-ROWS_PR_ITERATION = 20000
+ROWS_PR_ITERATION = 200000
 ROWS = 8529853
 TQDM_COLOR = 'magenta'
 DELETE_TOKEN = '<DELETE>'
@@ -55,6 +56,15 @@ DELETE_TOKEN = '<DELETE>'
 class FunctionApplier:
     def function_to_apply(self, row):
         pass
+
+class Filter(FunctionApplier):
+    def __init__(self, include):
+        self.include = include
+
+    def function_to_apply(self, type):
+        if type not in self.include:
+            return DELETE_TOKEN        
+        return type
 
 
 class Normalize(FunctionApplier):
@@ -67,48 +77,30 @@ class Normalize(FunctionApplier):
         # Normalize the input vector by dividing each element by the sum
         return vector / sum
 
+class TF_IDF(FunctionApplier):
+    def __init__(self, n, n_t, unique_words):
+        self.unique_words = unique_words
+        self.idf_vec = self.get_idf(n, n_t)
 
-class Create_sets(FunctionApplier):
-    def __init__(self, total_size, splits, balanced):
-        # create empty lists of size splits
-        self.curr_index = 0
-        self.sets = []
-        for split, b in zip(splits, balanced):
-            if not b:
-                self.sets.append([b, int(split * total_size)])
-            else:
-                split_dict = {}
-                label_num = int((split * total_size) / len(labels))
-                for label in labels:
-                    split_dict[label] = label_num
-                self.sets.append([b, split_dict])
+    def get_idf(self, n, n_t):        
+        idf_vec = [np.zeros(len(self.unique_words), dtype=int) for _ in range(len(n))]
+        for i in range(len(n)):
+            for j, word in enumerate(self.unique_words):
+                if word in n_t[i]:
+                    idf_vec[i][j] = np.log(n[i] / n_t[i][word])
+                else:
+                    idf_vec[i][j] = 0
+        return idf_vec
 
-    def function_to_apply(self, label):
-        if self.curr_index >= len(self.sets):
-            return DELETE_TOKEN
-        
-        balanced, curr_set = self.sets[self.curr_index]
-        if balanced:
-            if sum(curr_set.values()) == 0:
-                self.curr_index += 1
-                return self.function_to_apply(label)
-            elif curr_set[label] > 0:
-                curr_set[label] -= 1
-                return self.curr_index
-            else:
-                return DELETE_TOKEN
-        else:
-            if curr_set == 0:
-                self.curr_index += 1
-                return self.function_to_apply(label)
-            elif curr_set > 0:
-                self.sets[self.curr_index][1] -= 1 
-                return self.curr_index
-            else:
-                return DELETE_TOKEN
+    def function_to_apply(self, row):
+        vector = row["content"].copy()
+        set = row["set"]
+        for i in range(len(vector)):
+            if vector[i] > 0:
+                vector[i] = (np.log(vector[i]) + 1) * self.idf_vec[set][i]
+        return vector
 
-def get_dataframe_with_distribution(file, total_size, splits, balanced, chunksize=ROWS_PR_ITERATION):
-    print("running")
+def get_dataframe_with_distribution(file, total_size, splits, balanced, end_col = "set", type_col ="type",  chunksize=ROWS_PR_ITERATION, out_file=None, get_frame=True, classes = labels, delete=True):
     # empty dataframe
     data = None
     curr_index = 0
@@ -118,14 +110,14 @@ def get_dataframe_with_distribution(file, total_size, splits, balanced, chunksiz
             sets.append([b, int(split * total_size)])
         else:
             split_dict = {}
-            label_num = int((split * total_size) / len(labels))
-            for label in labels:
+            label_num = int((split * total_size) / len(classes))
+            for label in classes:
                 split_dict[label] = label_num
             sets.append([b, split_dict])
-
+    
     def apply_to_rows(label):
         nonlocal curr_index
-        if curr_index >= len(sets):
+        if curr_index >= len(sets) or label not in classes:
             return DELETE_TOKEN
         
         balanced, curr_set = sets[curr_index]
@@ -149,32 +141,66 @@ def get_dataframe_with_distribution(file, total_size, splits, balanced, chunksiz
                 return DELETE_TOKEN
     
     entries_read = 0
-    with pd.read_csv(file, chunksize=chunksize, encoding='utf-8', lineterminator='\n') as reader:
+    with pd.read_csv(file, chunksize=chunksize, encoding='utf-8') as reader:
         for chunk in reader:
-            entries_read += len(chunk)
-            chunk["set"] = chunk["type"].progress_apply(apply_to_rows)
-            chunk = chunk[chunk["set"] != DELETE_TOKEN]
-            if data is None:
-                data = chunk
-            else:
-                data = pd.concat([data, chunk])
+            chunk[end_col] = chunk[type_col].progress_apply(apply_to_rows)
+            if delete:
+                chunk = chunk[chunk[end_col] != DELETE_TOKEN]
 
+            if out_file is not None:
+                if entries_read == 0:
+                    chunk.to_csv(out_file, mode='w', index=False)
+                else:
+                    # Append to csv file without header
+                    chunk.to_csv(out_file, mode='a', header=False, index=False)
+            if get_frame:
+                if data is None:
+                    data = chunk
+                else:
+                    data = pd.concat([data, chunk])
+
+            entries_read += chunksize
             finished = True
             for balanced, set in sets:
                 if (balanced and sum(set.values()) > 0) or (not balanced and set > 0):
                     finished = False
             if finished:
                 print("entries read:", entries_read)
-                return data
+                if get_frame:
+                    return data
+                return
     print("ERROR: not enough data to create sets")
     return data
+
+class Debug(FunctionApplier):
+    def __init__(self):
+        self.i=0
+    def function_to_apply(self, row):
+        if type(row) != str:
+            print(self.i, row)
+        self.i += 1
+        return row
+
+class Read_String_Lst(FunctionApplier):
+    def function_to_apply(self, words):
+        if type(words) is not list:
+            words = literal_eval(words)
+        return words
+    
+class Combine_Content(FunctionApplier):
+    def function_to_apply(self, content_lst):
+        if content_lst == []: # to avoid nan
+            return " "
+        return " ".join(content_lst)
 
 class Create_word_vector(FunctionApplier):
     def __init__(self, unique_words):
         self.unique_words = unique_words
 
     def function_to_apply(self, words):
-        vector = np.zeros(len(self.unique_words), dtype=int)
+        if type(words) is not list:
+            words = literal_eval(words)
+        vector = np.zeros(len(self.unique_words), dtype=np.int32)
         words = sorted(words)
         i = 0
         j = 0
@@ -186,16 +212,45 @@ class Create_word_vector(FunctionApplier):
                 j += 1
             else:  # should never happen
                 i += 1
-        return np.array(vector)
+        return vector
 
+
+class Save_numpy_arr(FunctionApplier):
+    def function_to_apply(self, vector):
+        return ' '.join(map(str, vector.tolist()))
+
+class Read_numpy_arr(FunctionApplier):
+    def __init__(self, dtype):
+        self.dtype = dtype
+
+    def function_to_apply(self, row):
+        return np.fromstring(row, sep=" ", dtype=self.dtype)
 
 class Generate_unique_word_list(FunctionApplier):
     def __init__(self):
         self.unique_words = Counter()
+        self.n_t = []
+        self.n = []
 
-    def function_to_apply(self, words):
+    def function_to_apply(self, row):
+        words = row["content"]
+        if type(words) is not list:
+            words = literal_eval(words)
+        set = row["set"] if "set" in row else 0
+        if len(self.n_t) <= set:
+            self.n_t.append({})
+            self.n.append(0)
+            return self.function_to_apply(row)
+        n_t = self.n_t[set]
         self.unique_words.update(words)
-        return words
+        self.n[set] += 1
+        for word in words:
+            if word in n_t:
+                n_t[word] += 1
+            else:
+                n_t[word] = 1
+        
+
 
     def get_unique_words(self, low, high):
         # Get the sum of all words
@@ -218,7 +273,7 @@ class Generate_unique_word_list(FunctionApplier):
 
     def get_most_frequent(self, nwords):
         # Return the n most frequent words
-        return sorted(self.unique_words.most_common(nwords))
+        return self.unique_words.most_common(nwords)
 
     def plot_most_frequent(self, nwords, freq=False):
         # Calculate the frequency of each word
@@ -251,39 +306,9 @@ class Generate_unique_word_list(FunctionApplier):
         plt.show()
 
 
-class Word_frequency(FunctionApplier):
-    def __init__(self, nwords=50):
-        self.swords = nwords
-        self.words = []
-        self.frequency = Counter()
-        self.sorted_frequency = []
-
-    def function_to_apply(self, content):
-        # Update/add list of word
-        content = literal_eval(content)
-        self.frequency.update(content)
-        # Return the sorted dictionary based on the frequency of each word
-        self.sorted_frequency = sorted(
-            self.frequency.items(), key=lambda x: x[1], reverse=True)
-        return content
-
-    def plot(self):
-        # Extract the words and their frequency from the sorted list
-        words = [x[0] for x in self.sorted_frequency[:self.swords]]
-        frequency = [x[1] for x in self.sorted_frequency[:self.swords]]
-        # Plot a barplot using matplotlib
-        plt.bar(words, frequency)
-        plt.ylabel('Frequency')
-        plt.title(f'Frequency of the {self.swords} most frequent words')
-        plt.xticks(rotation=90)
-        plt.tight_layout()
-        plt.show()
-
-
 class Tokenizer(FunctionApplier):
     def function_to_apply(self, cell):
         return cell.split()
-
 
 class Remove_stopwords(FunctionApplier):
     def __init__(self, swords):
@@ -304,23 +329,25 @@ class Stem(FunctionApplier):
 
 
 class Clean_data(FunctionApplier):
-    def __init__(self):
+    def __init__(self, remove_punct=True):
         # Create a list of patterns to remove.
         # Compile the patterns to speed up the process
         self.patterns = {
-            re.compile(r'((https?:\/\/)?(?:www\.)?[a-zA-Z0-9-_\+=.:~@#%]+\.[a-zA-Z0-9()]{1,6}\b(?:[a-zA-Z0-9-_.:\\/@#$%&()=+~?]*))'): ' <URL> ',
-            re.compile(r'(https?:\/\/)?w{0,3}\.?[a-z]+\.[a-z]\w*[\w\/-]*'): ' <URL> ',
-            re.compile(r'(\d{1,2}([\:\-/\\]|(,\s)?)){2}\d{2,4}|\d{2,4}(([\:\-/\\]|(,\s)?)\d{1,2}){2}'): ' <DATE> ',
-            re.compile(r'([Jj]an(uary)?|[Ff]eb(ruary)?|[Mm]ar(ch)?|[Aa]pr(il)?|[Mm]ay|[Jj]un(e)?|[Jj]ul(y)?|[Aa]ug(ust)?|[Ss]ep(tember)?|[Oo]ct(ober)?|[Nn]ov(ember)?|[Dd]ec(ember)?)([\:\-/\\]|(,\s)?)\d{1,2}([\:\-/\\]|(,\s)?)\d{1,4}'): ' <DATE> ',
-            re.compile(r'([\w.\-]+@(?:[\w-]+\.)+[\w-]{2,4})|@[\w\d]+'): ' <EMAIL> ',
-            re.compile(r'(\r\n|\n|\r)+'): ' ',
-            re.compile(r'(\t+)'): ' ',
-            re.compile(r'(\!|\[|\])'): '',
-            # re.compile(r'(\=|\~|\u2018|\t|\;|\@|\″|\^|\…|\<|\>|\+|\/|\.|\*|\#|\,|\?|\&|\"|\”|\“|\%|\:|\-|\(|\)|\´|\`|\’|\$|\'|\|)'): '',
-            # re.compile(r'(\–|\—)'): ' ',
-            re.compile(r'[^A-Za-z0-9\s]'): '',
-            re.compile(r'(\d+)(th)?'): ' <NUM> ',
-            re.compile(r'( +)'): ' ',
+            re.compile(r'(<.*?>)'): '', # remove html tags
+            re.compile(r'[<>]'): '', # remove < and >
+            re.compile(r'((https?:\/\/)?(?:www\.)?[a-zA-Z0-9-_\+=.:~@#%]+\.[a-zA-Z0-9()]{1,6}\b(?:[a-zA-Z0-9-_.:\\/@#$%&()=+~?]*))'): ' <URL> ', # replace urls with <URL>
+            re.compile(r'(https?:\/\/)?w{0,3}\.?[a-z]+\.[a-z]\w*[\w\/-]*'): ' <URL> ', # replace urls with <URL>
+            re.compile(r'(\d{1,2}([\:\-/\\]|(,\s)?)){2}\d{2,4}|\d{2,4}(([\:\-/\\]|(,\s)?)\d{1,2}){2}'): ' <DATE> ', # replace dates with <DATE>
+            re.compile(r'([Jj]an(uary)?|[Ff]eb(ruary)?|[Mm]ar(ch)?|[Aa]pr(il)?|[Mm]ay|[Jj]un(e)?|[Jj]ul(y)?|[Aa]ug(ust)?|[Ss]ep(tember)?|[Oo]ct(ober)?|[Nn]ov(ember)?|[Dd]ec(ember)?)([\:\-/\\]|(,\s)?)\d{1,2}([\:\-/\\]|(,\s)?)\d{1,4}'): ' <DATE> ', # replace dates with <DATE>
+            re.compile(r'([\w.\-]+@(?:[\w-]+\.)+[\w-]{2,4})|@[\w\d]+'): ' <EMAIL> ', # replace email addresses with <EMAIL>
+            re.compile(r'(\r\n|\n|\r)+'): ' ', # remove new lines
+            re.compile(r'(\t+)'): ' ', # remove tabs
+            re.compile(r'(\?)'): ' ? ', # add space before and after question mark
+            re.compile(r'(\!)'): ' ! ', # add space before and after exclamation mark
+            re.compile(r'(\-)'): ' ',
+            re.compile(r'[^A-Za-z0-9\s<>\?\!]' if remove_punct else r'[^A-Za-z0-9\s<>\?!\.,]'): '', # remove all special characters, including non-ascii characters and punctuation if remove_punct is True
+            re.compile(r'(\d+)(th)?'): ' <NUM> ', # replace numbers with <NUM>
+            re.compile(r'( +)'): ' ', # remove multiple spaces
         }
 
     def function_to_apply(self, cell):
@@ -333,6 +360,48 @@ class Clean_data(FunctionApplier):
 
         return cell
 
+class Valid_row(FunctionApplier):
+    def __init__(self):
+        self.types = ['fake', 'conspiracy', 'junksci', 'hate', 'unreliable', 'bias', 
+                        'satire', 'state', 'reliable', 'clickbait', 'political']
+    def function_to_apply(self, row):
+        # Remove rows which have empty content or start with 'ERROR':
+        if row['content'] == '' or row['content'].startswith('ERROR') or row['type'] not in self.types or row['domain'] == 'nan':
+            return DELETE_TOKEN
+        else:
+            return row
+
+class Join_str_columns(FunctionApplier):
+    def __init__(self, columns):
+        self.columns = columns
+    def function_to_apply(self, row):
+        combined = " ".join([row[col] for col in self.columns if type(row[col]) is str]).strip()
+        return combined if combined != "" else " " # to avoid nan
+
+#TODO: Change code coppied from Oliver and Daniel
+class Clean_author(FunctionApplier):
+    def __init__(self):
+        self.regex_oddcharacters = re.compile(r'[^A-Za-z0-9\s]')
+
+    def function_to_apply(self, authors):
+        author_list = authors.strip().split(",") if type(authors) is str else []
+        author_list = [author.strip() for author in author_list]
+        author_list = [author.lower() for author in author_list]
+        author_list = [(re.sub(self.regex_oddcharacters, "", author)) for author in author_list]
+        author_list = "".join(author_list)
+        if author_list == "": # to avoid nan
+            return " "
+        return author_list
+
+class Clean_domain(FunctionApplier):
+    def __init__(self):
+        self.regex_oddcharacters = re.compile(r'[^A-Za-z0-9\s]')
+
+    def function_to_apply(self, domain):
+        domain = domain.split(".")[0]
+        domain = domain.lower()
+        domain = re.sub(self.regex_oddcharacters, "", domain)
+        return domain
 
 class Decode_to_str(FunctionApplier):
     def function_to_apply(self, row):
@@ -382,6 +451,23 @@ class Print_content_to_csv(FunctionApplier):
 
         return row
 
+class Binary_labels_LIAR(FunctionApplier):
+    def __init__(self):
+        self.binary_labels: dict = {
+            'pants-fire': False,
+            'false': False,
+            'barely-true': False,
+            'half-true': True,
+            'mostly-true': True,
+            'True': True
+        }
+
+    def function_to_apply(self, cell):
+        try:
+            binary_label = self.binary_labels[cell]
+        except:
+            binary_label = True
+        return binary_label
 
 class Binary_labels(FunctionApplier):
     def __init__(self):
@@ -445,6 +531,7 @@ def applier(function_cols, chunk, progress_bar=False):
             if to_col is None:
                 if progress_bar:
                     chunk = chunk.progress_apply(function.function_to_apply, axis=1)
+                    chunk = chunk[chunk['content'] != DELETE_TOKEN]
                 else:
                     chunk = chunk.apply(function.function_to_apply, axis=1)
             else:
@@ -466,9 +553,6 @@ def applier(function_cols, chunk, progress_bar=False):
                 else:
                     chunk[to_col] = chunk[from_col].apply(function.function_to_apply)
                 chunk = chunk[chunk[to_col] != DELETE_TOKEN]
-
-    # delete rows equal to DELETE_TOKEN
-   
     return chunk
 
 
@@ -481,22 +565,17 @@ def apply_pipeline_pd_tqdm(df, function_cols):
     # Iterate through each row in the DataFrame and apply the functions
     return applier(function_cols, df.copy(), progress_bar=True)
 
-def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False, progress_bar=False):
+def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False, progress_bar=False, nrows=None):
     i = 0
     start_time = time()
 
     # Use Pandas chunksize and iterator to read the input file in batches
-    with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8', lineterminator='\n') as reader:
+    with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8', nrows=nrows) as reader:
         for chunk in reader:
             if function_cols is None:
                 return chunk
             # Apply the specified functions to each row in the batch
             chunk = applier(function_cols, chunk, progress_bar=progress_bar)
-
-            # If get_batch is True, return only the first batch of processed data
-            if get_batch:
-                print("Length", len(chunk))
-                return chunk
             
             # If an output file is specified, append the processed data to it
             if new_file is not None:
@@ -506,7 +585,13 @@ def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_IT
                     # Append to csv file without header
                     chunk.to_csv(new_file, mode='a', header=False, index=False)
 
+            # If get_batch is True, return only the first batch of processed data
+            if get_batch:
+                print("Length", len(chunk))
+                return chunk
+
             i += batch_size
+            print(f'processed {i} rows')
         # Print the time taken to process the data
         print(f'finish time: {time()-start_time}')
 
@@ -526,14 +611,19 @@ def create_test_file():
     print(read_rows_of_csv("../datasets/big/news_sample.csv")["content"])
 
 
-def ist_pipeline():
-    stopwords_lst = stopwords.words('english') + ["<NUM>", "<DATE>", "<URL>"]
-    apply_pipeline("../datasets/big/news_sample.csv", [
+def ist_pipeline(srcFile):
+    stopwords_lst = stopwords.words('english') 
+    # + ["<NUM>", "<DATE>", "<URL>"]
+    apply_pipeline(srcFile, [
         (Clean_data(), "content"),
         (Tokenizer(), "content"),
         (Remove_stopwords(stopwords_lst), "content"),
         (Stem(), "content"),
-    ], new_file="../datasets/sample/news_sample_cleaned_num.csv")
+    ], 
+    new_file="../datasets/sample/news_sample_cleaned_num_100k.csv",
+    progress_bar=True,
+    batch_size=100000
+    )
 
 
 def word_freq_pipeline():

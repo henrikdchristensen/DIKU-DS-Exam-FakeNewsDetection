@@ -1,7 +1,7 @@
 ## FakeNews
 # exclude
-# include
 *.csv
+*.h5
 
 # exclude all datasets
 datasets\*
@@ -135,3 +135,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+.DS_Store
