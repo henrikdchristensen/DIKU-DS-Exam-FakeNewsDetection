@@ -34,13 +34,20 @@ class Statistics():
     def __init__(self, filename: str):
         self.data = pd.read_csv(filename, index_col=False)
         # Convert text-list-of-strins to list of strings
-        self.data["content"] = self.data["content"].apply(literal_eval)
-        self.data['TextBlob_Polarity'] = self.data['content'].apply(lambda x: TextBlob(str(x)).sentiment.polarity)
-        self.data['TextBlob_Subjectivity'] = self.data['content'].apply(
-            lambda x: TextBlob(str(x)).sentiment.subjectivity)
-        self.data["content"] = self.data["content"].apply(lambda x: " ".join(x))
-        self.data["content"] = self.data["content"].apply(lambda x: x.split())
+        self.data["content_cleaned"] = self.data["content_cleaned"].apply(literal_eval)
 
+    def _occurrence_counter(self, to_count: str):
+        count = 0
+        for text in self.data['content_cleaned']:
+            count += text.count(to_count)
+        return count
+    
+    def _word_counter(self):
+        count = 0
+        for text in self.data['content_cleaned']:
+            count += len(text.split())
+        return count
+    
     def _sort_frequency(self, text, percentage: bool):
         counter = Counter(text)
         sorted_frequency = sorted(counter.items(), key=lambda x: x[1], reverse=True)
@@ -51,34 +58,34 @@ class Statistics():
             measure = [(freq/length)*100 for freq in measure]
         return words, measure
 
-    def _barplot_word_frequency(self, nwords: int = 25, percentage: bool = True):
-        words_list = self.data['content'].explode().tolist()
-        words, measure = self._sort_frequency(text=words_list, percentage=percentage)
-        fig, ax = plt.subplots()
+    def barplot(self, data=None, nwords:int = 25, percentage=True, ylabel: str=None, title: str=None, ax=None):
+        words, measure = self._sort_frequency(text=data, percentage=percentage)
+        # Plot bar plot
+        if ax is None:
+            fig, ax = plt.subplots(1, 1)
         ax.bar(words[:nwords], measure[:nwords], color='red', alpha=0.5)
-        ax.set_ylabel('% of total words' if percentage else '# of words')
-        ax.set_title(
-            f'Percentage of total words ({nwords} most frequent)' if percentage else f'Frequency of the {nwords} most frequent words')
         ax.tick_params(axis='x', rotation=90)
-        return fig
+        ax.set_ylabel(ylabel)
+        ax.set_title(title)
 
-    def _boxplot_word_frequency(self):
-        word_counts = [len(article) for article in self.data['content']]
+    def boxplot(self, data=None, ylabel: str=None, title: str=None, ax=None):
+        if ax is None:
+            fig, ax = plt.subplots(1, 1)
         boxprops = dict(linewidth=2, color='red', facecolor='lightsalmon')
-        fig, ax = plt.subplots()
         # patch_artist must be True to change color the boxes
-        ax.boxplot(word_counts, patch_artist=True, boxprops=boxprops)
-        ax.set_ylabel('# of words')
-        ax.set_title('# of words per article')
-        return fig
-
-    def plot_word_frequency(self):
+        ax.boxplot(data, patch_artist=True, boxprops=boxprops)
+        ax.set_ylabel(ylabel)
+        ax.set_title(title)
+        
+    def plot_combined(self):
         # plot bar and box plot together:
-        fig, (ax1, ax2) = plt.subplots(1, 2)
-        ax1 = self._barplot_word_frequency(nwords=25, percentage=True)
-        ax2 = self._boxplot_word_frequency()
+        fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(12, 6))
+        self.barplot(data=self.data['content_cleaned'].explode().tolist(), nwords=25, percentage=True, ylabel='% of total words', title='Word frequency', ax=ax1)
+        self.boxplot(data=self.data['content_cleaned'].apply(len), ylabel='# of words', title='# of words', ax=ax2)
+        self.boxplot(data=self.data['content_cleaned'].apply(lambda x: x.count("!")), ylabel='# of !', title='# of !', ax=ax3)
+        self.boxplot(data=self.data['content_cleaned'].apply(lambda x: x.count("?")), ylabel='# of ?', title='# of ?', ax=ax4)
         fig.tight_layout()
-        fig.show()
+        plt.show()
 
     def barplot_word_frequency_fake_vs_real(self, nwords: int = 25, binary_label: str = "binary_label", percentage: bool = True):
         real_words_list = self.data[self.data[binary_label] == True]['content'].explode().tolist()

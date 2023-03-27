@@ -15,6 +15,7 @@ import numpy as np
 from sklearn.preprocessing import normalize
 import bisect
 import filehandling as fh
+from textblob import TextBlob
 
 tqdm.pandas()
 
@@ -478,6 +479,10 @@ class Simple_model(FunctionApplier):
 
     def get_metrics(self):
         pass
+    
+class Sentence_analysis(FunctionApplier):
+    def function_to_apply(self, cell):
+        return (TextBlob(str(cell)).sentiment.polarity, TextBlob(str(cell)).sentiment.subjectivity)
 
 
 def get_batch(df, batch_size):
@@ -609,8 +614,8 @@ class Remove_unwanted_rows_and_cols():
         fh.remove_file(self.new_filename)
         # Create a file for each chunk in the directory:
         first_iteration = True
-        for c in tqdm(pd.read_csv(self.filename, encoding='utf-8', chunksize=1000, lineterminator='\n'),
-                      desc='remove unwanted rows and cols', unit='rows', colour='green'):
+        for c in tqdm(pd.read_csv(self.filename, encoding='utf-8', chunksize=ROWS_PR_ITERATION, lineterminator='\n'),
+                      desc='remove unwanted rows and cols', unit='rows', colour=TQDM_COLOR):
             # Remove columns which are not True in self.headers_to_keep:
             c = c[[k for k, v in self.headers_to_keep.items() if v]]
             # Remove rows which have empty content or start with 'ERROR' or have a type not in self.labels or have a nan domain:
@@ -618,8 +623,6 @@ class Remove_unwanted_rows_and_cols():
                   c['type'].isin(self.labels.keys()) & c['domain'].notna()]
             c.to_csv(self.new_filename, index=False, mode='a', header=first_iteration)
             first_iteration = False
-            print('done')
-
 
 def simple_model_test():
     sm = Simple_model()
@@ -642,6 +645,7 @@ def create_dataset(file, unwanted_removed_file, cleaned_file, cleaned_file_combi
         (Remove_stopwords(stopwords_lst), "content_cleaned"),
         (Stem(), "content_cleaned"),
         (Combine_Content(), "content_cleaned", "content_combined"),
+        (Sentence_analysis(), "content_combined", "sentence_analysis"),
         # Clean authors
         (Clean_author(), "authors"),
         # Clean title
