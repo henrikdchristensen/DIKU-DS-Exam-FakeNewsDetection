@@ -1,4 +1,5 @@
 import shutil
+from typing import Tuple
 import numpy as np
 import csv
 import os
@@ -10,7 +11,7 @@ TQDM_COLOR = 'magenta'
 TYPES = ['fake', 'conspiracy', 'junksci', 'hate', 'unreliable', 'bias', 
               'satire', 'state', 'reliable', 'clickbait', 'political']
 SAMPLE = False
-ROWS_PR_ITERATION = 40000
+ROWS_PR_ITERATION = 20000
 FILE_SIZE = 10000
 PADDING = 3
 
@@ -59,60 +60,76 @@ def create_empty_string_array(cols: int) -> np.ndarray:
     return arr
 
 
-def clean_chunk(chunk: pd.DataFrame, idx_start: int) -> pd.DataFrame:
-    # Drop rows with empty content column:
-    chunk = chunk.dropna(subset=['content'])
+def clean_chunk(chunk: pd.DataFrame, idx_start: int) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    dropped_rows = chunk.copy()
     # Remove rows where type is not one of the specified values:
     chunk = chunk[chunk['type'].isin(TYPES)]
+    # Save the dropped rows in a separate dataframe:
+    dropped_rows = dropped_rows[~dropped_rows['type'].isin(TYPES)]
+    # Save the dropped rows with empty content:
+    dropped_rows = pd.concat([dropped_rows, chunk[chunk['content'].isna()]])
+    # Drop rows with empty content column:
+    chunk = chunk.dropna(subset=['content'])
     # Set unique index for each row:
     chunk['id'] = chunk['id'].reset_index(drop=True).index + idx_start
     # Remove index column:
     chunk = chunk.drop(chunk.columns[[0]], axis=1)
-    return chunk
+    dropped_rows = dropped_rows.drop(dropped_rows.columns[[0]], axis=1)
+    return chunk, dropped_rows
+
+
+def decode_h5_dataset(data):
+    str_data = []
+    for d in data:
+        str_data.append([s.decode('utf-8') for s in d])
+    return str_data
 
 
 def csv_to_h5(csv_filename: str, hdf_filename: str):
-    with h5py.File(hdf_filename, 'w') as store:
+    with h5py.File(hdf_filename, 'w') as store, h5py.File(hdf_filename[:-3]+'_dropped.h5', 'w') as dropped_store:
         with open(csv_filename, encoding='utf-8') as f:
             colnames = next(csv.reader(f))
         # Remove first coloumn (unnamed), which is not used:
         colnames.pop(0)
         cols = len(colnames)
-        # Create a dataset:
-        data_set = store.create_dataset('data', data=create_empty_string_array(cols), maxshape=(None, cols), dtype=h5py.string_dtype(encoding='utf-8'))#TODO
+        # Create dataset:
+        data_set = store.create_dataset('data', data=create_empty_string_array(cols), maxshape=(None, cols), dtype=h5py.string_dtype(encoding='utf-8'))
+        dropped_set = dropped_store.create_dataset('data', data=create_empty_string_array(cols), maxshape=(None, cols), dtype=h5py.string_dtype(encoding='utf-8'))
         # Set the header row:
         data_set[0] = colnames
+        dropped_set[0] = colnames
         # Read the rest of the rows and assign to dataset:
-        original_rows = retained_rows = 0
+        original_rows = retained_rows = dropped_rows = 0
         for chunk in tqdm(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=ROWS_PR_ITERATION, lineterminator='\n'),
                       desc='csv to h5', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
             original_rows += chunk.shape[0]
-            chunk = clean_chunk(chunk, retained_rows)
-            # Append processed chunk to new file:
-            retained_rows += chunk.shape[0]
+            retained, dropped = clean_chunk(chunk, retained_rows)
+            # Append processed data to files:
+            retained_rows += retained.shape[0]
+            dropped_rows += dropped.shape[0]
             data_set.resize((retained_rows+1, cols))
-            # Check if chunk is empty. If not, assign to dataset:
-            if len(chunk) > 0:
-                data_set[-len(chunk):] = chunk.astype(str)
+            dropped_set.resize((dropped_rows+1, cols))
+            # Check if data is empty - if not, append to dataset:
+            if len(retained) > 0:
+                data_set[-len(retained):] = retained.astype(str)
+            if len(dropped) > 0:
+                dropped_set[-len(dropped):] = dropped.astype(str)
+        print(f"Original rows: {original_rows}, retained rows: {retained_rows}, dropped rows: {dropped_rows}")
      
             
 def h5_to_csv(hdf_filename: str, csv_filename: str):
     with h5py.File(hdf_filename, 'r') as read:
-        data = read['data'][0]
-        # Convert the header data to a list of strings and save it to CSV
-        str_data = [s.decode('utf-8') for s in data]
-        pd.DataFrame([str_data]).to_csv(csv_filename, mode='w', header=None, index=False)
+        # Save the header row to CSV
+        header = read['data'][0]
+        header = [s.decode('utf-8') for s in header]
+        pd.DataFrame([header]).to_csv(csv_filename, mode='w', header=None, index=False)
         # Loop through the rest of the data and save it to CSV
         for i in tqdm(range(1, read['data'].shape[0], ROWS_PR_ITERATION),
                       desc='h5 to csv', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
             # Get the data from the HDF5 file
             data = read['data'][i:i+ROWS_PR_ITERATION]
-            # Convert the data to a list of list of strings
-            str_data = []
-            for d in data:
-                str_data.append([s.decode('utf-8') for s in d])
             # Save the data to CSV:
-            pd.DataFrame(str_data).to_csv(csv_filename, mode='a', header=None, index=False)
+            pd.DataFrame(decode_h5_dataset(data)).to_csv(csv_filename, mode='a', header=None, index=False)
 
 
 def shuffle_h5(old_filename: str, new_filename: str):

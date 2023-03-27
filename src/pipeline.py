@@ -57,6 +57,15 @@ class FunctionApplier:
     def function_to_apply(self, row):
         pass
 
+class Filter(FunctionApplier):
+    def __init__(self, include):
+        self.include = include
+
+    def function_to_apply(self, type):
+        if type not in self.include:
+            return DELETE_TOKEN        
+        return type
+
 
 class Normalize(FunctionApplier):
     def function_to_apply(self, vector):
@@ -563,12 +572,12 @@ def apply_pipeline_pd_tqdm(df, function_cols):
     # Iterate through each row in the DataFrame and apply the functions
     return applier(function_cols, df.copy(), progress_bar=True)
 
-def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False, progress_bar=False, nrows=None):
+def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False, progress_bar=True, total_rows=20000):
     i = 0
     start_time = time()
 
     # Use Pandas chunksize and iterator to read the input file in batches
-    with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8', nrows=nrows) as reader:
+    with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8', lineterminator='\n', nrows=total_rows) as reader:
         for chunk in reader:
             if function_cols is None:
                 return chunk
@@ -609,14 +618,19 @@ def create_test_file():
     print(read_rows_of_csv("../datasets/big/news_sample.csv")["content"])
 
 
-def ist_pipeline():
-    stopwords_lst = stopwords.words('english') + ["<NUM>", "<DATE>", "<URL>"]
-    apply_pipeline("../datasets/big/news_sample.csv", [
+def ist_pipeline(srcFile):
+    stopwords_lst = stopwords.words('english') 
+    # + ["<NUM>", "<DATE>", "<URL>"]
+    apply_pipeline(srcFile, [
         (Clean_data(), "content"),
         (Tokenizer(), "content"),
         (Remove_stopwords(stopwords_lst), "content"),
         (Stem(), "content"),
-    ], new_file="../datasets/sample/news_sample_cleaned_num.csv")
+    ], 
+    new_file="../datasets/sample/news_sample_cleaned_num_100k.csv",
+    progress_bar=True,
+    batch_size=100000
+    )
 
 
 def word_freq_pipeline():
