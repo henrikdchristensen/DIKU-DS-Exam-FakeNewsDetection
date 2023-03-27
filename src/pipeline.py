@@ -364,6 +364,7 @@ class Clean_data(FunctionApplier):
             re.compile(r'(\t+)'): ' ',
             re.compile(r'(\?)'): ' ? ',
             re.compile(r'(\!)'): ' ! ',
+            re.compile(r'(\-)'): ' ',
             re.compile(r'[^A-Za-z0-9\s<>\?\!]'): '',
             re.compile(r'(\d+)(th)?'): ' <NUM> ',
             re.compile(r'( +)'): ' ',
@@ -464,6 +465,23 @@ class Print_content_to_csv(FunctionApplier):
 
         return row
 
+class Binary_labels_LIAR(FunctionApplier):
+    def __init__(self):
+        self.binary_labels: dict = {
+            'pants-fire': False,
+            'false': False,
+            'barely-true': False,
+            'half-true': True,
+            'mostly-true': True,
+            'True': True
+        }
+
+    def function_to_apply(self, cell):
+        try:
+            binary_label = self.binary_labels[cell]
+        except:
+            binary_label = True
+        return binary_label
 
 class Binary_labels(FunctionApplier):
     def __init__(self):
