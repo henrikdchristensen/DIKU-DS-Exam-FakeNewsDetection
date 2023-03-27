@@ -11,7 +11,6 @@ import pandas as pd
 from multiprocessing import Process
 from sklearn.cluster import KMeans
 from sklearn.feature_extraction.text import TfidfVectorizer
-
 # import StandardScaler
 from sklearn.preprocessing import StandardScaler
 
@@ -106,6 +105,22 @@ class Word_frequency(FunctionApplier):
 
         plt.show()
 
+    def plotWordMap():
+
+        # Define a dictionary of word frequencies
+        word_freq = {'word1': 10, 'word2': 5, 'word3': 7, 'word4': 3, 'word5': 12}
+
+        # Create a WordCloud object
+        wordcloud = WordCloud(background_color='white')
+
+        # Generate a word map from the word frequency dictionary
+        wordcloud.generate_from_frequencies(word_freq)
+
+        # Display the word map
+        import matplotlib.pyplot as plt
+        plt.imshow(wordcloud, interpolation='bilinear')
+        plt.axis('off')
+        plt.show()
 
     # plot the frequency of the words from the fake news and plot the frequency of the words from the real news
     def plot_fake_real(self, other_sorted_frequency: list[tuple[str, int]], set_labels: tuple[str, str] = ("Fake", "Reliable") ):
@@ -191,16 +206,16 @@ class Contribution(FunctionApplier):
 
     def contributionPlot2(self):
         
-        threshold = 1
+        threshold = 2
         self.data = pd.DataFrame(self.data)
 
-        print("got keys: \n", len(self.data), self.data.iloc[0].keys())
+        # print("got keys: \n", len(self.data), self.data.iloc[0].keys())
 
         # group the articles by domain and category, and count the number of articles in each group
-        print("groupby: \n", self.data['domain'].unique())
+        # print("groupby: \n", self.data['domain'].unique())
         counts = self.data.groupby(['domain', 'type'])['content'].count().unstack()
 
-        print("counts: \n", counts)
+        # print("counts: \n", counts)
 
         # convert the counts to percentages and round to two decimal places
         percentages = counts.apply(lambda x: x / x.sum() * 100).round(2)
