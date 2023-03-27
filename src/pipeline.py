@@ -310,7 +310,7 @@ class Generate_unique_word_list(FunctionApplier):
 
 
 class Tokenizer(FunctionApplier):
-    def __init__(self, sentences=True):
+    def __init__(self, sentences=False):
         self.sentences = sentences
         if sentences:
             self.tokenizer = nltk.sent_tokenize
@@ -327,9 +327,19 @@ class Tokenizer(FunctionApplier):
             return cell.split()
 
 class Untokenizer(FunctionApplier):
+    def __init__(self, sentences=False):
+        self.sentences = sentences
+        
     def function_to_apply(self, cell):
         # Join tokens back into text
-        return " ".join(cell)
+        if self.sentences:
+            # Join tokens in each sentence
+            untokenized_sentences = [" ".join(tokens) for tokens in cell]
+            # Join sentences into text
+            return " ".join(untokenized_sentences)
+        else:
+            # Join tokens into text
+            return " ".join(cell)
 
 class Remove_stopwords(FunctionApplier):
     def __init__(self, swords):
