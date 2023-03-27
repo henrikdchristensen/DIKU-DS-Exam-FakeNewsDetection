@@ -312,16 +312,11 @@ class Generate_unique_word_list(FunctionApplier):
 class Tokenizer(FunctionApplier):
     def __init__(self, sentences=False):
         self.sentences = sentences
-        if sentences:
-            self.tokenizer = nltk.sent_tokenize
         
     def function_to_apply(self, cell):
         if self.sentences:
-            # Tokenize sentences using nltk.sent_tokenize
-            sentences = self.tokenizer(cell)
-            # Tokenize words in each sentence using str.split()
-            tokenized_sentences = [sentence.split() for sentence in sentences]
-            return tokenized_sentences
+            # Tokenize sentences using 
+            return nltk.sent_tokenize(cell)
         else:
             # Tokenize words using str.split()
             return cell.split()

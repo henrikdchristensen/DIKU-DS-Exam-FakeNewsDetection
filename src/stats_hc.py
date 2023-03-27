@@ -210,12 +210,15 @@ class Statistics():
         plt.show()
     
     def barplot_polarity(self, binary_label: str = "binary_label"):
-        self.data['TextBlob_Polarity'] = self.data['content'].apply(lambda x: TextBlob(x).sentiment.polarity)
+        # Calculate polarity score for each article. Every sentence is a list in the content column:
+        self.data['TextBlob_Polarity'] = self.data['content'].apply(lambda x: TextBlob(str(x)).sentiment.polarity)
+        
+        # Plot histograms of polarity scores for each group of articles
         fig, (ax1, ax2) = plt.subplots(1, 2)
         ax1.hist(self.data[self.data[binary_label] == True]['TextBlob_Polarity'], color='red', alpha=0.5, label="Real")
         ax2.hist(self.data[self.data[binary_label] == False]['TextBlob_Polarity'], color='blue', alpha=0.5, label="Fake")
-        ax1.set_xlabel('Real')
-        ax2.set_xlabel('Fake')
+        ax1.set_xlabel('Polarity score')
+        ax2.set_xlabel('Polarity score')
         ax1.set_ylabel('# of articles')
         ax2.set_ylabel('# of articles')
         plt.suptitle('Polarity distribution')
@@ -225,8 +228,8 @@ class Statistics():
     def barplot_subjectivity(self, binary_label: str = "binary_label"):
         self.data['TextBlob_Subjectivity'] = self.data['content'].apply(lambda x: TextBlob(x).sentiment.subjectivity)
         fig, (ax1, ax2) = plt.subplots(1, 2)
-        ax1.hist(self.data[self.data[binary_label] == True]['TextBlob_Subjectivity'], color='red', alpha=0.5, label="Real")
-        ax2.hist(self.data[self.data[binary_label] == False]['TextBlob_Subjectivity'], color='blue', alpha=0.5, label="Fake")
+        ax1.hist(self.data[self.data[binary_label] == True]['TextBlob_Subjectivity'].median(), color='red', alpha=0.5, label="Real")
+        ax2.hist(self.data[self.data[binary_label] == False]['TextBlob_Subjectivity'].median(), color='blue', alpha=0.5, label="Fake")
         ax1.set_xlabel('Real')
         ax2.set_xlabel('Fake')
         ax1.set_ylabel('# of articles')
