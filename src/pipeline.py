@@ -34,7 +34,7 @@ labels: dict = {
     'political': True
 }
 
-ROWS_PR_ITERATION = 200000
+ROWS_PR_ITERATION = 20000
 TQDM_COLOR = 'magenta'
 DELETE_TOKEN = '<DELETE>'
 
@@ -479,7 +479,8 @@ class Simple_model(FunctionApplier):
 
     def get_metrics(self):
         pass
-    
+
+
 class Sentence_analysis(FunctionApplier):
     def function_to_apply(self, cell):
         return (TextBlob(str(cell)).sentiment.polarity, TextBlob(str(cell)).sentiment.subjectivity)
@@ -615,14 +616,15 @@ class Remove_unwanted_rows_and_cols():
         # Create a file for each chunk in the directory:
         first_iteration = True
         for c in tqdm(pd.read_csv(self.filename, encoding='utf-8', chunksize=ROWS_PR_ITERATION, lineterminator='\n'),
-                      desc='remove unwanted rows and cols', unit='rows', colour=TQDM_COLOR):
+                      desc='remove unwanted rows and cols', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
             # Remove columns which are not True in self.headers_to_keep:
             c = c[[k for k, v in self.headers_to_keep.items() if v]]
             # Remove rows which have empty content or start with 'ERROR' or have a type not in self.labels or have a nan domain:
-            c = c[c['content'].notna() & ~c['content'].str.startswith('ERROR') &
+            c = c[c['content'].notna() & ~c['content'].str.startswith('Error') &
                   c['type'].isin(self.labels.keys()) & c['domain'].notna()]
             c.to_csv(self.new_filename, index=False, mode='a', header=first_iteration)
             first_iteration = False
+
 
 def simple_model_test():
     sm = Simple_model()
