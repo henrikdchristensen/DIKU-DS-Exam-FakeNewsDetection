@@ -208,16 +208,9 @@ class Statistics():
         plt.suptitle('Real articles')
         plt.tight_layout()
         plt.show()
-        
-    def getSubjectivity(self, text):
-        return TextBlob(text).sentiment.subjectivity
-    
-    #Create a function to get the polarity
-    def getPolarity(self, text):
-        return TextBlob(text).sentiment.polarity
     
     def barplot_polarity(self, binary_label: str = "binary_label"):
-        self.data['TextBlob_Polarity'] = self.data['content'].apply(lambda x: self.getPolarity(' '.join(x)))
+        self.data['TextBlob_Polarity'] = self.data['content'].apply(lambda x: TextBlob(x).sentiment.polarity)
         fig, (ax1, ax2) = plt.subplots(1, 2)
         ax1.hist(self.data[self.data[binary_label] == True]['TextBlob_Polarity'], color='red', alpha=0.5, label="Real")
         ax2.hist(self.data[self.data[binary_label] == False]['TextBlob_Polarity'], color='blue', alpha=0.5, label="Fake")
@@ -230,7 +223,7 @@ class Statistics():
         plt.show()
     
     def barplot_subjectivity(self, binary_label: str = "binary_label"):
-        self.data['TextBlob_Subjectivity'] = self.data['content'].apply(lambda x: self.getSubjectivity(' '.join(x)))
+        self.data['TextBlob_Subjectivity'] = self.data['content'].apply(lambda x: TextBlob(x).sentiment.subjectivity)
         fig, (ax1, ax2) = plt.subplots(1, 2)
         ax1.hist(self.data[self.data[binary_label] == True]['TextBlob_Subjectivity'], color='red', alpha=0.5, label="Real")
         ax2.hist(self.data[self.data[binary_label] == False]['TextBlob_Subjectivity'], color='blue', alpha=0.5, label="Fake")

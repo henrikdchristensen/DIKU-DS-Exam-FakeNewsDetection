@@ -13,6 +13,8 @@ from ast import literal_eval
 import numpy as np
 from sklearn.preprocessing import normalize
 import bisect
+import nltk
+nltk.download('punkt')
 
 tqdm.pandas()
 
@@ -308,9 +310,26 @@ class Generate_unique_word_list(FunctionApplier):
 
 
 class Tokenizer(FunctionApplier):
+    def __init__(self, sentences=True):
+        self.sentences = sentences
+        if sentences:
+            self.tokenizer = nltk.sent_tokenize
+        
     def function_to_apply(self, cell):
-        return cell.split()
+        if self.sentences:
+            # Tokenize sentences using nltk.sent_tokenize
+            sentences = self.tokenizer(cell)
+            # Tokenize words in each sentence using str.split()
+            tokenized_sentences = [sentence.split() for sentence in sentences]
+            return tokenized_sentences
+        else:
+            # Tokenize words using str.split()
+            return cell.split()
 
+class Untokenizer(FunctionApplier):
+    def function_to_apply(self, cell):
+        # Join tokens back into text
+        return " ".join(cell)
 
 class Remove_stopwords(FunctionApplier):
     def __init__(self, swords):
@@ -331,7 +350,7 @@ class Stem(FunctionApplier):
 
 
 class Clean_data(FunctionApplier):
-    def __init__(self):
+    def __init__(self, remove_punct=True):
         # Create a list of patterns to remove.
         # Compile the patterns to speed up the process
         self.patterns = {
@@ -346,7 +365,7 @@ class Clean_data(FunctionApplier):
             re.compile(r'(\t+)'): ' ', # remove tabs
             re.compile(r'(\?)'): ' ? ', # add space before and after question mark
             re.compile(r'(\!)'): ' ! ', # add space before and after exclamation mark
-            re.compile(r'[^A-Za-z0-9\s<>\?\!]'): '', # remove all special characters, including non-ascii characters
+            re.compile(r'[^A-Za-z0-9\s<>\?\!]' if remove_punct else r'[^A-Za-z0-9\s<>\?!\.,]'): '', # remove all special characters, including non-ascii characters and punctuation if remove_punct is True
             re.compile(r'(\d+)(th)?'): ' <NUM> ', # replace numbers with <NUM>
             re.compile(r'( +)'): ' ', # remove multiple spaces
         }
