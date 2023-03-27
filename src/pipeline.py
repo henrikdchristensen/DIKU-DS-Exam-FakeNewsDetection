@@ -35,10 +35,7 @@ labels: dict = {
 }
 
 ROWS_PR_ITERATION = 20000
-<< << << < HEAD
-== == == =
 ROWS = 8529853
->>>>>> > origin/adv-models
 TQDM_COLOR = 'magenta'
 DELETE_TOKEN = '<DELETE>'
 
