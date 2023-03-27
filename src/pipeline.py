@@ -637,8 +637,20 @@ def simple_model_test():
     sm.get_metrics()
 
 
+def run():
+    choice = input("Press 's' for sample or 'l' for large dataset or 'x' to Exit: ")
+    if choice == 'x':
+        return
+    elif choice == 's':
+        path = "../datasets/sample/"
+    elif choice == 'l':
+        path = "../datasets/large/"
+    else:
+        print("Invalid choice - exiting")
+        return
+    remove_unwanted(file=path+"shuffled.csv", new_file=path+"unwanted_removed.csv")
+    create_dataset(file=path+"unwanted_removed.csv", new_file=path+"dataset.csv")
+
+
 if __name__ == '__main__':
-    remove_unwanted(file="../datasets/large/shuffled.csv", new_file="../datasets/large/unwanted_removed.csv")
-    create_dataset(file="../datasets/large/unwanted_removed.csv", new_file="../datasets/large/dataset.csv")
-    #remove_unwanted(file="../datasets/large/shuffled.csv", new_file="../datasets/large/unwanted_removed.csv")
-    #create_dataset(file="../datasets/large/unwanted_removed.csv", new_file="../datasets/large/dataset.csv")
+    run()
