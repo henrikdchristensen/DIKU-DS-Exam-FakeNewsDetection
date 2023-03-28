@@ -186,12 +186,7 @@ class Combine_Content(FunctionApplier):
             return " "
         return " ".join(content_lst)
 
-class Remove_stopwords2(FunctionApplier):
-    def __init__(self):
-        self.stopwords = list(pd.read_csv("stopwords2.csv"))
-    
-    def function_to_apply(self, words):
-        return [w for w in words if not w in self.stopwords]
+
 
 
 class Create_word_vector(FunctionApplier):
@@ -318,6 +313,13 @@ class Remove_stopwords(FunctionApplier):
 
     def function_to_apply(self, words):
         return [w for w in words if not w in self.swords]
+    
+class Remove_stopwords2(FunctionApplier):
+    def __init__(self):
+        self.stopwords = list(pd.read_csv("stopwords2.csv"))
+    
+    def function_to_apply(self, words):
+        return [w for w in words if not w in self.stopwords]
 
 
 class Stem(FunctionApplier):
@@ -448,6 +450,10 @@ class Binary_labels_LIAR(FunctionApplier):
         except:
             binary_label = True
         return binary_label
+    
+class Clean_id_LIAR(pp.FunctionApplier):
+    def function_to_apply(self, id):
+        return id.split('.')[0]
 
 
 class Binary_labels(FunctionApplier):
@@ -660,11 +666,13 @@ def create_dataset(file, unwanted_removed_file, cleaned_file, cleaned_file_combi
         (Tokenizer(), "content_cleaned"),
         (Stem(), "content_cleaned"),
         (Combine_Content(), "content_cleaned", "content_combined"),
-        (Remove_stopwords(stopwords_lst), "content_cleaned"),
+        #(Remove_stopwords(stopwords_lst), "content_cleaned"),
+        (Remove_stopwords2(), "content_cleaned"),
 
         (Clean_data(), 'title'),
         (Tokenizer(), "title"),
-        (Remove_stopwords(stopwords_lst), "title"),
+        #(Remove_stopwords(stopwords_lst), "title"),
+        (Remove_stopwords2(), "title"),
         (Stem(), "title"),
         (Combine_Content(), "title"),
 

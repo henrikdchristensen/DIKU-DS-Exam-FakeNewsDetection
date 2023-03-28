@@ -71,6 +71,15 @@ def csv_split(filename: str, dirname: str):
                      desc='csv splitting', unit='splits', colour=TQDM_COLOR):
         pd.concat([colnames, c], ignore_index=True).to_csv(f'{dirname}/{i+1:0{PADDING}}.csv', index=False)
 
+def tsv_to_csv(file: str, new_file: str, headers: list = None):
+    df = pd.read_csv(file, delimiter='\t', header=None)
+    if headers is not None:
+        df.columns = headers
+    df.to_csv(new_file, index=False)
+    
+def combine_csv_files(files: list, new_file: str):
+    df = pd.concat([pd.read_csv(f) for f in files])
+    df.to_csv(new_file, index=False)
 
 def create_empty_string_array(cols: int) -> np.ndarray:
     arr = np.empty((1, cols), dtype=object)
