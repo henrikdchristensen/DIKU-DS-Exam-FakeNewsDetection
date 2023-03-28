@@ -316,7 +316,7 @@ class Remove_stopwords(FunctionApplier):
     
 class Remove_stopwords2(FunctionApplier):
     def __init__(self):
-        self.stopwords = list(pd.read_csv("stopwords2.csv"))
+        self.stopwords = pd.read_csv("stopwords2.csv").values.flatten()
     
     def function_to_apply(self, words):
         return [w for w in words if not w in self.stopwords]
