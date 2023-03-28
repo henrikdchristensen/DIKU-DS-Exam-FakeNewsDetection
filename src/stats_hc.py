@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from ast import literal_eval
 import pipeline as pp
+import filehandling as fh
 
 class Statistics():
     def __init__(self, data: pd.DataFrame, content_label: str = 'content_cleaned', type_label: str = 'type', binary_type_label: str = 'type_binary', type_colors=None, domain_label='domain', subjects_label=None, speaker_label=None, party_label=None, sentence_analysis_label: str = 'sentence_analysis'):
@@ -267,36 +268,34 @@ class Statistics():
         
 
 
-def create_dataset(file, unwanted_removed_file, cleaned_file, cleaned_file_combined):
-    pp.Remove_unwanted_rows_and_cols(file, unwanted_removed_file).run()
-
-    stopwords_lst = stopwords.words('english')
-    pp.apply_pipeline(unwanted_removed_file, [
-        # Binary labels
+def create_dataset(file, cleaned_file, cleaned_file_combined):
+    pp.apply_pipeline(file, [
         (pp.Binary_labels(), 'type', 'type_binary'),
-        # Clean content
-        (pp.Clean_data(), 'content', 'content_cleaned'),
-        (pp.Tokenizer(), 'content_cleaned'),
-        #(pp.Remove_stopwords(stopwords_lst), 'content_cleaned'),
-        (pp.Stem(), "content_cleaned"),
-        (pp.Combine_Content(), 'content_cleaned', 'content_combined'),
-        (pp.Sentence_analysis(), 'content_combined', 'sentence_analysis'),
-        # Clean authors
-        (pp.Clean_author(), 'authors'),
-        # Clean title
-        (pp.Clean_data(), 'title'),
-        (pp.Tokenizer(), 'title'),
-        #(Remove_stopwords(stopwords_lst), 'title'),
-        (pp.Stem(), 'title'),
-        (pp.Combine_Content(), 'title'),
-        # Clean domain
+
         (pp.Clean_domain(), 'domain'),
+
+        (pp.Clean_author(), "authors"),
+
+        (pp.Clean_data(), 'content', 'content_cleaned'),
+        (pp.Tokenizer(), "content_cleaned"),
+        (pp.Stem(), "content_cleaned"),
+        (pp.Combine_Content(), "content_cleaned", "content_combined"),
+        (pp.Remove_stopwords2(), "content_cleaned"),
+
+        (pp.Clean_data(), 'title'),
+        (pp.Tokenizer(), "title"),
+        #(Remove_stopwords(stopwords_lst), "title"),
+        (pp.Remove_stopwords2(), "title"),
+        (pp.Stem(), "title"),
+        (pp.Combine_Content(), "title"),
+
+        (pp.Sentence_analysis(), "content_combined", "sentence_analysis"),
     ],
         new_file=cleaned_file,
         progress_bar=True,
     )
 
-    apply_pipeline(cleaned_file, [
+    pp.apply_pipeline(cleaned_file, [
         (pp.Join_str_columns(
             ['content_combined', 'authors']), None, 'content_authors'),
         (pp.Join_str_columns(
@@ -312,10 +311,22 @@ def create_dataset(file, unwanted_removed_file, cleaned_file, cleaned_file_combi
 
 
 def run():
-    path = "../datasets/liar_dataset/"
-    create_dataset(file=path+"shuffled.csv", unwanted_removed_file=path +
-                   "unwanted_removed.csv", cleaned_file=path+"dataset.csv", cleaned_file_combined=path+"dataset_combined.csv")
+    choice = input("Press 's' for sample or 'l' for large dataset or 'x' to Exit: ")
+    if choice == 'x':
+        print("exiting")
+        return
+    elif choice == 's':
+        path = "../datasets/sample/stat/"
+    elif choice == 'l':
+        path = "../datasets/large/stat/"
+    else:
+        print("Invalid choice - exiting")
+        return
+    create_dataset(file=path+"cols_removed.csv", cleaned_file=path+"dataset.csv", cleaned_file_combined=path+"dataset_combined.csv")
 
 
 if __name__ == '__main__':
+    pp.remove_unwanted_rows_and_cols(file="../datasets/large/shuffled.csv", new_file="../datasets/large/stat/cols_removed.csv", remove_rows=False, remove_cols=True)
+    pp.remove_unwanted_rows_and_cols(file="../datasets/large/stat/cols_removed.csv", new_file="../datasets/large/stat/cols_and_rows_removed.csv", remove_rows=True, remove_cols=False)
+    fh.statistics(file="../datasets/large/stat/cols_and_rows_removed.csv", new_file="../datasets/large/stat/statistics_cols_and_rows_removed.csv")
     run()

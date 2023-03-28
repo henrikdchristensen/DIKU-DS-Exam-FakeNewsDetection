@@ -601,56 +601,52 @@ def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_IT
         print(f'finish time: {time()-start_time}')
 
 
-class Remove_unwanted_rows_and_cols():
-    def __init__(self, filename, new_filename):
-        self.headers_to_keep = {
-            'id': True,
-            'domain': True,
-            'type': True,
-            'url': False,
-            'content': True,
-            'scraped_at': False,
-            'inserted_at': False,
-            'updated_at': False,
-            'title': True,
-            'authors': True,
-            'keywords': False,
-            'meta_keywords': False,
-            'meta_description': False,
-            'tags': False,
-            'summary\r': False,
-        }
+def remove_unwanted_rows_and_cols(file, new_file, remove_rows=True, remove_cols=True):
+    headers_to_keep = {
+        'id': True,
+        'domain': True,
+        'type': True,
+        'url': False,
+        'content': True,
+        'scraped_at': False,
+        'inserted_at': False,
+        'updated_at': False,
+        'title': True,
+        'authors': True,
+        'keywords': False,
+        'meta_keywords': False,
+        'meta_description': False,
+        'tags': False,
+        'summary\r': False,
+    }
 
-        self.labels: dict = {
-            'fake': False,
-            'conspiracy': False,
-            'junksci': False,
-            'hate': False,
-            'unreliable': False,
-            'bias': False,
-            'satire': False,
-            # 'state': False,
-            'reliable': True,
-            'clickbait': True,
-            'political': True
-        }
-        self.filename = filename
-        self.new_filename = new_filename
-
-    def run(self):
-        # Remove output file if it already exists
-        fh.remove_file(self.new_filename)
-        # Create a file for each chunk in the directory:
-        first_iteration = True
-        for c in tqdm(pd.read_csv(self.filename, encoding='utf-8', chunksize=ROWS_PR_ITERATION, lineterminator='\n'),
-                      desc='remove unwanted rows and cols', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
+    labels: dict = {
+        'fake': False,
+        'conspiracy': False,
+        'junksci': False,
+        'hate': False,
+        'unreliable': False,
+        'bias': False,
+        'satire': False,
+        # 'state': False,
+        'reliable': True,
+        'clickbait': True,
+        'political': True
+    }
+    # Remove output file if it already exists
+    fh.remove_file(new_file)
+    # Create a file for each chunk in the directory:
+    first_iteration = True
+    for c in tqdm(pd.read_csv(file, encoding='utf-8', chunksize=ROWS_PR_ITERATION, lineterminator='\n'),
+                    desc='remove unwanted rows and cols', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
+        if remove_cols:
             # Remove columns which are not True in self.headers_to_keep:
-            c = c[[k for k, v in self.headers_to_keep.items() if v]]
+            c = c[[k for k, v in headers_to_keep.items() if v]]
+        if remove_rows:
             # Remove rows which have empty content or start with 'ERROR' or have a type not in self.labels or have a nan domain:
-            c = c[c['content'].notna() & ~c['content'].str.startswith('Error') &
-                  c['type'].isin(self.labels.keys()) & c['domain'].notna()]
-            c.to_csv(self.new_filename, index=False, mode='a', header=first_iteration)
-            first_iteration = False
+            c = c[c['content'].notna() & ~c['content'].str.startswith('Error') & c['type'].isin(labels.keys()) & c['domain'].notna()]
+        c.to_csv(new_file, index=False, mode='a', header=first_iteration)
+        first_iteration = False
 
 
 def simple_model_test():
@@ -662,8 +658,8 @@ def simple_model_test():
 
 
 def create_dataset(file, unwanted_removed_file, cleaned_file, cleaned_file_combined):
-    Remove_unwanted_rows_and_cols(file, unwanted_removed_file).run()
-
+    #remove_unwanted_rows_and_cols(file=file, new_file=unwanted_removed_file, remove_rows=True, remove_cols=True)
+    
     stopwords_lst = stopwords.words('english')
     apply_pipeline(unwanted_removed_file, [
         (Binary_labels(), 'type', 'type_binary'),
@@ -719,8 +715,7 @@ def run():
     else:
         print("Invalid choice - exiting")
         return
-    create_dataset(file=path+"shuffled.csv", unwanted_removed_file=path +
-                   "unwanted_removed.csv", cleaned_file=path+"dataset.csv", cleaned_file_combined=path+"dataset_combined.csv")
+    create_dataset(file=path+"shuffled.csv", unwanted_removed_file=path+"unwanted_removed.csv", cleaned_file=path+"dataset.csv", cleaned_file_combined=path+"dataset_combined.csv")
 
 
 if __name__ == '__main__':
