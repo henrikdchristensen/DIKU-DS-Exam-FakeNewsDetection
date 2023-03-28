@@ -383,7 +383,7 @@ class Clean_author(FunctionApplier):
         author_list = [(re.sub(self.regex_oddcharacters, "", author)) for author in author_list]
         author_list = "".join(author_list)
         if author_list == "":  # to avoid nan
-            return " "
+            return ""
         return author_list
 
 
@@ -665,13 +665,13 @@ def create_dataset(file, unwanted_removed_file, cleaned_file, cleaned_file_combi
 
     apply_pipeline(cleaned_file, [
         (Join_str_columns(
-            ["content_combined", "authors"]), None, "content_authors"),
+            ['content_combined', 'authors']), None, 'content_authors'),
         (Join_str_columns(
-            ["content_combined", "title"]), None, "content_title"),
+            ['content_combined', 'title']), None, 'content_title'),
         (Join_str_columns(
-            ["content_combined", "domain"]), None, "content_domain"),
-        (Join_str_columns(["content_combined", "domain",
-                           "authors", "title"]), None, "content_domain_authors_title")
+            ['content_combined', 'domain']), None, 'content_domain'),
+        (Join_str_columns(['content_combined', 'domain',
+                           'authors', 'title']), None, 'content_domain_authors_title')
     ],
         new_file=cleaned_file_combined,
         progress_bar=True,
