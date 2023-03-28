@@ -643,30 +643,21 @@ def create_dataset(file, unwanted_removed_file, cleaned_file, cleaned_file_combi
         (Binary_labels(), 'type', 'type_binary'),
         # Clean content
         (Clean_data(), 'content', 'content_cleaned'),
-        (Tokenizer(), "content_cleaned"),
-        (Remove_stopwords(stopwords_lst), "content_cleaned"),
+        (Tokenizer(), 'content_cleaned'),
+        (Remove_stopwords(stopwords_lst), 'content_cleaned'),
         (Stem(), "content_cleaned"),
-        (Combine_Content(), "content_cleaned", "content_combined"),
-        (Sentence_analysis(), "content_combined", "sentence_analysis"),
+        (Combine_Content(), 'content_cleaned', 'content_combined'),
+        (Sentence_analysis(), 'content_combined', 'sentence_analysis'),
         # Clean authors
         (Clean_author(), "authors"),
         # Clean title
         (Clean_data(), 'title'),
-        (Tokenizer(), "title"),
-        (Remove_stopwords(stopwords_lst), "title"),
-        (Stem(), "title"),
-        (Combine_Content(), "title"),
+        (Tokenizer(), 'title'),
+        (Remove_stopwords(stopwords_lst), 'title'),
+        (Stem(), 'title'),
+        (Combine_Content(), 'title'),
         # Clean domain
         (Clean_domain(), 'domain'),
-        # Combine columns (used as features)
-        (Join_str_columns(
-            ["content_combined", "authors"]), None, "content_authors"),
-        (Join_str_columns(
-            ["content_combined", "title"]), None, "content_title"),
-        (Join_str_columns(
-            ["content_combined", "domain"]), None, "content_domain"),
-        (Join_str_columns(["content_combined", "domain",
-                           "authors", "title"]), None, "content_domain_authors_title")
     ],
         new_file=cleaned_file,
         progress_bar=True,
@@ -674,13 +665,13 @@ def create_dataset(file, unwanted_removed_file, cleaned_file, cleaned_file_combi
 
     apply_pipeline(cleaned_file, [
         (Join_str_columns(
-            ["content_combined", "authors"]), None, "content_authors"),
+            ['content_combined', 'authors']), None, 'content_authors'),
         (Join_str_columns(
-            ["content_combined", "title"]), None, "content_title"),
+            ['content_combined', 'title']), None, 'content_title'),
         (Join_str_columns(
-            ["content_combined", "domain"]), None, "content_domain"),
-        (Join_str_columns(["content_combined", "domain",
-                           "authors", "title"]), None, "content_domain_authors_title")
+            ['content_combined', 'domain']), None, 'content_domain'),
+        (Join_str_columns(['content_combined', 'domain',
+                           'authors', 'title']), None, 'content_domain_authors_title')
     ],
         new_file=cleaned_file_combined,
         progress_bar=True,
