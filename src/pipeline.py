@@ -653,7 +653,7 @@ def create_dataset(file, unwanted_removed_file, cleaned_file, cleaned_file_combi
         # Clean title
         (Clean_data(), 'title'),
         (Tokenizer(), 'title'),
-        (Remove_stopwords(stopwords_lst), 'title'),
+        #(Remove_stopwords(stopwords_lst), 'title'),
         (Stem(), 'title'),
         (Combine_Content(), 'title'),
         # Clean domain

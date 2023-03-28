@@ -2,7 +2,7 @@
 - Box plot: Negativ/positivt ladede ord - sentiment analysis (+)
     - https://github.com/shekhargulati/sentiment-analysis-python/tree/master/opinion-lexicon-English 
 -
-- 
+- First-person pronous
 
 https://www.researchgate.net/figure/Numerous-techniques-to-recognize-fake-news-Source-https-wwwkdnuggets_fig1_359419275
 
