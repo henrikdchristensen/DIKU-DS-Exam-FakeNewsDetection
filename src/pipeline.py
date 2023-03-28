@@ -193,6 +193,16 @@ class Combine_Content(FunctionApplier):
             return " "
         return " ".join(content_lst)
 
+print()
+
+class Remove_stopwords2(FunctionApplier):
+    def __init__(self):
+        self.stopwords = list(pd.read_csv("stopwords2.csv"))
+    
+    def function_to_apply(self, words):
+        return [w for w in words if not w in self.stopwords]
+
+
 class Create_word_vector(FunctionApplier):
     def __init__(self, unique_words):
         self.unique_words = unique_words
@@ -345,6 +355,7 @@ class Clean_data(FunctionApplier):
             re.compile(r'(\?)'): ' ? ', # add space before and after question mark
             re.compile(r'(\!)'): ' ! ', # add space before and after exclamation mark
             re.compile(r'(\-)'): ' ',
+            re.compile(r'(\')'): ' ',
             re.compile(r'[^A-Za-z0-9\s<>\?\!]' if remove_punct else r'[^A-Za-z0-9\s<>\?!\.,]'): '', # remove all special characters, including non-ascii characters and punctuation if remove_punct is True
             re.compile(r'(\d+)(th)?'): ' <NUM> ', # replace numbers with <NUM>
             re.compile(r'( +)'): ' ', # remove multiple spaces
@@ -456,6 +467,7 @@ class Binary_labels_LIAR(FunctionApplier):
         self.binary_labels: dict = {
             'pants-fire': False,
             'false': False,
+            'mostly-false': False,
             'barely-true': False,
             'half-true': True,
             'mostly-true': True,
@@ -554,6 +566,8 @@ def applier(function_cols, chunk, progress_bar=False):
                     chunk[to_col] = chunk[from_col].apply(function.function_to_apply)
                 chunk = chunk[chunk[to_col] != DELETE_TOKEN]
     return chunk
+
+
 
 
 def apply_pipeline_pd(df, function_cols):
