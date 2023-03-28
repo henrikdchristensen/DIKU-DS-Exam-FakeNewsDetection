@@ -548,7 +548,7 @@ def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_IT
     start_time = time()
 
     # Use Pandas chunksize and iterator to read the input file in batches
-    with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8', lineterminator='\n', nrows=total_rows) as reader:
+    with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8', nrows=total_rows) as reader:
         for chunk in reader:
             if function_cols is None:
                 return chunk
@@ -639,34 +639,25 @@ def create_dataset(file, unwanted_removed_file, cleaned_file, cleaned_file_combi
 
     stopwords_lst = stopwords.words('english')
     apply_pipeline(unwanted_removed_file, [
-        # Binary labels
         (Binary_labels(), 'type', 'type_binary'),
-        # Clean content
+
+        (Clean_domain(), 'domain'),
+
+        (Clean_author(), "authors"),
+
         (Clean_data(), 'content', 'content_cleaned'),
         (Tokenizer(), "content_cleaned"),
-        (Remove_stopwords(stopwords_lst), "content_cleaned"),
         (Stem(), "content_cleaned"),
         (Combine_Content(), "content_cleaned", "content_combined"),
-        (Sentence_analysis(), "content_combined", "sentence_analysis"),
-        # Clean authors
-        (Clean_author(), "authors"),
-        # Clean title
+        (Remove_stopwords(stopwords_lst), "content_cleaned"),
+
         (Clean_data(), 'title'),
         (Tokenizer(), "title"),
         (Remove_stopwords(stopwords_lst), "title"),
         (Stem(), "title"),
         (Combine_Content(), "title"),
-        # Clean domain
-        (Clean_domain(), 'domain'),
-        # Combine columns (used as features)
-        (Join_str_columns(
-            ["content_combined", "authors"]), None, "content_authors"),
-        (Join_str_columns(
-            ["content_combined", "title"]), None, "content_title"),
-        (Join_str_columns(
-            ["content_combined", "domain"]), None, "content_domain"),
-        (Join_str_columns(["content_combined", "domain",
-                           "authors", "title"]), None, "content_domain_authors_title")
+
+        (Sentence_analysis(), "content_combined", "sentence_analysis"),
     ],
         new_file=cleaned_file,
         progress_bar=True,
