@@ -3,6 +3,8 @@ import pipeline as pp
 import pandas as pd
 from textblob import TextBlob
 import filehandling as fh
+from nltk.corpus import stopwords
+
 
 headers = ['id', 'label', 'statement', 'subjects', 'speaker', 'speaker_job', 'state_info', 
            'party', 'barely_true', 'false', 'half_true', 'mostly_true', 'pants_on_fire', 'context']
@@ -24,7 +26,7 @@ class Clean_id(pp.FunctionApplier):
         return id.split('.')[0]
     
 def clean_dataset(file, new_file):
-    #stopwords_lst = stopwords.words('english')
+    stopwords_lst = stopwords.words('english')
     pp.apply_pipeline(file, [
         # Binary labels
         #(pp.Binary_labels(), 'type', 'type_binary'),
@@ -32,7 +34,7 @@ def clean_dataset(file, new_file):
         (Clean_id(), 'id', 'id'),
         (pp.Clean_data(), 'statement', 'statement_cleaned'),
         (pp.Tokenizer(), 'statement_cleaned'),
-        #(pp.Remove_stopwords(stopwords_lst), 'statement_cleaned'),
+        (pp.Remove_stopwords(stopwords_lst), 'statement_cleaned'),
         (pp.Stem(), "statement_cleaned"),
         (pp.Combine_Content(), 'statement_cleaned', 'statement_combined'),
         (pp.Sentence_analysis(), 'statement_combined', 'sentence_analysis'),

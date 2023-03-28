@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from ast import literal_eval
 from textblob import TextBlob
+import pipeline as pp
 
 
 RAW_DATA = '../datasets/sample/dataset.csv'
@@ -244,3 +245,57 @@ class Statistics():
             subjective_min, subjective_max), label='subjective score', title='subjective score for fake', color='lightblue', ax=ax4)
         fig.tight_layout()
         plt.show()
+
+
+def create_dataset(file, unwanted_removed_file, cleaned_file, cleaned_file_combined):
+    pp.Remove_unwanted_rows_and_cols(file, unwanted_removed_file).run()
+
+    stopwords_lst = stopwords.words('english')
+    pp.apply_pipeline(unwanted_removed_file, [
+        # Binary labels
+        (pp.Binary_labels(), 'type', 'type_binary'),
+        # Clean content
+        (pp.Clean_data(), 'content', 'content_cleaned'),
+        (pp.Tokenizer(), 'content_cleaned'),
+        #(pp.Remove_stopwords(stopwords_lst), 'content_cleaned'),
+        (pp.Stem(), "content_cleaned"),
+        (pp.Combine_Content(), 'content_cleaned', 'content_combined'),
+        (pp.Sentence_analysis(), 'content_combined', 'sentence_analysis'),
+        # Clean authors
+        (pp.Clean_author(), 'authors'),
+        # Clean title
+        (pp.Clean_data(), 'title'),
+        (pp.Tokenizer(), 'title'),
+        #(Remove_stopwords(stopwords_lst), 'title'),
+        (pp.Stem(), 'title'),
+        (pp.Combine_Content(), 'title'),
+        # Clean domain
+        (pp.Clean_domain(), 'domain'),
+    ],
+        new_file=cleaned_file,
+        progress_bar=True,
+    )
+
+    apply_pipeline(cleaned_file, [
+        (pp.Join_str_columns(
+            ['content_combined', 'authors']), None, 'content_authors'),
+        (pp.Join_str_columns(
+            ['content_combined', 'title']), None, 'content_title'),
+        (pp.Join_str_columns(
+            ['content_combined', 'domain']), None, 'content_domain'),
+        (pp.Join_str_columns(['content_combined', 'domain',
+                           'authors', 'title']), None, 'content_domain_authors_title')
+    ],
+        new_file=cleaned_file_combined,
+        progress_bar=True,
+    )
+
+
+def run():
+    path = "../datasets/liar_dataset/"
+    create_dataset(file=path+"shuffled.csv", unwanted_removed_file=path +
+                   "unwanted_removed.csv", cleaned_file=path+"dataset.csv", cleaned_file_combined=path+"dataset_combined.csv")
+
+
+if __name__ == '__main__':
+    run()
