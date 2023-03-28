@@ -7,7 +7,7 @@ from ast import literal_eval
 import pipeline as pp
 
 class Statistics():
-    def __init__(self, data: pd.DataFrame, content_label: str = 'content_cleaned', type_label: str = 'type', binary_type_label: str = 'type_binary', type_colors=None, domain_label='domain', sentence_analysis_label: str = 'sentence_analysis'):
+    def __init__(self, data: pd.DataFrame, content_label: str = 'content_cleaned', type_label: str = 'type', binary_type_label: str = 'type_binary', type_colors=None, domain_label='domain', subjects_label=None, speaker_label=None, party_label=None, sentence_analysis_label: str = 'sentence_analysis'):
         self.data = data
         self.content_label = content_label
         self.type_label = type_label
@@ -15,10 +15,16 @@ class Statistics():
         self.type_colors = type_colors
         self.domain_label = domain_label
         self.sentence_analysis_label = sentence_analysis_label
+        self.subjects_label = subjects_label
+        self.speaker_label = speaker_label
+        self.party_label = party_label
         
         # Convert text-list-of-strins to list of strings
         self.data[content_label] = self.data[content_label].apply(literal_eval)
         self.data[sentence_analysis_label] = self.data[sentence_analysis_label].apply(literal_eval)
+        
+        # Replace empty values with 'None':
+        self.data[self.party_label] = self.data[self.party_label].fillna('none')
         
         self.first_person_pronouns = ['i', 'me', 'my', 'mine', 'we', 'us', 'our', 'ours']
         self.second_person_pronouns = ['you', 'your', 'yours']
@@ -229,6 +235,36 @@ class Statistics():
             subjective_min, subjective_max), label='subjective score', title='subjective score for fake', color='lightblue', ax=ax4)
         fig.tight_layout()
         plt.show()
+        
+    def plot_party_fake_vs_true(self):
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
+        self._barplot(data=self.data[self.data[self.binary_type_label] == True][self.party_label].dropna().explode().tolist(
+        ), nwords=25, percentage=True, minmax=None, label='% of true party', title='true party frequency', color='lightsalmon', ax=ax1)
+        self._barplot(data=self.data[self.data[self.binary_type_label] == False][self.party_label].dropna().explode().tolist(
+        ), nwords=25, percentage=True, minmax=None, label='% of fake party', title='fake party frequency', color='lightblue', ax=ax2)
+        fig.tight_layout()
+        plt.show()
+        
+    def plot_speaker_fake_vs_true(self):
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
+        self._barplot(data=self.data[self.data[self.binary_type_label] == True][self.speaker_label].explode().tolist(
+        ), nwords=25, percentage=True, minmax=None, label='% of true speaker', title='true speaker frequency', color='lightsalmon', ax=ax1)
+        self._barplot(data=self.data[self.data[self.binary_type_label] == False][self.speaker_label].explode().tolist(
+        ), nwords=25, percentage=True, minmax=None, label='% of fake speaker', title='fake speaker frequency', color='lightblue', ax=ax2)
+        fig.tight_layout()
+        plt.show()
+        
+    def plot_subjects_fake_vs_true(self):
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
+        self._barplot(data=self.data[self.data[self.binary_type_label] == True][self.subjects_label].explode().tolist(
+        ), nwords=25, percentage=True, minmax=None, label='% of true subject', title='true subject frequency', color='lightsalmon', ax=ax1)
+        self._barplot(data=self.data[self.data[self.binary_type_label] == False][self.subjects_label].explode().tolist(
+        ), nwords=25, percentage=True, minmax=None, label='% of fake subject', title='fake subject frequency', color='lightblue', ax=ax2)
+        fig.tight_layout()
+        plt.show()
+        
+        
+        
 
 
 def create_dataset(file, unwanted_removed_file, cleaned_file, cleaned_file_combined):
