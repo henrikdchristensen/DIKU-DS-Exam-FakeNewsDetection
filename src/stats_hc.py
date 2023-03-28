@@ -163,7 +163,7 @@ class Statistics():
         plt.show()
 
     def plot_average_sentence_length_fake_vs_true(self):
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(5, 5))
         true = self.data[self.data[self.binary_type_label] == True][self.content_label].apply(self._average_sentence_lengths)
         fake = self.data[self.data[self.binary_type_label] == False][self.content_label].apply(self._average_sentence_lengths)
         # Percentage max value to limit the y-axis
@@ -176,7 +176,7 @@ class Statistics():
 
     def plot_pronouns_fake_vs_true(self):
         # Create 2x4 sub plots
-        fig, ((ax1, ax2), (ax3, ax4), (ax5, ax6), (ax7, ax8)) = plt.subplots(4, 2, figsize=(15, 10))
+        fig, ((ax1, ax2), (ax3, ax4), (ax5, ax6), (ax7, ax8)) = plt.subplots(4, 2, figsize=(10, 10))
         true_first = self.data[self.data[self.binary_type_label] == True][self.content_label].apply(lambda x: sum([x.count(word) for word in self.first_person_pronouns]))
         fake_first = self.data[self.data[self.binary_type_label] == False][self.content_label].apply(lambda x: sum([x.count(word) for word in self.first_person_pronouns]))
         max_val_first = max(true_first.max(), fake_first.max()) * 1.1 if max(true_first.max(), fake_first.max()) > 0 else 1
