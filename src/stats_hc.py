@@ -163,7 +163,6 @@ class Statistics():
         # Percentage max value to limit the y-axis
         max_val = max(true.max(), fake.max()) * 1.1 if max(true.max(), fake.max()) > 0 else 1
         min_val = min(true.min(), fake.min()) * 0.9 if min(true.min(), fake.min()) > 0 else -1
-        print(f'min: {min_val}, max: {max_val}')
         self._boxplot(data=true, minmax=(min_val, max_val), label='avg. sentence length', title='true avg. sentence length', color='lightsalmon', ax=ax1)
         self._boxplot(data=fake, minmax=(min_val, max_val), label='avg. sentence length', title='fake avg. sentence length', color='lightblue', ax=ax2)
         fig.tight_layout()
