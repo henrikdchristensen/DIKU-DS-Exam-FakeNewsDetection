@@ -569,7 +569,7 @@ def apply_pipeline_pd_tqdm(df, function_cols):
     return applier(function_cols, df.copy(), progress_bar=True)
 
 
-def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False, progress_bar=True, total_rows=20000):
+def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False, progress_bar=True, total_rows=None):
     i = 0
     start_time = time()
 
