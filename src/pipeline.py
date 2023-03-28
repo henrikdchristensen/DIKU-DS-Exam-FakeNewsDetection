@@ -100,7 +100,10 @@ class TF_IDF(FunctionApplier):
                 vector[i] = (np.log(vector[i]) + 1) * self.idf_vec[set][i]
         return vector
 
-def get_dataframe_with_distribution(file, total_size, splits, balanced, end_col = "set", type_col ="type",  chunksize=ROWS_PR_ITERATION, out_file=None, get_frame=True, classes = labels, delete=True):
+def get_dataframe_with_distribution(file, 
+                                    total_size, splits, balanced, 
+                                    end_col = "set", type_col ="type",  
+                                    chunksize=ROWS_PR_ITERATION, out_file=None, get_frame=True, classes = labels, delete=True):
     # empty dataframe
     data = None
     curr_index = 0
@@ -117,7 +120,13 @@ def get_dataframe_with_distribution(file, total_size, splits, balanced, end_col 
     
     def apply_to_rows(label):
         nonlocal curr_index
-        if curr_index >= len(sets) or label not in classes:
+        # if curr_index >= len(sets) or label not in classes:
+        #     return DELETE_TOKEN
+        if curr_index >= len(sets):
+            return DELETE_TOKEN
+
+        balanced, curr_set = sets[curr_index]
+        if balanced and label not in classes:
             return DELETE_TOKEN
         
         balanced, curr_set = sets[curr_index]
@@ -144,25 +153,28 @@ def get_dataframe_with_distribution(file, total_size, splits, balanced, end_col 
     with pd.read_csv(file, chunksize=chunksize, encoding='utf-8') as reader:
         for chunk in reader:
             chunk[end_col] = chunk[type_col].progress_apply(apply_to_rows)
+            print("entries to read:", entries_read)
             if delete:
                 chunk = chunk[chunk[end_col] != DELETE_TOKEN]
-
             if out_file is not None:
                 if entries_read == 0:
                     chunk.to_csv(out_file, mode='w', index=False)
                 else:
                     # Append to csv file without header
+                    print("appending")
                     chunk.to_csv(out_file, mode='a', header=False, index=False)
             if get_frame:
                 if data is None:
                     data = chunk
                 else:
+                    # print("concat")
                     data = pd.concat([data, chunk])
 
             entries_read += chunksize
             finished = True
             for balanced, set in sets:
                 if (balanced and sum(set.values()) > 0) or (not balanced and set > 0):
+                    # print
                     finished = False
             if finished:
                 print("entries read:", entries_read)
@@ -572,12 +584,12 @@ def apply_pipeline_pd_tqdm(df, function_cols):
     # Iterate through each row in the DataFrame and apply the functions
     return applier(function_cols, df.copy(), progress_bar=True)
 
-def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False, progress_bar=True, total_rows=20000):
+def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False, progress_bar=True, total_rows=None):
     i = 0
     start_time = time()
 
     # Use Pandas chunksize and iterator to read the input file in batches
-    with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8', lineterminator='\n', nrows=total_rows) as reader:
+    with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8', nrows=total_rows) as reader:
         for chunk in reader:
             if function_cols is None:
                 return chunk
