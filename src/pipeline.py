@@ -663,7 +663,7 @@ def simple_model_test():
 
 
 def create_dataset(file, unwanted_removed_file, cleaned_file, cleaned_file_combined):
-    Remove_unwanted_rows_and_cols(file, unwanted_removed_file).run()
+    #Remove_unwanted_rows_and_cols(file, unwanted_removed_file).run()
 
     stopwords_lst = stopwords.words('english')
     apply_pipeline(unwanted_removed_file, [
