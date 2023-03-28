@@ -187,8 +187,6 @@ class Combine_Content(FunctionApplier):
         return " ".join(content_lst)
 
 
-
-
 class Create_word_vector(FunctionApplier):
     def __init__(self, unique_words):
         self.unique_words = unique_words
@@ -231,6 +229,7 @@ class Read_numpy_arr(FunctionApplier):
                               key=lambda x: x[1], reverse=True)
         sorted_freq_items = [x[0] for x in sorted_items if x[1] /
                              word_sum >= low and x[1] / word_sum <= high]
+
 
 class Generate_unique_word_list(FunctionApplier):
     def __init__(self):
@@ -323,11 +322,12 @@ class Remove_stopwords(FunctionApplier):
 
     def function_to_apply(self, words):
         return [w for w in words if not w in self.swords]
-    
+
+
 class Remove_stopwords2(FunctionApplier):
     def __init__(self):
         self.stopwords = pd.read_csv("stopwords2.csv").values.flatten()
-    
+
     def function_to_apply(self, words):
         return [w for w in words if not w in self.stopwords]
 
@@ -364,9 +364,10 @@ class Clean_data(FunctionApplier):
             re.compile(r'(\!)'): ' ! ',  # add space before and after exclamation mark
             re.compile(r'(\-)'): ' ',
             re.compile(r'(\')'): ' ',
-            re.compile(r'[^A-Za-z0-9\s<>\?\!]' if remove_punct else r'[^A-Za-z0-9\s<>\?!\.,]'): '', # remove all special characters, including non-ascii characters and punctuation if remove_punct is True
-            re.compile(r'(\d+)(th)?'): ' <NUM> ', # replace numbers with <NUM>
-            re.compile(r'( +)'): ' ', # remove multiple spaces
+            # remove all special characters, including non-ascii characters and punctuation if remove_punct is True
+            re.compile(r'[^A-Za-z0-9\s<>\?\!]' if remove_punct else r'[^A-Za-z0-9\s<>\?!\.,]'): '',
+            re.compile(r'(\d+)(th)?'): ' <NUM> ',  # replace numbers with <NUM>
+            re.compile(r'( +)'): ' ',  # remove multiple spaces
         }
 
     def function_to_apply(self, cell):
@@ -442,8 +443,6 @@ class Print_first_row(FunctionApplier):
             print(r)
 
 
-
-    
 class Clean_id_LIAR(FunctionApplier):
     def function_to_apply(self, id):
         return id.split('.')[0]
@@ -474,6 +473,7 @@ class Binary_labels(FunctionApplier):
             binary_label = True
         return binary_label
 
+
 class Binary_labels_LIAR(FunctionApplier):
     def __init__(self):
         self.binary_labels: dict = {
@@ -492,6 +492,7 @@ class Binary_labels_LIAR(FunctionApplier):
         except:
             binary_label = True
         return binary_label
+
 
 class Simple_model(FunctionApplier):
     def __init__(self):
@@ -556,8 +557,6 @@ def applier(function_cols, chunk, progress_bar=False):
                     chunk[to_col] = chunk[from_col].apply(function.function_to_apply)
                 chunk = chunk[chunk[to_col] != DELETE_TOKEN]
     return chunk
-
-
 
 
 def apply_pipeline_pd(df, function_cols):
@@ -663,7 +662,7 @@ def simple_model_test():
 
 
 def create_dataset(file, unwanted_removed_file, cleaned_file, cleaned_file_combined):
-    #Remove_unwanted_rows_and_cols(file, unwanted_removed_file).run()
+    Remove_unwanted_rows_and_cols(file, unwanted_removed_file).run()
 
     stopwords_lst = stopwords.words('english')
     apply_pipeline(unwanted_removed_file, [
