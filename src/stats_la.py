@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import re
 import pandas as pd
 import numpy as np
-from transformers import pipeline
 from nltk.stem import PorterStemmer
 import pipeline as pp
 
