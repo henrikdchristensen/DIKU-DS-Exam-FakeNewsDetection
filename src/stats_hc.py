@@ -70,8 +70,7 @@ class Statistics():
         # Plot bar plot
         if ax is None:
             fig, ax = plt.subplots(1, 1)
-
-        ax.tick_params(axis='x', rotation=90)
+        #ax.tick_params(axis='x', rotation=90)
         if boolean:
             color = ['lightblue', 'lightsalmon']
             ax.set_yticks([0, 1])
@@ -90,23 +89,30 @@ class Statistics():
         ax.set_ylim(minmax)
         ax.set_ylabel(label)
         ax.set_title(title)
-
-    def plot_word_frequency(self):
+    
+    def plot_word_frequency_barplot(self):
+        fig, ax1 = plt.subplots(1, 1, figsize=(12, 6))
+        words_min = self.data['content_cleaned'].apply(len).min()
+        words_max = self.data['content_cleaned'].apply(len).max()
+        self._barplot(data=self.data['content_cleaned'].explode().tolist(), nwords=25, 
+                      percentage=True, label='% of total words', title='word frequency', color='yellowgreen', ax=ax1)
+    
+    def plot_word_frequency_boxplot(self):
         # plot bar and box plot together:
-        fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(12, 6))
-        self._barplot(data=self.data['content_cleaned'].explode().tolist(), nwords=25,
-                     percentage=True, label='% of total words', title='word frequency', color='yellowgreen', ax=ax1)
+        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 6))
         self._boxplot(data=self.data['content_cleaned'].apply(len),
-                     label='# of words', title='# of words per article', color='yellowgreen', ax=ax2)
+                     label='# of words', title='# of words per article', color='yellowgreen', ax=ax1)
         self._boxplot(data=self.data['content_cleaned'].apply(lambda x: x.count("!")),
-                     label='# of !', title="# of '!' per article", color='yellowgreen', ax=ax3)
+                     label='# of !', title="# of '!' per article", color='yellowgreen', ax=ax2)
         self._boxplot(data=self.data['content_cleaned'].apply(lambda x: x.count("?")),
-                     label='# of ?', title="# of '?' per article", color='yellowgreen', ax=ax4)
+                     label='# of ?', title="# of '?' per article", color='yellowgreen', ax=ax3)
         fig.tight_layout()
         plt.show()
+    
+
 
     def plot_word_frequency_fake_vs_real(self):
-        fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(12, 6))
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(12, 6))
         words_min = self.data['content_cleaned'].apply(len).min()
         words_max = self.data['content_cleaned'].apply(len).max()
         self._barplot(data=self.data[self.data["type_binary"] == True]['content_cleaned'].explode().tolist(
@@ -176,48 +182,38 @@ class Statistics():
         true = self.data[self.data["type_binary"] == True]['content_cleaned'].apply(self._average_sentence_lengths)
         fake = self.data[self.data["type_binary"] == False]['content_cleaned'].apply(self._average_sentence_lengths)
         max_val = max(true.max(), fake.max())+2
-        self._boxplot(data=true, minmax=(-0.4, max_val), label='avg. sentence length', title='real avg. sentence length', color='lightsalmon', ax=ax1)
-        self._boxplot(data=fake, minmax=(-0.4, max_val), label='avg. sentence length', title='fake avg. sentence length', color='lightblue', ax=ax2)
+        self._boxplot(data=true, minmax=(-10, max_val), label='avg. sentence length', title='real avg. sentence length', color='lightsalmon', ax=ax1)
+        self._boxplot(data=fake, minmax=(-10, max_val), label='avg. sentence length', title='fake avg. sentence length', color='lightblue', ax=ax2)
         fig.tight_layout()
         plt.show()
     
-    def plot_first_person_pronouns_fake_vs_real(self):
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
-        true = self.data[self.data["type_binary"] == True]['content_cleaned'].apply(lambda x: sum([x.count(word) for word in self.first_person_pronouns]))
-        fake = self.data[self.data["type_binary"] == False]['content_cleaned'].apply(lambda x: sum([x.count(word) for word in self.first_person_pronouns]))
-        max_val = max(true.max(), fake.max())+2
-        self._boxplot(data=true, minmax=(-0.4, max_val), label='# of 1st pronouns', title='real 1st person pronouns', color='lightsalmon', ax=ax1)
-        self._boxplot(data=fake, minmax=(-0.4, max_val), label='# of 1st pronouns', title='fake 1st person pronouns', color='lightblue', ax=ax2)
-        fig.tight_layout()
-        plt.show()
+    def plot_pronouns_fake_vs_real(self):
+        # Create 2x4 sub plots
+        fig, ((ax1, ax2), (ax3, ax4), (ax5, ax6), (ax7, ax8)) = plt.subplots(4, 2, figsize=(12, 12))
         
-    def plot_second_person_pronouns_fake_vs_real(self):
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
-        true = self.data[self.data["type_binary"] == True]['content_cleaned'].apply(lambda x: sum([x.count(word) for word in self.second_person_pronouns]))
-        fake = self.data[self.data["type_binary"] == False]['content_cleaned'].apply(lambda x: sum([x.count(word) for word in self.second_person_pronouns]))
-        max_val = max(true.max(), fake.max())+2
-        self._boxplot(data=true, minmax=(-0.4, max_val), label='# of 2nd pronouns', title='real 2nd person pronouns', color='lightsalmon', ax=ax1)
-        self._boxplot(data=fake, minmax=(-0.4, max_val), label='# of 2nd pronouns', title='fake 2nd person pronouns', color='lightblue', ax=ax2)
-        fig.tight_layout()
-        plt.show()
+        true_first = self.data[self.data["type_binary"] == True]['content_cleaned'].apply(lambda x: sum([x.count(word) for word in self.first_person_pronouns]))
+        fake_first = self.data[self.data["type_binary"] == False]['content_cleaned'].apply(lambda x: sum([x.count(word) for word in self.first_person_pronouns]))
+        max_val_first = max(true_first.max(), fake_first.max())+2
+        self._boxplot(data=true_first, minmax=(-0.4, max_val_first), label='# of 1st pronouns', title='real 1st person pronouns', color='lightsalmon', ax=ax1)
+        self._boxplot(data=fake_first, minmax=(-0.4, max_val_first), label='# of 1st pronouns', title='fake 1st person pronouns', color='lightblue', ax=ax2)
         
-    def plot_third_person_pronouns_fake_vs_real(self):
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
-        true = self.data[self.data["type_binary"] == True]['content_cleaned'].apply(lambda x: sum([x.count(word) for word in self.third_person_pronouns]))
-        fake = self.data[self.data["type_binary"] == False]['content_cleaned'].apply(lambda x: sum([x.count(word) for word in self.third_person_pronouns]))
-        max_val = max(true.max(), fake.max())+2
-        self._boxplot(data=true, minmax=(-0.4, max_val), label='# of 3rd pronouns', title='real 3rd person pronouns', color='lightsalmon', ax=ax1)
-        self._boxplot(data=fake, minmax=(-0.4, max_val), label='# of 3rd pronouns', title='fake 3rd person pronouns', color='lightblue', ax=ax2)
-        fig.tight_layout()
-        plt.show()
-    
-    def plot_total_pronouns_fake_vs_real(self):
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
-        true = self.data[self.data["type_binary"] == True]['content_cleaned'].apply(lambda x: sum([x.count(word) for word in self.pronouns]))
-        fake = self.data[self.data["type_binary"] == False]['content_cleaned'].apply(lambda x: sum([x.count(word) for word in self.pronouns]))
-        max_val = max(true.max(), fake.max())+2
-        self._boxplot(data=true, minmax=(-0.4, max_val), label='# of total pronouns', title='real total pronouns', color='lightsalmon', ax=ax1)
-        self._boxplot(data=fake, minmax=(-0.4, max_val), label='# of total pronouns', title='fake total pronouns', color='lightblue', ax=ax2)
+        true_second = self.data[self.data["type_binary"] == True]['content_cleaned'].apply(lambda x: sum([x.count(word) for word in self.second_person_pronouns]))
+        fake_second = self.data[self.data["type_binary"] == False]['content_cleaned'].apply(lambda x: sum([x.count(word) for word in self.second_person_pronouns]))
+        max_val_second = max(true_second.max(), fake_second.max())+2
+        self._boxplot(data=true_second, minmax=(-0.4, max_val_second), label='# of 2nd pronouns', title='real 2nd person pronouns', color='lightsalmon', ax=ax3)
+        self._boxplot(data=fake_second, minmax=(-0.4, max_val_second), label='# of 2nd pronouns', title='fake 2nd person pronouns', color='lightblue', ax=ax4)
+        
+        true_third = self.data[self.data["type_binary"] == True]['content_cleaned'].apply(lambda x: sum([x.count(word) for word in self.third_person_pronouns]))
+        fake_third = self.data[self.data["type_binary"] == False]['content_cleaned'].apply(lambda x: sum([x.count(word) for word in self.third_person_pronouns]))
+        max_val_third = max(true_third.max(), fake_third.max())+2
+        self._boxplot(data=true_third, minmax=(-0.4, max_val_third), label='# of 3rd pronouns', title='real 3rd person pronouns', color='lightsalmon', ax=ax5)
+        self._boxplot(data=fake_third, minmax=(-0.4, max_val_third), label='# of 3rd pronouns', title='fake 3rd person pronouns', color='lightblue', ax=ax6)
+        
+        true_total = self.data[self.data["type_binary"] == True]['content_cleaned'].apply(lambda x: sum([x.count(word) for word in self.pronouns]))
+        fake_total = self.data[self.data["type_binary"] == False]['content_cleaned'].apply(lambda x: sum([x.count(word) for word in self.pronouns]))
+        max_val_total = max(true_total.max(), fake_total.max())+2
+        self._boxplot(data=true_total, minmax=(-0.4, max_val_total), label='# of pronouns', title='real pronouns', color='lightsalmon', ax=ax7)
+        self._boxplot(data=fake_total, minmax=(-0.4, max_val_total), label='# of pronouns', title='fake pronouns', color='lightblue', ax=ax8)
         fig.tight_layout()
         plt.show()
         
