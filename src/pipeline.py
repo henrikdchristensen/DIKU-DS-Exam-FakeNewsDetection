@@ -383,7 +383,7 @@ class Clean_author(FunctionApplier):
         author_list = [(re.sub(self.regex_oddcharacters, "", author)) for author in author_list]
         author_list = "".join(author_list)
         if author_list == "":  # to avoid nan
-            return " "
+            return ""
         return author_list
 
 
@@ -548,7 +548,7 @@ def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_IT
     start_time = time()
 
     # Use Pandas chunksize and iterator to read the input file in batches
-    with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8', lineterminator='\n', nrows=total_rows) as reader:
+    with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8', nrows=total_rows) as reader:
         for chunk in reader:
             if function_cols is None:
                 return chunk
@@ -649,7 +649,7 @@ def create_dataset(file, unwanted_removed_file, cleaned_file, cleaned_file_combi
         (Combine_Content(), 'content_cleaned', 'content_combined'),
         (Sentence_analysis(), 'content_combined', 'sentence_analysis'),
         # Clean authors
-        (Clean_author(), "authors"),
+        (Clean_author(), 'authors'),
         # Clean title
         (Clean_data(), 'title'),
         (Tokenizer(), 'title'),
