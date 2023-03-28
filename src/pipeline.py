@@ -117,10 +117,14 @@ def get_dataframe_with_distribution(file, total_size, splits, balanced, end_col 
     
     def apply_to_rows(label):
         nonlocal curr_index
-        if curr_index >= len(sets) or label not in classes:
+        if curr_index >= len(sets):
+            return DELETE_TOKEN
+
+        balanced, curr_set = sets[curr_index]
+        if balanced and label not in classes:
             return DELETE_TOKEN
         
-        balanced, curr_set = sets[curr_index]
+        
         if balanced:
             if sum(curr_set.values()) == 0:
                 curr_index += 1
@@ -452,7 +456,7 @@ class Print_content_to_csv(FunctionApplier):
         return row
 
 class Binary_labels_LIAR(FunctionApplier):
-    def __init__(self):
+    def __init__(self, binary_labels = None):
         self.binary_labels: dict = {
             'pants-fire': False,
             'false': False,
