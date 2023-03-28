@@ -120,8 +120,6 @@ def get_dataframe_with_distribution(file,
     
     def apply_to_rows(label):
         nonlocal curr_index
-        # if curr_index >= len(sets) or label not in classes:
-        #     return DELETE_TOKEN
         if curr_index >= len(sets):
             return DELETE_TOKEN
 
@@ -129,7 +127,7 @@ def get_dataframe_with_distribution(file,
         if balanced and label not in classes:
             return DELETE_TOKEN
         
-        balanced, curr_set = sets[curr_index]
+        
         if balanced:
             if sum(curr_set.values()) == 0:
                 curr_index += 1
@@ -318,39 +316,9 @@ class Generate_unique_word_list(FunctionApplier):
         plt.show()
 
 
-class Word_frequency(FunctionApplier):
-    def __init__(self, nwords=50):
-        self.swords = nwords
-        self.words = []
-        self.frequency = Counter()
-        self.sorted_frequency = []
-
-    def function_to_apply(self, content):
-        # Update/add list of word
-        content = literal_eval(content)
-        self.frequency.update(content)
-        # Return the sorted dictionary based on the frequency of each word
-        self.sorted_frequency = sorted(
-            self.frequency.items(), key=lambda x: x[1], reverse=True)
-        return content
-
-    def plot(self):
-        # Extract the words and their frequency from the sorted list
-        words = [x[0] for x in self.sorted_frequency[:self.swords]]
-        frequency = [x[1] for x in self.sorted_frequency[:self.swords]]
-        # Plot a barplot using matplotlib
-        plt.bar(words, frequency)
-        plt.ylabel('Frequency')
-        plt.title(f'Frequency of the {self.swords} most frequent words')
-        plt.xticks(rotation=90)
-        plt.tight_layout()
-        plt.show()
-
-
 class Tokenizer(FunctionApplier):
     def function_to_apply(self, cell):
         return cell.split()
-
 
 class Remove_stopwords(FunctionApplier):
     def __init__(self, swords):
@@ -371,23 +339,25 @@ class Stem(FunctionApplier):
 
 
 class Clean_data(FunctionApplier):
-    def __init__(self):
+    def __init__(self, remove_punct=True):
         # Create a list of patterns to remove.
         # Compile the patterns to speed up the process
         self.patterns = {
-            re.compile(r'[<>]'): '',
-            re.compile(r'((https?:\/\/)?(?:www\.)?[a-zA-Z0-9-_\+=.:~@#%]+\.[a-zA-Z0-9()]{1,6}\b(?:[a-zA-Z0-9-_.:\\/@#$%&()=+~?]*))'): ' <URL> ',
-            re.compile(r'(https?:\/\/)?w{0,3}\.?[a-z]+\.[a-z]\w*[\w\/-]*'): ' <URL> ',
-            re.compile(r'(\d{1,2}([\:\-/\\]|(,\s)?)){2}\d{2,4}|\d{2,4}(([\:\-/\\]|(,\s)?)\d{1,2}){2}'): ' <DATE> ',
-            re.compile(r'([Jj]an(uary)?|[Ff]eb(ruary)?|[Mm]ar(ch)?|[Aa]pr(il)?|[Mm]ay|[Jj]un(e)?|[Jj]ul(y)?|[Aa]ug(ust)?|[Ss]ep(tember)?|[Oo]ct(ober)?|[Nn]ov(ember)?|[Dd]ec(ember)?)([\:\-/\\]|(,\s)?)\d{1,2}([\:\-/\\]|(,\s)?)\d{1,4}'): ' <DATE> ',
-            re.compile(r'([\w.\-]+@(?:[\w-]+\.)+[\w-]{2,4})|@[\w\d]+'): ' <EMAIL> ',
-            re.compile(r'(\r\n|\n|\r)+'): ' ',
-            re.compile(r'(\t+)'): ' ',
-            re.compile(r'(\?)'): ' ? ',
-            re.compile(r'(\!)'): ' ! ',
-            re.compile(r'[^A-Za-z0-9\s<>\?\!]'): '',
-            re.compile(r'(\d+)(th)?'): ' <NUM> ',
-            re.compile(r'( +)'): ' ',
+            re.compile(r'(<.*?>)'): '', # remove html tags
+            re.compile(r'[<>]'): '', # remove < and >
+            re.compile(r'((https?:\/\/)?(?:www\.)?[a-zA-Z0-9-_\+=.:~@#%]+\.[a-zA-Z0-9()]{1,6}\b(?:[a-zA-Z0-9-_.:\\/@#$%&()=+~?]*))'): ' <URL> ', # replace urls with <URL>
+            re.compile(r'(https?:\/\/)?w{0,3}\.?[a-z]+\.[a-z]\w*[\w\/-]*'): ' <URL> ', # replace urls with <URL>
+            re.compile(r'(\d{1,2}([\:\-/\\]|(,\s)?)){2}\d{2,4}|\d{2,4}(([\:\-/\\]|(,\s)?)\d{1,2}){2}'): ' <DATE> ', # replace dates with <DATE>
+            re.compile(r'([Jj]an(uary)?|[Ff]eb(ruary)?|[Mm]ar(ch)?|[Aa]pr(il)?|[Mm]ay|[Jj]un(e)?|[Jj]ul(y)?|[Aa]ug(ust)?|[Ss]ep(tember)?|[Oo]ct(ober)?|[Nn]ov(ember)?|[Dd]ec(ember)?)([\:\-/\\]|(,\s)?)\d{1,2}([\:\-/\\]|(,\s)?)\d{1,4}'): ' <DATE> ', # replace dates with <DATE>
+            re.compile(r'([\w.\-]+@(?:[\w-]+\.)+[\w-]{2,4})|@[\w\d]+'): ' <EMAIL> ', # replace email addresses with <EMAIL>
+            re.compile(r'(\r\n|\n|\r)+'): ' ', # remove new lines
+            re.compile(r'(\t+)'): ' ', # remove tabs
+            re.compile(r'(\?)'): ' ? ', # add space before and after question mark
+            re.compile(r'(\!)'): ' ! ', # add space before and after exclamation mark
+            re.compile(r'(\-)'): ' ',
+            re.compile(r'[^A-Za-z0-9\s<>\?\!]' if remove_punct else r'[^A-Za-z0-9\s<>\?!\.,]'): '', # remove all special characters, including non-ascii characters and punctuation if remove_punct is True
+            re.compile(r'(\d+)(th)?'): ' <NUM> ', # replace numbers with <NUM>
+            re.compile(r'( +)'): ' ', # remove multiple spaces
         }
 
     def function_to_apply(self, cell):
@@ -400,10 +370,16 @@ class Clean_data(FunctionApplier):
 
         return cell
 
-class Drop(FunctionApplier):
-    def function_to_apply(self, content):
-        if content == "ERROR":
+class Valid_row(FunctionApplier):
+    def __init__(self):
+        self.types = ['fake', 'conspiracy', 'junksci', 'hate', 'unreliable', 'bias', 
+                        'satire', 'state', 'reliable', 'clickbait', 'political']
+    def function_to_apply(self, row):
+        # Remove rows which have empty content or start with 'ERROR':
+        if row['content'] == '' or row['content'].startswith('ERROR') or row['type'] not in self.types or row['domain'] == 'nan':
             return DELETE_TOKEN
+        else:
+            return row
 
 class Join_str_columns(FunctionApplier):
     def __init__(self, columns):
@@ -485,6 +461,23 @@ class Print_content_to_csv(FunctionApplier):
 
         return row
 
+class Binary_labels_LIAR(FunctionApplier):
+    def __init__(self, binary_labels = None):
+        self.binary_labels: dict = {
+            'pants-fire': False,
+            'false': False,
+            'barely-true': False,
+            'half-true': True,
+            'mostly-true': True,
+            'True': True
+        }
+
+    def function_to_apply(self, cell):
+        try:
+            binary_label = self.binary_labels[cell]
+        except:
+            binary_label = True
+        return binary_label
 
 class Binary_labels(FunctionApplier):
     def __init__(self):
@@ -548,6 +541,7 @@ def applier(function_cols, chunk, progress_bar=False):
             if to_col is None:
                 if progress_bar:
                     chunk = chunk.progress_apply(function.function_to_apply, axis=1)
+                    chunk = chunk[chunk['content'] != DELETE_TOKEN]
                 else:
                     chunk = chunk.apply(function.function_to_apply, axis=1)
             else:
@@ -569,9 +563,6 @@ def applier(function_cols, chunk, progress_bar=False):
                 else:
                     chunk[to_col] = chunk[from_col].apply(function.function_to_apply)
                 chunk = chunk[chunk[to_col] != DELETE_TOKEN]
-
-    # delete rows equal to DELETE_TOKEN
-   
     return chunk
 
 
@@ -584,12 +575,12 @@ def apply_pipeline_pd_tqdm(df, function_cols):
     # Iterate through each row in the DataFrame and apply the functions
     return applier(function_cols, df.copy(), progress_bar=True)
 
-def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False, progress_bar=True, total_rows=None):
+def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False, progress_bar=False, nrows=None):
     i = 0
     start_time = time()
 
     # Use Pandas chunksize and iterator to read the input file in batches
-    with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8', nrows=total_rows) as reader:
+    with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8', nrows=nrows) as reader:
         for chunk in reader:
             if function_cols is None:
                 return chunk

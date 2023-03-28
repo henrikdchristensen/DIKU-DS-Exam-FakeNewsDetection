@@ -3,6 +3,7 @@
 *.csv
 *.h5
 *.pickle
+*.npz
 
 # exclude all datasets
 datasets\*
