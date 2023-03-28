@@ -451,7 +451,7 @@ class Binary_labels_LIAR(FunctionApplier):
             binary_label = True
         return binary_label
     
-class Clean_id_LIAR(pp.FunctionApplier):
+class Clean_id_LIAR(FunctionApplier):
     def function_to_apply(self, id):
         return id.split('.')[0]
 

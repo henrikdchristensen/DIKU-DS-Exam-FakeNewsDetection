@@ -13,7 +13,7 @@ def create_dataset(file, new_file):
     #stopwords_lst = stopwords.words('english')
     pp.apply_pipeline(file, [
         # Binary labels
-        #(pp.Binary_labels(), 'type', 'type_binary'),
+        (pp.Binary_labels_LIAR(), 'label', 'label_binary'),
         # Clean content
         (pp.Clean_id_LIAR(), 'id', 'id'),
         (pp.Clean_data(), 'statement', 'statement_cleaned'),
