@@ -543,13 +543,13 @@ def apply_pipeline_pd_tqdm(df, function_cols):
     return applier(function_cols, df.copy(), progress_bar=True)
 
 
-def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False, progress_bar=True, total_rows=20000, delimiter=','):
+def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False, progress_bar=True, total_rows=20000):
     i = 0
     start_time = time()
 
     # Use Pandas chunksize and iterator to read the input file in batches
     
-    with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8', nrows=total_rows, delimiter=delimiter) as reader:
+    with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8', nrows=total_rows) as reader:
         for chunk in reader:
             if function_cols is None:
                 return chunk
