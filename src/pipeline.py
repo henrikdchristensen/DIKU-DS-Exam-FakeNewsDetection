@@ -432,24 +432,7 @@ class Print_first_row(FunctionApplier):
             print(r)
 
 
-class Binary_labels_LIAR(FunctionApplier):
-    def __init__(self):
-        self.binary_labels: dict = {
-            'pants-fire': False,
-            'false': False,
-            'mostly-false': False,
-            'barely-true': False,
-            'half-true': True,
-            'mostly-true': True,
-            'True': True
-        }
 
-    def function_to_apply(self, cell):
-        try:
-            binary_label = self.binary_labels[cell]
-        except:
-            binary_label = True
-        return binary_label
     
 class Clean_id_LIAR(FunctionApplier):
     def function_to_apply(self, id):
@@ -481,6 +464,24 @@ class Binary_labels(FunctionApplier):
             binary_label = True
         return binary_label
 
+class Binary_labels_LIAR(FunctionApplier):
+    def __init__(self):
+        self.binary_labels: dict = {
+            'pants-fire': False,
+            'false': False,
+            'mostly-false': False,
+            'barely-true': False,
+            'half-true': True,
+            'mostly-true': True,
+            'true': True
+        }
+
+    def function_to_apply(self, cell):
+        try:
+            binary_label = self.binary_labels[cell]
+        except:
+            binary_label = True
+        return binary_label
 
 class Simple_model(FunctionApplier):
     def __init__(self):
