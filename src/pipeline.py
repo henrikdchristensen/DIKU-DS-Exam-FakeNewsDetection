@@ -223,6 +223,14 @@ class Read_numpy_arr(FunctionApplier):
     def function_to_apply(self, row):
         return np.fromstring(row, sep=" ", dtype=self.dtype)
 
+    def get_unique_words(self, low, high):
+        # Get the sum of all words
+        word_sum = sum(self.unique_words.values())
+        # Sort the words by frequency and filter out the words that are not within the given range
+        sorted_items = sorted(self.unique_words.items(),
+                              key=lambda x: x[1], reverse=True)
+        sorted_freq_items = [x[0] for x in sorted_items if x[1] /
+                             word_sum >= low and x[1] / word_sum <= high]
 
 class Generate_unique_word_list(FunctionApplier):
     def __init__(self):
@@ -247,6 +255,8 @@ class Generate_unique_word_list(FunctionApplier):
                 n_t[word] += 1
             else:
                 n_t[word] = 1
+
+        return row
 
     def get_unique_words(self, low, high):
         # Get the sum of all words
@@ -572,7 +582,7 @@ def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_IT
                 return chunk
             # Apply the specified functions to each row in the batch
             chunk = applier(function_cols, chunk, progress_bar=progress_bar)
-
+            print("Finished processing")
             # If an output file is specified, append the processed data to it
             if new_file is not None:
                 if i == 0:
