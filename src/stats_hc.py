@@ -8,7 +8,7 @@ import pipeline as pp
 import filehandling as fh
 
 class Statistics():
-    def __init__(self, data: pd.DataFrame, content_label: str = 'content_cleaned', type_label: str = 'type', binary_type_label: str = 'type_binary', type_colors=None, domain_label='domain', subjects_label=None, speaker_label=None, party_label=None, sentence_analysis_label: str = 'sentence_analysis'):
+    def __init__(self, data: pd.DataFrame, content_label: str=None, type_label: str=None, binary_type_label: str=None, type_colors=None, domain_label:str=None, subjects_label=None, speaker_label=None, party_label=None, sentence_analysis_label: str = None):
         self.data = data
         self.content_label = content_label
         self.type_label = type_label
@@ -25,7 +25,8 @@ class Statistics():
         self.data[sentence_analysis_label] = self.data[sentence_analysis_label].apply(literal_eval)
         
         # Replace empty values with 'None':
-        self.data[self.party_label] = self.data[self.party_label].fillna('none')
+        if party_label is not None:
+            self.data[party_label] = self.data[party_label].fillna('none')
         
         self.first_person_pronouns = ['i', 'me', 'my', 'mine', 'we', 'us', 'our', 'ours']
         self.second_person_pronouns = ['you', 'your', 'yours']
@@ -56,8 +57,7 @@ class Statistics():
             measure = [(freq/length)*100 for freq in measure]
         return words, measure
 
-    def _barplot(self, data=None, nwords: int = 25, percentage=True, minmax: tuple = None, label: str = None, title: str = None, boolean=False, color='lightsalmon', ax=None):
-        words, measure = self._sort_frequency(text=data, percentage=percentage)
+    def _barplot(self, data, measure, nwords: int = 25, minmax: tuple = None, label: str = None, title: str = None, boolean=False, color='lightsalmon', ax=None):
         # Plot bar plot
         if ax is None:
             fig, ax = plt.subplots(1, 1)
@@ -66,7 +66,7 @@ class Statistics():
             color = ['lightblue', 'lightsalmon']
             ax.set_yticks([0, 1])
             ax.set_yticklabels(['True', 'Fake'])
-        ax.barh(words[:nwords], measure[:nwords], color=color)
+        ax.barh(data[:nwords], measure[:nwords], color=color)
         ax.set_xlim(minmax)
         ax.set_xlabel(label)
         ax.set_title(title)
@@ -82,13 +82,13 @@ class Statistics():
         ax.set_title(title)
         
     def plot_word_frequency_barplot(self):
-        fig, ax1 = plt.subplots(1, 1, figsize=(12, 6))
-        self._barplot(data=self.data[self.content_label].explode().tolist(), nwords=25,
-                        percentage=True, label='% of total words', title='word frequency', color='yellowgreen', ax=ax1)
+        fig, ax1 = plt.subplots(1, 1, figsize=(10, 10))
+        words, words_cnt = self._sort_frequency(self.data[self.content_label].explode().tolist(), percentage=True)
+        self._barplot(data=words, measure=words_cnt, nwords=25, label='% of total words', title='word frequency', color='yellowgreen', ax=ax1)
 
     def plot_word_frequency_boxplot(self):
         # plot bar and box plot together:
-        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 6))
+        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(10, 5))
         self._boxplot(data=self.data[self.content_label].apply(len),
                         label='# of words', title='# of words per article', color='yellowgreen', ax=ax1)
         self._boxplot(data=self.data[self.content_label].apply(lambda x: x.count("!")),
@@ -99,17 +99,15 @@ class Statistics():
         plt.show()
 
     def plot_word_frequency_fake_vs_true(self):
-        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(12, 6))
-        words_min = self.data[self.content_label].apply(len).min()
-        words_max = self.data[self.content_label].apply(len).max()
-        self._barplot(data=self.data[self.data[self.binary_type_label] == True][self.content_label].explode().tolist(
-        ), nwords=25, percentage=True, minmax=(0, 1.5), label='% of true words', title='true word frequency', color='lightsalmon', ax=ax1)
-        self._barplot(data=self.data[self.data[self.binary_type_label] == False][self.content_label].explode().tolist(
-        ), nwords=25, percentage=True, minmax=(0, 1.5), label='% of fake words', title='fake word frequency', color='lightblue', ax=ax2)
-        self._boxplot(data=self.data[self.data[self.binary_type_label] == True][self.content_label].apply(len), minmax=(
-            words_min, words_max), label='# of true words', title='# of true words per article', color='lightsalmon', ax=ax3)
-        self._boxplot(data=self.data[self.data[self.binary_type_label] == False][self.content_label].apply(len), minmax=(
-            words_min, words_max), label='# of fake words', title='# of fake words per article', color='lightblue', ax=ax4)
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(10, 10))
+        true_words, true_words_cnt = self._sort_frequency(self.data[self.data[self.binary_type_label] == True][self.content_label].explode().tolist(), percentage=True)
+        fake_words, fake_words_cnt = self._sort_frequency(self.data[self.data[self.binary_type_label] == False][self.content_label].explode().tolist(), percentage=True)
+        max_bar = int(max(true_words_cnt + fake_words_cnt)) * 1.1
+        minmax_box = (self.data[self.content_label].apply(len).min()*0.9, self.data[self.content_label].apply(len).max()*1.1)
+        self._barplot(data=true_words, measure=true_words_cnt, nwords=25, minmax=(0, max_bar), label='% of true words', title='true word frequency', color='lightsalmon', ax=ax1)
+        self._barplot(data=fake_words, measure=fake_words_cnt, nwords=25, minmax=(0, max_bar), label='% of fake words', title='fake word frequency', color='lightblue', ax=ax2)
+        self._boxplot(data=self.data[self.data[self.binary_type_label] == True][self.content_label].apply(len), minmax=minmax_box, label='# of true words', title='# of true words per article', color='lightsalmon', ax=ax3)
+        self._boxplot(data=self.data[self.data[self.binary_type_label] == False][self.content_label].apply(len), minmax=minmax_box, label='# of fake words', title='# of fake words per article', color='lightblue', ax=ax4)
         fig.tight_layout()
         plt.show()
         
@@ -118,17 +116,17 @@ class Statistics():
         types, measure = self._sort_frequency(text=types, percentage=percentage)
         color_list = [self.type_colors[tp] for tp in types]
         if ax is None:
-            fig, ax = plt.subplots(1, 1)
+            fig, ax = plt.subplots(1, 1, figsize=(5, 5))
         ax.barh(types, measure, color=color_list, alpha=0.5)
         ax.set_xlabel('% of total labels' if percentage else '# of labels')
         ax.set_title('label distribution')
         #ax.tick_params(axis='x', rotation=90)
 
     def plot_type_fake_vs_true(self):
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
         self.barplot_type(percentage=True, ax=ax1)
-        self._barplot(data=self.data[self.binary_type_label].tolist(),
-                        percentage=True, boolean=True, title="true vs. fake distribution", label="% of total labels", ax=ax2)
+        words, words_cnt = self._sort_frequency(self.data[self.binary_type_label].tolist(), percentage=True)
+        self._barplot(data=words, measure=words_cnt, boolean=True, title="true vs. fake distribution", label="% of total labels", ax=ax2)
         fig.tight_layout()
         plt.show()
 
@@ -137,10 +135,11 @@ class Statistics():
         types = self.data[self.domain_label].explode().tolist()
         types, measure = self._sort_frequency(text=types, percentage=percentage)
         colors = plt.cm.tab20(np.arange(len(types)))
-        plt.barh(types[:num], measure[:num], color=colors, alpha=0.5)
-        plt.xlabel('% of total domains' if percentage else '# of domain')
-        plt.title('domain distribution' if percentage else 'domain distribution')
-        plt.tight_layout()
+        fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+        ax.barh(types[:num], measure[:num], color=colors, alpha=0.5)
+        ax.set_xlabel('% of total domains' if percentage else '# of domain')
+        ax.set_title('domain distribution' if percentage else 'domain distribution')
+        fig.tight_layout()
         plt.show()
 
     def barplot_x_to_y_contribution(self, x_label: str, y_label: str, content_label: str, threshold: float = 0, percentage: bool = True, title: str=None):
@@ -152,10 +151,10 @@ class Statistics():
             percentages.sort_values(type, na_position='first', ascending=False, inplace=True)
         color_list = [self.type_colors[tp] for tp in percentages.columns]
         if percentage:
-            ax = percentages.plot(kind='barh', stacked=True, figsize=(10, 8), width=0.6, color=color_list, alpha=0.5)
+            ax = percentages.plot(kind='barh', stacked=True, figsize=(10, 10), width=0.6, color=color_list, alpha=0.5)
             ax.set_xlabel('% of label')
         else:
-            ax = counts.plot(kind='barh', stacked=True, figsize=(10, 8), width=0.6, color=color_list, alpha=0.5)
+            ax = counts.plot(kind='barh', stacked=True, figsize=(10, 10), width=0.6, color=color_list, alpha=0.5)
             ax.set_xlabel('# of label')
         ax.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
         ax.set_yticklabels(ax.get_yticklabels(), fontsize=6)
@@ -164,7 +163,7 @@ class Statistics():
         plt.show()
 
     def plot_average_sentence_length_fake_vs_true(self):
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
         true = self.data[self.data[self.binary_type_label] == True][self.content_label].apply(self._average_sentence_lengths)
         fake = self.data[self.data[self.binary_type_label] == False][self.content_label].apply(self._average_sentence_lengths)
         # Percentage max value to limit the y-axis
@@ -177,7 +176,7 @@ class Statistics():
 
     def plot_pronouns_fake_vs_true(self):
         # Create 2x4 sub plots
-        fig, ((ax1, ax2), (ax3, ax4), (ax5, ax6), (ax7, ax8)) = plt.subplots(4, 2, figsize=(12, 12))
+        fig, ((ax1, ax2), (ax3, ax4), (ax5, ax6), (ax7, ax8)) = plt.subplots(4, 2, figsize=(15, 10))
         true_first = self.data[self.data[self.binary_type_label] == True][self.content_label].apply(lambda x: sum([x.count(word) for word in self.first_person_pronouns]))
         fake_first = self.data[self.data[self.binary_type_label] == False][self.content_label].apply(lambda x: sum([x.count(word) for word in self.first_person_pronouns]))
         max_val_first = max(true_first.max(), fake_first.max()) * 1.1 if max(true_first.max(), fake_first.max()) > 0 else 1
@@ -209,7 +208,7 @@ class Statistics():
         plt.show()
         
     def plot_negations_fake_vs_true(self):
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
         true = self.data[self.data[self.binary_type_label] == True][self.content_label].apply(lambda x: sum([x.count(word) for word in self.negations]))
         fake = self.data[self.data[self.binary_type_label] == False][self.content_label].apply(lambda x: sum([x.count(word) for word in self.negations]))
         max_val = max(true.max(), fake.max()) * 1.1 if max(true.max(), fake.max()) > 0 else 1
@@ -221,11 +220,11 @@ class Statistics():
 
 
     def plot_sentence_analysis_fake_vs_true(self):
-        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(12, 6))
-        polarity_min = self.data[self.sentence_analysis_label].apply(lambda x: x[0]).min()-0.1
-        polarity_max = self.data[self.sentence_analysis_label].apply(lambda x: x[0]).max()+0.1
-        subjective_min = self.data[self.sentence_analysis_label].apply(lambda x: x[1]).min()-0.1
-        subjective_max = self.data[self.sentence_analysis_label].apply(lambda x: x[1]).max()+0.1
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(10, 10))
+        polarity_min = self.data[self.sentence_analysis_label].apply(lambda x: x[0]).min()*0.9 if self.data[self.sentence_analysis_label].apply(lambda x: x[0]).min() > 0 else -0.1
+        polarity_max = self.data[self.sentence_analysis_label].apply(lambda x: x[0]).max()*1.1
+        subjective_min = self.data[self.sentence_analysis_label].apply(lambda x: x[1]).min()*0.9 if self.data[self.sentence_analysis_label].apply(lambda x: x[1]).min() > 0 else -0.1
+        subjective_max = self.data[self.sentence_analysis_label].apply(lambda x: x[1]).max()*1.1
         self._boxplot(data=self.data[self.data[self.binary_type_label] == True][self.sentence_analysis_label].apply(lambda x: x[0]), minmax=(
             polarity_min, polarity_max), label='polarity score', title='polarity score for true', color='lightsalmon', ax=ax1)
         self._boxplot(data=self.data[self.data[self.binary_type_label] == False][self.sentence_analysis_label].apply(lambda x: x[0]), minmax=(
@@ -238,29 +237,32 @@ class Statistics():
         plt.show()
         
     def plot_party_fake_vs_true(self):
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
-        self._barplot(data=self.data[self.data[self.binary_type_label] == True][self.party_label].dropna().explode().tolist(
-        ), nwords=25, percentage=True, minmax=None, label='% of true party', title='true party frequency', color='lightsalmon', ax=ax1)
-        self._barplot(data=self.data[self.data[self.binary_type_label] == False][self.party_label].dropna().explode().tolist(
-        ), nwords=25, percentage=True, minmax=None, label='% of fake party', title='fake party frequency', color='lightblue', ax=ax2)
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
+        true_party, true_party_cnt = self._sort_frequency(self.data[self.data[self.binary_type_label] == True][self.party_label].dropna().explode().tolist(), percentage=True)
+        fake_party, fake_party_cnt = self._sort_frequency(self.data[self.data[self.binary_type_label] == False][self.party_label].dropna().explode().tolist(), percentage=True)
+        max_val = max(true_party_cnt + fake_party_cnt)*1.1
+        self._barplot(data=true_party, measure=true_party_cnt, nwords=25, minmax=(0, max_val), label='% of true party', title='true party frequency', color='lightsalmon', ax=ax1)
+        self._barplot(data=fake_party, measure=fake_party_cnt, nwords=25, minmax=(0, max_val), label='% of fake party', title='fake party frequency', color='lightblue', ax=ax2)
         fig.tight_layout()
         plt.show()
         
     def plot_speaker_fake_vs_true(self):
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
-        self._barplot(data=self.data[self.data[self.binary_type_label] == True][self.speaker_label].explode().tolist(
-        ), nwords=25, percentage=True, minmax=None, label='% of true speaker', title='true speaker frequency', color='lightsalmon', ax=ax1)
-        self._barplot(data=self.data[self.data[self.binary_type_label] == False][self.speaker_label].explode().tolist(
-        ), nwords=25, percentage=True, minmax=None, label='% of fake speaker', title='fake speaker frequency', color='lightblue', ax=ax2)
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
+        true_speaker, true_speaker_cnt = self._sort_frequency(self.data[self.data[self.binary_type_label] == True][self.speaker_label].explode().tolist(), percentage=True)
+        fake_speaker, fake_speaker_cnt = self._sort_frequency(self.data[self.data[self.binary_type_label] == False][self.speaker_label].explode().tolist(), percentage=True)
+        max_val = max(true_speaker_cnt + fake_speaker_cnt)*1.1
+        self._barplot(data=true_speaker, measure=true_speaker_cnt, nwords=25, minmax=(0, max_val), label='% of true speaker', title='true speaker frequency', color='lightsalmon', ax=ax1)
+        self._barplot(data=fake_speaker, measure=fake_speaker_cnt, nwords=25, minmax=(0, max_val), label='% of fake speaker', title='fake speaker frequency', color='lightblue', ax=ax2)
         fig.tight_layout()
         plt.show()
         
     def plot_subjects_fake_vs_true(self):
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
-        self._barplot(data=self.data[self.data[self.binary_type_label] == True][self.subjects_label].explode().tolist(
-        ), nwords=25, percentage=True, minmax=None, label='% of true subject', title='true subject frequency', color='lightsalmon', ax=ax1)
-        self._barplot(data=self.data[self.data[self.binary_type_label] == False][self.subjects_label].explode().tolist(
-        ), nwords=25, percentage=True, minmax=None, label='% of fake subject', title='fake subject frequency', color='lightblue', ax=ax2)
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
+        true_subjects, true_subjects_cnt = self._sort_frequency(self.data[self.data[self.binary_type_label] == True][self.subjects_label].explode().tolist(), percentage=True)
+        fake_subjects, fake_subjects_cnt = self._sort_frequency(self.data[self.data[self.binary_type_label] == False][self.subjects_label].explode().tolist(), percentage=True)
+        max_val = max(true_subjects_cnt + fake_subjects_cnt)*1.1
+        self._barplot(data=true_subjects, measure=true_subjects_cnt, nwords=25, minmax=(0, max_val), label='% of true subject', title='true subject frequency', color='lightsalmon', ax=ax1)
+        self._barplot(data=fake_subjects, measure=fake_subjects_cnt, nwords=25, minmax=(0, max_val), label='% of fake subject', title='fake subject frequency', color='lightblue', ax=ax2)
         fig.tight_layout()
         plt.show()
         
@@ -310,23 +312,9 @@ def create_dataset(file, cleaned_file, cleaned_file_combined):
     )
 
 
-def run():
-    choice = input("Press 's' for sample or 'l' for large dataset or 'x' to Exit: ")
-    if choice == 'x':
-        print("exiting")
-        return
-    elif choice == 's':
-        path = "../datasets/sample/stat/"
-    elif choice == 'l':
-        path = "../datasets/large/stat/"
-    else:
-        print("Invalid choice - exiting")
-        return
-    create_dataset(file=path+"cols_removed.csv", cleaned_file=path+"dataset.csv", cleaned_file_combined=path+"dataset_combined.csv")
-
-
 if __name__ == '__main__':
     pp.remove_unwanted_rows_and_cols(file="../datasets/large/shuffled.csv", new_file="../datasets/large/stat/cols_removed.csv", remove_rows=False, remove_cols=True)
+    create_dataset(file="../datasets/large/stat/cols_removed.csv", cleaned_file="../datasets/large/stat/cols_removed_cleaned.csv", cleaned_file_combined="../datasets/large/stat/cols_removed_cleaned_combined.csv")
     pp.remove_unwanted_rows_and_cols(file="../datasets/large/stat/cols_removed.csv", new_file="../datasets/large/stat/cols_and_rows_removed.csv", remove_rows=True, remove_cols=False)
+    create_dataset(file="../datasets/large/stat/cols_and_rows_removed.csv", cleaned_file="../datasets/large/stat/cols_and_rows_removed_cleaned.csv", cleaned_file_combined="../datasets/large/stat/cols_and_rows_removed_combined.csv")
     fh.statistics(file="../datasets/large/stat/cols_and_rows_removed.csv", new_file="../datasets/large/stat/statistics_cols_and_rows_removed.csv")
-    run()
