@@ -383,7 +383,7 @@ class Clean_author(FunctionApplier):
         author_list = [(re.sub(self.regex_oddcharacters, "", author)) for author in author_list]
         author_list = "".join(author_list)
         if author_list == "":  # to avoid nan
-            return " "
+            return ""
         return author_list
 
 
@@ -548,7 +548,7 @@ def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_IT
     start_time = time()
 
     # Use Pandas chunksize and iterator to read the input file in batches
-    with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8', lineterminator='\n', nrows=total_rows) as reader:
+    with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8', nrows=total_rows) as reader:
         for chunk in reader:
             if function_cols is None:
                 return chunk
@@ -643,30 +643,21 @@ def create_dataset(file, unwanted_removed_file, cleaned_file, cleaned_file_combi
         (Binary_labels(), 'type', 'type_binary'),
         # Clean content
         (Clean_data(), 'content', 'content_cleaned'),
-        (Tokenizer(), "content_cleaned"),
-        (Remove_stopwords(stopwords_lst), "content_cleaned"),
+        (Tokenizer(), 'content_cleaned'),
+        (Remove_stopwords(stopwords_lst), 'content_cleaned'),
         (Stem(), "content_cleaned"),
-        (Combine_Content(), "content_cleaned", "content_combined"),
-        (Sentence_analysis(), "content_combined", "sentence_analysis"),
+        (Combine_Content(), 'content_cleaned', 'content_combined'),
+        (Sentence_analysis(), 'content_combined', 'sentence_analysis'),
         # Clean authors
-        (Clean_author(), "authors"),
+        (Clean_author(), 'authors'),
         # Clean title
         (Clean_data(), 'title'),
-        (Tokenizer(), "title"),
-        (Remove_stopwords(stopwords_lst), "title"),
-        (Stem(), "title"),
-        (Combine_Content(), "title"),
+        (Tokenizer(), 'title'),
+        (Remove_stopwords(stopwords_lst), 'title'),
+        (Stem(), 'title'),
+        (Combine_Content(), 'title'),
         # Clean domain
         (Clean_domain(), 'domain'),
-        # Combine columns (used as features)
-        (Join_str_columns(
-            ["content_combined", "authors"]), None, "content_authors"),
-        (Join_str_columns(
-            ["content_combined", "title"]), None, "content_title"),
-        (Join_str_columns(
-            ["content_combined", "domain"]), None, "content_domain"),
-        (Join_str_columns(["content_combined", "domain",
-                           "authors", "title"]), None, "content_domain_authors_title")
     ],
         new_file=cleaned_file,
         progress_bar=True,
@@ -674,13 +665,13 @@ def create_dataset(file, unwanted_removed_file, cleaned_file, cleaned_file_combi
 
     apply_pipeline(cleaned_file, [
         (Join_str_columns(
-            ["content_combined", "authors"]), None, "content_authors"),
+            ['content_combined', 'authors']), None, 'content_authors'),
         (Join_str_columns(
-            ["content_combined", "title"]), None, "content_title"),
+            ['content_combined', 'title']), None, 'content_title'),
         (Join_str_columns(
-            ["content_combined", "domain"]), None, "content_domain"),
-        (Join_str_columns(["content_combined", "domain",
-                           "authors", "title"]), None, "content_domain_authors_title")
+            ['content_combined', 'domain']), None, 'content_domain'),
+        (Join_str_columns(['content_combined', 'domain',
+                           'authors', 'title']), None, 'content_domain_authors_title')
     ],
         new_file=cleaned_file_combined,
         progress_bar=True,
