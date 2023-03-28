@@ -10,8 +10,8 @@ headers = ['id', 'label', 'statement', 'subjects', 'speaker', 'speaker_job', 'st
            'party', 'barely_true', 'false', 'half_true', 'mostly_true', 'pants_on_fire', 'context']
 
 
-def tsv_to_csv_and_set_headers(file: str, new_file: str, delimiter: str = None, headers: list = None):
-    df = pd.read_csv(file, delimiter=delimiter, header=None)
+def tsv_to_csv_and_set_headers(file: str, new_file: str, headers: list = None):
+    df = pd.read_csv(file, delimiter='\t', header=None)
     if headers is not None:
         df.columns = headers
     df.to_csv(new_file, index=False)
@@ -45,8 +45,8 @@ def clean_dataset(file, new_file):
 
 
 if __name__ == '__main__':
-    tsv_to_csv_and_set_headers('../datasets/liar_dataset/raw/train.tsv', '../datasets//liar_dataset/cleaned/train.csv', headers=headers, delimiter='\t')
-    tsv_to_csv_and_set_headers('../datasets/liar_dataset/raw/valid.tsv', '../datasets//liar_dataset/cleaned/valid.csv', headers=headers, delimiter='\t')
-    tsv_to_csv_and_set_headers('../datasets/liar_dataset/raw/test.tsv', '../datasets//liar_dataset/cleaned/test.csv', headers=headers, delimiter='\t')
+    tsv_to_csv_and_set_headers('../datasets/liar_dataset/raw/train.tsv', '../datasets//liar_dataset/cleaned/train.csv', headers=headers)
+    tsv_to_csv_and_set_headers('../datasets/liar_dataset/raw/valid.tsv', '../datasets//liar_dataset/cleaned/valid.csv', headers=headers)
+    tsv_to_csv_and_set_headers('../datasets/liar_dataset/raw/test.tsv', '../datasets//liar_dataset/cleaned/test.csv', headers=headers)
     combine_csv_files(['../datasets/liar_dataset/cleaned/train.csv', '../datasets/liar_dataset/cleaned/valid.csv', '../datasets/liar_dataset/cleaned/test.csv'], '../datasets/liar_dataset/cleaned/combined.csv')
     clean_dataset('../datasets/liar_dataset/cleaned/combined.csv', '../datasets/liar_dataset/cleaned/combined_cleaned.csv')
