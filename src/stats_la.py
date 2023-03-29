@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import re
 import pandas as pd
 import numpy as np
-from transformers import pipeline
 from nltk.stem import PorterStemmer
 import pipeline as pp
 
@@ -21,7 +20,7 @@ class word_count(pp.FunctionApplier):
     def function_to_apply(self, row):
         return len(row['content'])
 
-def boxplot(col_true, col_false, title : str):
+def boxplot(col_true, col_false, title : str):    
     # Set the figure size
     plt.rcParams["figure.figsize"] = [7.50, 3.50]
     plt.rcParams["figure.autolayout"] = True

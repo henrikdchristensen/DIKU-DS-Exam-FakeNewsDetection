@@ -72,7 +72,7 @@ class Word_frequency(FunctionApplier):
         plt.tight_layout()
         plt.show()
 
-    def plotVenn(self, other_sorted_frequency: list[tuple[str, int]]): 
+    def plotVenn(self, other_sorted_frequency): 
         words = [x[0] for x in self.sorted_frequency[:self.swords]]
         frequency = [x[1] for x in self.sorted_frequency[:self.swords]]
 
@@ -123,7 +123,7 @@ class Word_frequency(FunctionApplier):
         plt.show()
 
     # plot the frequency of the words from the fake news and plot the frequency of the words from the real news
-    def plot_fake_real(self, other_sorted_frequency: list[tuple[str, int]], set_labels: tuple[str, str] = ("Fake", "Reliable") ):
+    def plot_fake_real(self, other_sorted_frequency, set_labels = ("Fake", "Reliable") ):
         # Extract the words and their frequency from the sorted list
         words = [x[0] for x in self.sorted_frequency[:self.swords]]
         frequency = [x[1] for x in self.sorted_frequency[:self.swords]]

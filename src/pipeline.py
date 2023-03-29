@@ -88,8 +88,10 @@ class TF_IDF(FunctionApplier):
                 vector[i] = (np.log(vector[i]) + 1) * self.idf_vec[set][i]
         return vector
 
-
-def get_dataframe_with_distribution(file, total_size, splits, balanced, end_col="set", type_col="type",  chunksize=ROWS_PR_ITERATION, out_file=None, get_frame=True, classes=labels, delete=True):
+def get_dataframe_with_distribution(file, 
+                                    total_size, splits, balanced, 
+                                    end_col = "set", type_col ="type",  
+                                    chunksize=ROWS_PR_ITERATION, out_file=None, get_frame=True, classes = labels, delete=True):
     # empty dataframe
     data = None
     curr_index = 0
@@ -106,10 +108,14 @@ def get_dataframe_with_distribution(file, total_size, splits, balanced, end_col=
 
     def apply_to_rows(label):
         nonlocal curr_index
-        if curr_index >= len(sets) or label not in classes:
+        if curr_index >= len(sets):
             return DELETE_TOKEN
 
         balanced, curr_set = sets[curr_index]
+        if balanced and label not in classes:
+            return DELETE_TOKEN
+        
+        
         if balanced:
             if sum(curr_set.values()) == 0:
                 curr_index += 1
@@ -133,25 +139,28 @@ def get_dataframe_with_distribution(file, total_size, splits, balanced, end_col=
     with pd.read_csv(file, chunksize=chunksize, encoding='utf-8') as reader:
         for chunk in reader:
             chunk[end_col] = chunk[type_col].progress_apply(apply_to_rows)
+            print("entries to read:", entries_read)
             if delete:
                 chunk = chunk[chunk[end_col] != DELETE_TOKEN]
-
             if out_file is not None:
                 if entries_read == 0:
                     chunk.to_csv(out_file, mode='w', index=False)
                 else:
                     # Append to csv file without header
+                    print("appending")
                     chunk.to_csv(out_file, mode='a', header=False, index=False)
             if get_frame:
                 if data is None:
                     data = chunk
                 else:
+                    # print("concat")
                     data = pd.concat([data, chunk])
 
             entries_read += chunksize
             finished = True
             for balanced, set in sets:
                 if (balanced and sum(set.values()) > 0) or (not balanced and set > 0):
+                    # print
                     finished = False
             if finished:
                 print("entries read:", entries_read)
@@ -221,6 +230,15 @@ class Read_numpy_arr(FunctionApplier):
     def function_to_apply(self, row):
         return np.fromstring(row, sep=" ", dtype=self.dtype)
 
+    def get_unique_words(self, low, high):
+        # Get the sum of all words
+        word_sum = sum(self.unique_words.values())
+        # Sort the words by frequency and filter out the words that are not within the given range
+        sorted_items = sorted(self.unique_words.items(),
+                              key=lambda x: x[1], reverse=True)
+        sorted_freq_items = [x[0] for x in sorted_items if x[1] /
+                             word_sum >= low and x[1] / word_sum <= high]
+
 
 class Generate_unique_word_list(FunctionApplier):
     def __init__(self):
@@ -245,6 +263,8 @@ class Generate_unique_word_list(FunctionApplier):
                 n_t[word] += 1
             else:
                 n_t[word] = 1
+
+        return row
 
     def get_unique_words(self, low, high):
         # Get the sum of all words
@@ -313,6 +333,14 @@ class Remove_stopwords(FunctionApplier):
         return [w for w in words if not w in self.swords]
 
 
+class Remove_stopwords2(FunctionApplier):
+    def __init__(self):
+        self.stopwords = pd.read_csv("stopwords2.csv").values.flatten()
+
+    def function_to_apply(self, words):
+        return [w for w in words if not w in self.stopwords]
+
+
 class Stem(FunctionApplier):
     def function_to_apply(self, words):
         # Create a PorterStemmer object, which remove morphological affixes from words, leaving only the word stem.
@@ -344,6 +372,7 @@ class Clean_data(FunctionApplier):
             re.compile(r'(\?)'): ' ? ',  # add space before and after question mark
             re.compile(r'(\!)'): ' ! ',  # add space before and after exclamation mark
             re.compile(r'(\-)'): ' ',
+            re.compile(r'(\')'): ' ',
             # remove all special characters, including non-ascii characters and punctuation if remove_punct is True
             re.compile(r'[^A-Za-z0-9\s<>\?\!]' if remove_punct else r'[^A-Za-z0-9\s<>\?!\.,]'): '',
             re.compile(r'(\d+)(th)?'): ' <NUM> ',  # replace numbers with <NUM>
@@ -423,8 +452,27 @@ class Print_first_row(FunctionApplier):
             print(r)
 
 
+class Clean_id_LIAR(FunctionApplier):
+    def function_to_apply(self, id):
+        return id.split('.')[0]
+
+    def function_to_apply(self, row):
+        if self.num_to_print > 0:
+            self.num_to_print -= 1
+            item = {}
+            for h, i in headers.items():
+                item[h] = row[i]
+            self.table.append(item)
+
+        elif not self.has_printed:
+            self.has_printed = True
+            self.data_frame = pd.DataFrame(data=self.table)
+            self.data_frame.to_csv(self.csv_file)
+
+        return row
+
 class Binary_labels_LIAR(FunctionApplier):
-    def __init__(self):
+    def __init__(self, binary_labels = None):
         self.binary_labels: dict = {
             'pants-fire': False,
             'false': False,
@@ -440,7 +488,6 @@ class Binary_labels_LIAR(FunctionApplier):
         except:
             binary_label = True
         return binary_label
-
 
 class Binary_labels(FunctionApplier):
     def __init__(self):
@@ -464,6 +511,26 @@ class Binary_labels(FunctionApplier):
         except:
             # TODO: what to do when no labels
             #print("Key error in binary_labels class:", cell)
+            binary_label = True
+        return binary_label
+
+
+class Binary_labels_LIAR(FunctionApplier):
+    def __init__(self):
+        self.binary_labels: dict = {
+            'pants-fire': False,
+            'false': False,
+            'mostly-false': False,
+            'barely-true': False,
+            'half-true': True,
+            'mostly-true': True,
+            'true': True
+        }
+
+    def function_to_apply(self, cell):
+        try:
+            binary_label = self.binary_labels[cell]
+        except:
             binary_label = True
         return binary_label
 
@@ -543,18 +610,19 @@ def apply_pipeline_pd_tqdm(df, function_cols):
     return applier(function_cols, df.copy(), progress_bar=True)
 
 
-def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False, progress_bar=True, total_rows=20000):
+def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False, progress_bar=True, total_rows=None):
     i = 0
     start_time = time()
 
     # Use Pandas chunksize and iterator to read the input file in batches
+
     with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8', nrows=total_rows) as reader:
         for chunk in reader:
             if function_cols is None:
                 return chunk
             # Apply the specified functions to each row in the batch
             chunk = applier(function_cols, chunk, progress_bar=progress_bar)
-
+            print("Finished processing")
             # If an output file is specified, append the processed data to it
             if new_file is not None:
                 if i == 0:
@@ -574,56 +642,52 @@ def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_IT
         print(f'finish time: {time()-start_time}')
 
 
-class Remove_unwanted_rows_and_cols():
-    def __init__(self, filename, new_filename):
-        self.headers_to_keep = {
-            'id': True,
-            'domain': True,
-            'type': True,
-            'url': False,
-            'content': True,
-            'scraped_at': False,
-            'inserted_at': False,
-            'updated_at': False,
-            'title': True,
-            'authors': True,
-            'keywords': False,
-            'meta_keywords': False,
-            'meta_description': False,
-            'tags': False,
-            'summary\r': False,
-        }
+def remove_unwanted_rows_and_cols(file, new_file, remove_rows=True, remove_cols=True):
+    headers_to_keep = {
+        'id': True,
+        'domain': True,
+        'type': True,
+        'url': False,
+        'content': True,
+        'scraped_at': False,
+        'inserted_at': False,
+        'updated_at': False,
+        'title': True,
+        'authors': True,
+        'keywords': False,
+        'meta_keywords': False,
+        'meta_description': False,
+        'tags': False,
+        'summary\r': False,
+    }
 
-        self.labels: dict = {
-            'fake': False,
-            'conspiracy': False,
-            'junksci': False,
-            'hate': False,
-            'unreliable': False,
-            'bias': False,
-            'satire': False,
-            # 'state': False,
-            'reliable': True,
-            'clickbait': True,
-            'political': True
-        }
-        self.filename = filename
-        self.new_filename = new_filename
-
-    def run(self):
-        # Remove output file if it already exists
-        fh.remove_file(self.new_filename)
-        # Create a file for each chunk in the directory:
-        first_iteration = True
-        for c in tqdm(pd.read_csv(self.filename, encoding='utf-8', chunksize=ROWS_PR_ITERATION, lineterminator='\n'),
-                      desc='remove unwanted rows and cols', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
+    labels: dict = {
+        'fake': False,
+        'conspiracy': False,
+        'junksci': False,
+        'hate': False,
+        'unreliable': False,
+        'bias': False,
+        'satire': False,
+        # 'state': False,
+        'reliable': True,
+        'clickbait': True,
+        'political': True
+    }
+    # Remove output file if it already exists
+    fh.remove_file(new_file)
+    # Create a file for each chunk in the directory:
+    first_iteration = True
+    for c in tqdm(pd.read_csv(file, encoding='utf-8', chunksize=ROWS_PR_ITERATION, lineterminator='\n'),
+                    desc='remove unwanted rows and cols', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
+        if remove_cols:
             # Remove columns which are not True in self.headers_to_keep:
-            c = c[[k for k, v in self.headers_to_keep.items() if v]]
+            c = c[[k for k, v in headers_to_keep.items() if v]]
+        if remove_rows:
             # Remove rows which have empty content or start with 'ERROR' or have a type not in self.labels or have a nan domain:
-            c = c[c['content'].notna() & ~c['content'].str.startswith('Error') &
-                  c['type'].isin(self.labels.keys()) & c['domain'].notna()]
-            c.to_csv(self.new_filename, index=False, mode='a', header=first_iteration)
-            first_iteration = False
+            c = c[c['content'].notna() & ~c['content'].str.startswith('Error') & c['type'].isin(labels.keys()) & c['domain'].notna()]
+        c.to_csv(new_file, index=False, mode='a', header=first_iteration)
+        first_iteration = False
 
 
 def simple_model_test():
@@ -635,8 +699,8 @@ def simple_model_test():
 
 
 def create_dataset(file, unwanted_removed_file, cleaned_file, cleaned_file_combined):
-    Remove_unwanted_rows_and_cols(file, unwanted_removed_file).run()
-
+    #remove_unwanted_rows_and_cols(file=file, new_file=unwanted_removed_file, remove_rows=True, remove_cols=True)
+    
     stopwords_lst = stopwords.words('english')
     apply_pipeline(unwanted_removed_file, [
         (Binary_labels(), 'type', 'type_binary'),
@@ -649,11 +713,13 @@ def create_dataset(file, unwanted_removed_file, cleaned_file, cleaned_file_combi
         (Tokenizer(), "content_cleaned"),
         (Stem(), "content_cleaned"),
         (Combine_Content(), "content_cleaned", "content_combined"),
-        (Remove_stopwords(stopwords_lst), "content_cleaned"),
+        #(Remove_stopwords(stopwords_lst), "content_cleaned"),
+        (Remove_stopwords2(), "content_cleaned"),
 
         (Clean_data(), 'title'),
         (Tokenizer(), "title"),
-        (Remove_stopwords(stopwords_lst), "title"),
+        #(Remove_stopwords(stopwords_lst), "title"),
+        (Remove_stopwords2(), "title"),
         (Stem(), "title"),
         (Combine_Content(), "title"),
 
@@ -690,8 +756,7 @@ def run():
     else:
         print("Invalid choice - exiting")
         return
-    create_dataset(file=path+"shuffled.csv", unwanted_removed_file=path +
-                   "unwanted_removed.csv", cleaned_file=path+"dataset.csv", cleaned_file_combined=path+"dataset_combined.csv")
+    create_dataset(file=path+"shuffled.csv", unwanted_removed_file=path+"unwanted_removed.csv", cleaned_file=path+"dataset.csv", cleaned_file_combined=path+"dataset_combined.csv")
 
 
 if __name__ == '__main__':
