@@ -14,7 +14,6 @@ def create_dataset(file, new_file):
         (pp.Clean_id_LIAR(), 'id', 'id'),
         (pp.Clean_data(), 'statement', 'statement_cleaned'),
         (pp.Tokenizer(), 'statement_cleaned'),
-        #(pp.Remove_stopwords(stopwords_lst), 'statement_cleaned'),
         (pp.Remove_stopwords2(), 'statement_cleaned'),
         (pp.Stem(), "statement_cleaned"),
         (pp.Combine_Content(), 'statement_cleaned', 'statement_combined'),
