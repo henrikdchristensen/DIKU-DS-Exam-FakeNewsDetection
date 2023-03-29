@@ -2,7 +2,7 @@
 # exclude
 *.pickle
 *.npz
-
+*d.txt
 # exclude all datasets
 datasets/*
 tmp/*
