@@ -710,6 +710,7 @@ def create_dataset(file, cleaned_file, cleaned_file_combined):
         (Stem(), "content_cleaned"),
         (Combine_Content(), "content_cleaned", "content_combined"),
         (Remove_stopwords2(), "content_cleaned"),
+        (Combine_Content(), "content_cleaned", "content_no_swords_combined"),
 
         (Clean_data(), 'title'),
         (Tokenizer(), "title"),
@@ -717,21 +718,23 @@ def create_dataset(file, cleaned_file, cleaned_file_combined):
         (Stem(), "title"),
         (Combine_Content(), "title"),
 
-        (Sentence_analysis(), "content_combined", "sentence_analysis"),
+        (Sentence_analysis(), "content_combined", "sentence_no_swords_analysis"),
+        (Sentence_analysis(), "content_no_swords_combined", "sentence_no_swords_analysis"),
     ],
         new_file=cleaned_file,
         progress_bar=True,
     )
 
     apply_pipeline(cleaned_file, [
-        (Join_str_columns(
-            ['content_combined', 'authors']), None, 'content_authors'),
-        (Join_str_columns(
-            ['content_combined', 'title']), None, 'content_title'),
-        (Join_str_columns(
-            ['content_combined', 'domain']), None, 'content_domain'),
-        (Join_str_columns(['content_combined', 'domain',
-                           'authors', 'title']), None, 'content_domain_authors_title')
+        (Join_str_columns(['content_combined', 'authors']), None, 'content_authors'),
+        (Join_str_columns(['content_combined', 'title']), None, 'content_title'),
+        (Join_str_columns(['content_combined', 'domain']), None, 'content_domain'),
+        (Join_str_columns(['content_combined', 'domain', 'authors', 'title']), None, 'content_domain_authors_title'),
+        
+        (Join_str_columns(['sentence_no_swords_analysis', 'authors']), None, 'content_no_swords_authors'),
+        (Join_str_columns(['sentence_no_swords_analysis', 'title']), None, 'content_no_swords_title'),
+        (Join_str_columns(['sentence_no_swords_analysis', 'domain']), None, 'content_no_swords_domain'),
+        (Join_str_columns(['sentence_no_swords_analysis', 'domain', 'authors', 'title']), None, 'content_no_swords_domain_authors_title')
     ],
         new_file=cleaned_file_combined,
         progress_bar=True,
