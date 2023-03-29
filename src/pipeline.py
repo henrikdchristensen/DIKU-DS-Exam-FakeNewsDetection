@@ -31,7 +31,7 @@ labels: dict = {
     'political': True
 }
 
-ROWS_PR_ITERATION = 20000
+ROWS_PR_ITERATION = 50000
 TQDM_COLOR = 'magenta'
 DELETE_TOKEN = '<DELETE>'
 
@@ -605,13 +605,13 @@ def apply_pipeline_pd_tqdm(df, function_cols):
     return applier(function_cols, df.copy(), progress_bar=True)
 
 
-def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False, progress_bar=True, total_rows=None):
+def apply_pipeline(old_file, function_cols, new_file=None, chunksize=ROWS_PR_ITERATION, get_batch=False, progress_bar=True, total_rows=None):
     i = 0
     start_time = time()
 
     # Use Pandas chunksize and iterator to read the input file in batches
 
-    with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8', nrows=total_rows) as reader:
+    with pd.read_csv(old_file, chunksize=chunksize, encoding='utf-8', nrows=total_rows) as reader:
         for chunk in reader:
             start_time_chunk = time()
             if function_cols is None:
@@ -696,7 +696,7 @@ def simple_model_test():
     sm.get_metrics()
 
 
-def create_dataset(file, cleaned_file, cleaned_file_combined):
+def create_dataset(file, cleaned_file, cleaned_file_combined, cleaned_file_combined_with_sentence):
     apply_pipeline(file, [
         (Binary_labels(), 'type', 'type_binary'),
 
@@ -711,17 +711,14 @@ def create_dataset(file, cleaned_file, cleaned_file_combined):
         (Combine_Content(), "content_with_swords", "content_with_swords_combined"),
 
         (Remove_stopwords2(), "content_tokenized", "content_no_swords"),
-        (Stem(), "content_no_swords"),
-        (Combine_Content(), "content_no_swords", "content_no_swords_combined"),
+        (Stem(), "content_no_swords", "content_no_swords_stemmed"),
+        (Combine_Content(), "content_no_swords_stemmed", "content_no_swords_combined"),
 
         (Clean_data(), 'title'),
         (Tokenizer(), "title"),
         (Remove_stopwords2(), "title"),
         (Stem(), "title"),
         (Combine_Content(), "title"),
-
-        (Sentence_analysis(), "content_with_swords", "sentence_analysis_with_swords"),
-        (Sentence_analysis(), "content_no_swords", "sentence_analysis_no_swords"),
     ],
         new_file=cleaned_file,
         progress_bar=True,
@@ -744,6 +741,14 @@ def create_dataset(file, cleaned_file, cleaned_file_combined):
         progress_bar=True,
     )
 
+    apply_pipeline(cleaned_file_combined, [
+        (Sentence_analysis(), "content_with_swords", "sentence_analysis_with_swords"),
+        (Sentence_analysis(), "content_no_swords", "sentence_analysis_no_swords"),
+    ],
+        new_file=cleaned_file_combined_with_sentence,
+        progress_bar=True,
+    )
+
 
 def run():
     choice = input("Press 's' for sample or 'l' for large dataset or 'x' to Exit: ")
@@ -759,16 +764,12 @@ def run():
         return
     fh.statistics(file=path+"shuffled.csv", output_path=path+"stat/orig/", content_label='content')
     remove_unwanted_rows_and_cols(file=path+"shuffled.csv", new_file=path +
-                                  "cols_removed.csv", remove_rows=False, remove_cols=True)
-    create_dataset(file=path+"cols_removed.csv", cleaned_file=path+"cols_removed_cleaned.csv",
-                   cleaned_file_combined=path+"cols_removed_cleaned_combined.csv")
-    remove_unwanted_rows_and_cols(file=path+"cols_removed.csv", new_file=path +
-                                  "cols_and_rows_removed.csv", remove_rows=True, remove_cols=False)
-    create_dataset(file=path+"cols_and_rows_removed.csv", cleaned_file=path +
-                   "cols_and_rows_removed_cleaned.csv", cleaned_file_combined=path+"cols_and_rows_removed_combined.csv")
-    fh.statistics(file=path+"cols_and_rows_removed_combined.csv", output_path=path+"stat/cols_and_rows_removed_combined/",
+                                  "unwanted_removed.csv", remove_rows=True, remove_cols=True)
+    create_dataset(file=path+"unwanted_removed.csv", cleaned_file=path +
+                   "unwanted_removed_cleaned.csv", cleaned_file_combined=path+"unwanted_removed_combined.csv", cleaned_file_combined_with_sentence=path+"unwanted_removed_sentence_analysis.csv")
+    fh.statistics(file=path+"unwanted_removed_sentence_analysis.csv", output_path=path+"stat/unwanted_removed_with_swords/",
                   content_label='content_with_swords_combined')
-    fh.statistics(file=path+"cols_and_rows_removed_combined.csv", output_path=path+"stat/cols_and_rows_removed_combined_no_swords/",
+    fh.statistics(file=path+"unwanted_removed_sentence_analysis.csv", output_path=path+"stat/unwanted_removed_no_swords/",
                   content_label='content_no_swords_combined')
 
 

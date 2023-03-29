@@ -8,7 +8,7 @@ from tqdm import tqdm
 from collections import Counter
 
 TQDM_COLOR = 'magenta'
-ROWS_PR_ITERATION = 20000
+ROWS_PR_ITERATION = 50000
 FILE_SIZE = 10000
 PADDING = 3
 COLS = {
@@ -140,7 +140,7 @@ def statistics(file: str, output_path: str = None, content_label=None):
     domain_counter = Counter()
     content_length = []
     # Iterate over all files:
-    for chunk in tqdm(pd.read_csv(file, encoding='utf-8', chunksize=2),
+    for chunk in tqdm(pd.read_csv(file, encoding='utf-8', chunksize=ROWS_PR_ITERATION),
                       desc='creating statistics', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
         rows, cols = chunk.shape
         total_rows += rows
