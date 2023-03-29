@@ -1,7 +1,4 @@
-import matplotlib.pyplot as plt
 import pipeline as pp
-import pandas as pd
-from nltk.corpus import stopwords
 import filehandling as fh
 
 
@@ -10,7 +7,6 @@ headers = ['id', 'label', 'statement', 'subjects', 'speaker', 'speaker_job', 'st
 
     
 def create_dataset(file, new_file):
-    #stopwords_lst = stopwords.words('english')
     pp.apply_pipeline(file, [
         # Binary labels
         (pp.Binary_labels_LIAR(), 'label', 'label_binary'),
@@ -27,7 +23,6 @@ def create_dataset(file, new_file):
         new_file=new_file,
         progress_bar=True,
     )
-
 
 if __name__ == '__main__':
     fh.tsv_to_csv('../datasets/liar_dataset/raw/train.tsv', '../datasets//liar_dataset/cleaned/train.csv', headers=headers)

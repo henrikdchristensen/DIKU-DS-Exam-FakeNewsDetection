@@ -326,11 +326,11 @@ class Tokenizer(FunctionApplier):
 
 
 class Remove_stopwords(FunctionApplier):
-    def __init__(self, swords):
-        self.swords = swords
+    def __init__(self):
+        self.stopwords = stopwords.words('english')
 
     def function_to_apply(self, words):
-        return [w for w in words if not w in self.swords]
+        return [w for w in words if not w in self.stopwords]
 
 
 class Remove_stopwords2(FunctionApplier):
@@ -701,7 +701,6 @@ def simple_model_test():
 def create_dataset(file, unwanted_removed_file, cleaned_file, cleaned_file_combined):
     #remove_unwanted_rows_and_cols(file=file, new_file=unwanted_removed_file, remove_rows=True, remove_cols=True)
     
-    stopwords_lst = stopwords.words('english')
     apply_pipeline(unwanted_removed_file, [
         (Binary_labels(), 'type', 'type_binary'),
 
@@ -713,7 +712,7 @@ def create_dataset(file, unwanted_removed_file, cleaned_file, cleaned_file_combi
         (Tokenizer(), "content_cleaned"),
         (Stem(), "content_cleaned"),
         (Combine_Content(), "content_cleaned", "content_combined"),
-        #(Remove_stopwords(stopwords_lst), "content_cleaned"),
+        #(Remove_stopwords(), "content_cleaned"),
         (Remove_stopwords2(), "content_cleaned"),
 
         (Clean_data(), 'title'),
