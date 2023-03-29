@@ -744,7 +744,7 @@ def create_dataset2(file, cleaned_file, cleaned_file_with_sentence_analysis):
         (Join_str_columns(['content_with_swords_combined', 'title']), None, 'content_with_swords_title'),
         (Join_str_columns(['content_with_swords_combined', 'domain']), None, 'content_with_swords_domain'),
         (Join_str_columns(['content_with_swords_combined', 'domain', 'authors', 'title']),
-         None, 'content_with_swords_domain_authors_title')
+         None, 'content_with_swords_domain_authors_title'),
 
         (Join_str_columns(['content_no_swords_combined', 'authors']), None, 'content_no_swords_authors'),
         (Join_str_columns(['content_no_swords_combined', 'title']), None, 'content_no_swords_title'),
@@ -782,6 +782,8 @@ def run():
                                   "unwanted_removed.csv", remove_rows=True, remove_cols=True)
     create_dataset2(file=path+"unwanted_removed.csv", cleaned_file=path+"cleaned_file.csv", cleaned_file_with_sentence_analysis=path +
                     "cleaned_file_with_sentence_analysis.csv")
+    fh.statistics(file=path+"cleaned_file_with_sentence_analysis.csv", output_path=path+"stat/cleaned_file_with_swords/",
+                  content_label='content_with_swords_combined')
     fh.statistics(file=path+"cleaned_file_with_sentence_analysis.csv", output_path=path+"stat/cleaned_file_no_swords/",
                   content_label='content_no_swords_combined')
 
