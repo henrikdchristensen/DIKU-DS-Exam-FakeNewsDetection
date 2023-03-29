@@ -151,7 +151,6 @@ def get_dataframe_with_distribution(file,
     with pd.read_csv(file, chunksize=chunksize, encoding='utf-8') as reader:
         for chunk in reader:
             chunk[end_col] = chunk[type_col].progress_apply(apply_to_rows)
-            print("entries to read:", entries_read)
             if delete:
                 chunk = chunk[chunk[end_col] != DELETE_TOKEN]
             if out_file is not None:
@@ -159,20 +158,17 @@ def get_dataframe_with_distribution(file,
                     chunk.to_csv(out_file, mode='w', index=False)
                 else:
                     # Append to csv file without header
-                    print("appending")
                     chunk.to_csv(out_file, mode='a', header=False, index=False)
             if get_frame:
                 if data is None:
                     data = chunk
                 else:
-                    # print("concat")
                     data = pd.concat([data, chunk])
 
             entries_read += chunksize
             finished = True
             for balanced, set in sets:
                 if (balanced and sum(set.values()) > 0) or (not balanced and set > 0):
-                    # print
                     finished = False
             if finished:
                 print("entries read:", entries_read)
