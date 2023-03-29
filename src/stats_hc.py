@@ -107,12 +107,12 @@ class Statistics():
         fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(10, 10))
         true_words, true_words_cnt = self._sort_frequency(self.data[self.data[self.binary_type_label] == True][self.content_label].explode().tolist(), percentage=True)
         fake_words, fake_words_cnt = self._sort_frequency(self.data[self.data[self.binary_type_label] == False][self.content_label].explode().tolist(), percentage=True)
-        max_bar = int(max(true_words_cnt + fake_words_cnt)) * 1.1
+        #max_bar = int(max(true_words_cnt, fake_words_cnt)) * 1.2
         minmax_box = (self.data[self.content_label].apply(len).min()*0.9, self.data[self.content_label].apply(len).max()*1.1)
-        self._barplot(data=true_words, measure=true_words_cnt, nwords=25, minmax=(0, max_bar), label='% of true words', title='true word frequency', color='lightsalmon', ax=ax1)
-        self._barplot(data=fake_words, measure=fake_words_cnt, nwords=25, minmax=(0, max_bar), label='% of fake words', title='fake word frequency', color='lightblue', ax=ax2)
-        self._boxplot(data=self.data[self.data[self.binary_type_label] == True][self.content_label].apply(len), minmax=minmax_box, label='# of true words', title='# of true words per article', color='lightsalmon', ax=ax3)
-        self._boxplot(data=self.data[self.data[self.binary_type_label] == False][self.content_label].apply(len), minmax=minmax_box, label='# of fake words', title='# of fake words per article', color='lightblue', ax=ax4)
+        self._barplot(data=true_words, measure=true_words_cnt, nwords=25, minmax=(0, 1.5), label='% of true words', title='true articles: word frequency', color='lightsalmon', ax=ax1)
+        self._barplot(data=fake_words, measure=fake_words_cnt, nwords=25, minmax=(0, 1.5), label='% of fake words', title='fake articles: word frequency', color='lightblue', ax=ax2)
+        self._boxplot(data=self.data[self.data[self.binary_type_label] == True][self.content_label].apply(len), minmax=minmax_box, label='# of words', title='true articles: # of words per article', color='lightsalmon', ax=ax3)
+        self._boxplot(data=self.data[self.data[self.binary_type_label] == False][self.content_label].apply(len), minmax=minmax_box, label='# of words', title='fake articles: # of words per article', color='lightblue', ax=ax4)
         fig.tight_layout()
         plt.show()
        
@@ -177,8 +177,8 @@ class Statistics():
         fake = self.data[self.data[self.binary_type_label] == False][self.content_label].apply(self._average_sentence_lengths)
         max_val = max(true.max(), fake.max()) * 1.1 if max(true.max(), fake.max()) > 0 else 1
         min_val = min(true.min(), fake.min()) * 0.9 if min(true.min(), fake.min()) > 0 else -1
-        self._boxplot(data=true, minmax=(min_val, max_val), label='avg. sentence length', title='true avg. sentence length', color='lightsalmon', ax=ax1)
-        self._boxplot(data=fake, minmax=(min_val, max_val), label='avg. sentence length', title='fake avg. sentence length', color='lightblue', ax=ax2)
+        self._boxplot(data=true, minmax=(-0.1, max_val), label='avg. sentence length', title='true articles: avg. sentence length', color='lightsalmon', ax=ax1)
+        self._boxplot(data=fake, minmax=(-0.1, max_val), label='avg. sentence length', title='fake articles: avg. sentence length', color='lightblue', ax=ax2)
         fig.tight_layout()
         plt.show()
 
@@ -189,29 +189,29 @@ class Statistics():
         fake_first = self.data[self.data[self.binary_type_label] == False][self.content_label].apply(lambda x: sum([x.count(word) for word in self.first_person_pronouns]))
         max_val_first = max(true_first.max(), fake_first.max()) * 1.1 if max(true_first.max(), fake_first.max()) > 0 else 1
         min_val_first = min(true_first.min(), fake_first.min()) * 0.9 if min(true_first.min(), fake_first.min()) > 0 else -1
-        self._boxplot(data=true_first, minmax=(min_val_first, max_val_first), label='# of 1st pronouns', title='true 1st person pronouns', color='lightsalmon', ax=ax1)
-        self._boxplot(data=fake_first, minmax=(min_val_first, max_val_first), label='# of 1st pronouns', title='fake 1st person pronouns', color='lightblue', ax=ax2)
+        self._boxplot(data=true_first, minmax=(min_val_first, max_val_first), label='# of 1st pronouns', title='true articles: 1st person pronouns', color='lightsalmon', ax=ax1)
+        self._boxplot(data=fake_first, minmax=(min_val_first, max_val_first), label='# of 1st pronouns', title='fake: articles 1st person pronouns', color='lightblue', ax=ax2)
         
         true_second = self.data[self.data[self.binary_type_label] == True][self.content_label].apply(lambda x: sum([x.count(word) for word in self.second_person_pronouns]))
         fake_second = self.data[self.data[self.binary_type_label] == False][self.content_label].apply(lambda x: sum([x.count(word) for word in self.second_person_pronouns]))
         max_val_second = max(true_second.max(), fake_second.max()) * 1.1 if max(true_second.max(), fake_second.max()) > 0 else 1
         min_val_second = min(true_second.min(), fake_second.min()) * 0.9 if min(true_second.min(), fake_second.min()) > 0 else -1
-        self._boxplot(data=true_second, minmax=(min_val_second, max_val_second), label='# of 2nd pronouns', title='true 2nd person pronouns', color='lightsalmon', ax=ax3)
-        self._boxplot(data=fake_second, minmax=(min_val_second, max_val_second), label='# of 2nd pronouns', title='fake 2nd person pronouns', color='lightblue', ax=ax4)
+        self._boxplot(data=true_second, minmax=(min_val_second, max_val_second), label='# of 2nd pronouns', title='true articles: 2nd person pronouns', color='lightsalmon', ax=ax3)
+        self._boxplot(data=fake_second, minmax=(min_val_second, max_val_second), label='# of 2nd pronouns', title='fake articles: 2nd person pronouns', color='lightblue', ax=ax4)
         
         true_third = self.data[self.data[self.binary_type_label] == True][self.content_label].apply(lambda x: sum([x.count(word) for word in self.third_person_pronouns]))
         fake_third = self.data[self.data[self.binary_type_label] == False][self.content_label].apply(lambda x: sum([x.count(word) for word in self.third_person_pronouns]))
         max_val_third = max(true_third.max(), fake_third.max()) * 1.1 if max(true_third.max(), fake_third.max()) > 0 else 1
         min_val_third = min(true_third.min(), fake_third.min()) * 0.9 if min(true_third.min(), fake_third.min()) > 0 else -1
-        self._boxplot(data=true_third, minmax=(min_val_third, max_val_third), label='# of 3rd pronouns', title='true 3rd person pronouns', color='lightsalmon', ax=ax5)
-        self._boxplot(data=fake_third, minmax=(min_val_third, max_val_third), label='# of 3rd pronouns', title='fake 3rd person pronouns', color='lightblue', ax=ax6)
+        self._boxplot(data=true_third, minmax=(min_val_third, max_val_third), label='# of 3rd pronouns', title='true articles: 3rd person pronouns', color='lightsalmon', ax=ax5)
+        self._boxplot(data=fake_third, minmax=(min_val_third, max_val_third), label='# of 3rd pronouns', title='fake articles: 3rd person pronouns', color='lightblue', ax=ax6)
         
         true_total = self.data[self.data[self.binary_type_label] == True][self.content_label].apply(lambda x: sum([x.count(word) for word in self.pronouns]))
         fake_total = self.data[self.data[self.binary_type_label] == False][self.content_label].apply(lambda x: sum([x.count(word) for word in self.pronouns]))
         max_val_total = max(true_total.max(), fake_total.max()) * 1.1 if max(true_total.max(), fake_total.max()) > 0 else 1
         min_val_total = min(true_total.min(), fake_total.min()) * 0.9 if min(true_total.min(), fake_total.min()) > 0 else -1
-        self._boxplot(data=true_total, minmax=(min_val_total, max_val_total), label='# of pronouns', title='true pronouns', color='lightsalmon', ax=ax7)
-        self._boxplot(data=fake_total, minmax=(min_val_total, max_val_total), label='# of pronouns', title='fake pronouns', color='lightblue', ax=ax8)
+        self._boxplot(data=true_total, minmax=(min_val_total, max_val_total), label='# of pronouns', title='true articles: pronouns', color='lightsalmon', ax=ax7)
+        self._boxplot(data=fake_total, minmax=(min_val_total, max_val_total), label='# of pronouns', title='fake articles: pronouns', color='lightblue', ax=ax8)
         fig.tight_layout()
         plt.show()
         
@@ -222,8 +222,8 @@ class Statistics():
         fake = self.data[self.data[self.binary_type_label] == False][self.content_label].apply(lambda x: sum([x.count(word) for word in self.negations]))
         max_val = max(true.max(), fake.max()) * 1.1 if max(true.max(), fake.max()) > 0 else 1
         min_val = min(true.min(), fake.min()) * 0.9 if min(true.min(), fake.min()) > 0 else -1
-        self._boxplot(data=true, minmax=(min_val, max_val), label='# of negations', title='true negations', color='lightsalmon', ax=ax1)
-        self._boxplot(data=fake, minmax=(min_val, max_val), label='# of negations', title='fake negations', color='lightblue', ax=ax2)
+        self._boxplot(data=true, minmax=(min_val, max_val), label='# of negations', title='true articles: negations', color='lightsalmon', ax=ax1)
+        self._boxplot(data=fake, minmax=(min_val, max_val), label='# of negations', title='fake articles: negations', color='lightblue', ax=ax2)
         fig.tight_layout()
         plt.show()
 
@@ -235,13 +235,13 @@ class Statistics():
         subjective_min = self.data[self.sentence_analysis_label].apply(lambda x: x[1]).min()*0.9 if self.data[self.sentence_analysis_label].apply(lambda x: x[1]).min() > 0 else -0.1
         subjective_max = self.data[self.sentence_analysis_label].apply(lambda x: x[1]).max()*1.1
         self._boxplot(data=self.data[self.data[self.binary_type_label] == True][self.sentence_analysis_label].apply(lambda x: x[0]), minmax=(
-            polarity_min, polarity_max), label='polarity score', title='polarity score for true', color='lightsalmon', ax=ax1)
+            polarity_min, polarity_max), label='polarity score', title='true articles: polarity score', color='lightsalmon', ax=ax1)
         self._boxplot(data=self.data[self.data[self.binary_type_label] == False][self.sentence_analysis_label].apply(lambda x: x[0]), minmax=(
-            polarity_min, polarity_max), label='polarity score', title='polarity score for fake', color='lightblue', ax=ax2)
+            polarity_min, polarity_max), label='polarity score', title='fake articles: polarity score', color='lightblue', ax=ax2)
         self._boxplot(data=self.data[self.data[self.binary_type_label] == True][self.sentence_analysis_label].apply(lambda x: x[1]), minmax=(
-            subjective_min, subjective_max), label='subjective score', title='subjective score for true', color='lightsalmon', ax=ax3)
+            subjective_min, subjective_max), label='subjective score', title='true articles: subjective score', color='lightsalmon', ax=ax3)
         self._boxplot(data=self.data[self.data[self.binary_type_label] == False][self.sentence_analysis_label].apply(lambda x: x[1]), minmax=(
-            subjective_min, subjective_max), label='subjective score', title='subjective score for fake', color='lightblue', ax=ax4)
+            subjective_min, subjective_max), label='subjective score', title='fake articles: subjective score', color='lightblue', ax=ax4)
         fig.tight_layout()
         plt.show()
 
@@ -251,8 +251,8 @@ class Statistics():
         true_party, true_party_cnt = self._sort_frequency(self.data[self.data[self.binary_type_label] == True][self.party_label].dropna().explode().tolist(), percentage=True)
         fake_party, fake_party_cnt = self._sort_frequency(self.data[self.data[self.binary_type_label] == False][self.party_label].dropna().explode().tolist(), percentage=True)
         max_val = max(true_party_cnt + fake_party_cnt)*1.1
-        self._barplot(data=true_party, measure=true_party_cnt, nwords=25, minmax=(0, max_val), label='% of true party', title='true party frequency', color='lightsalmon', ax=ax1)
-        self._barplot(data=fake_party, measure=fake_party_cnt, nwords=25, minmax=(0, max_val), label='% of fake party', title='fake party frequency', color='lightblue', ax=ax2)
+        self._barplot(data=true_party, measure=true_party_cnt, nwords=25, minmax=(0, max_val), label='% of true party', title='true articles: party frequency', color='lightsalmon', ax=ax1)
+        self._barplot(data=fake_party, measure=fake_party_cnt, nwords=25, minmax=(0, max_val), label='% of fake party', title='fake articles: party frequency', color='lightblue', ax=ax2)
         fig.tight_layout()
         plt.show()
 
@@ -262,8 +262,8 @@ class Statistics():
         true_speaker, true_speaker_cnt = self._sort_frequency(self.data[self.data[self.binary_type_label] == True][self.speaker_label].explode().tolist(), percentage=True)
         fake_speaker, fake_speaker_cnt = self._sort_frequency(self.data[self.data[self.binary_type_label] == False][self.speaker_label].explode().tolist(), percentage=True)
         max_val = max(true_speaker_cnt + fake_speaker_cnt)*1.1
-        self._barplot(data=true_speaker, measure=true_speaker_cnt, nwords=25, minmax=(0, max_val), label='% of true speaker', title='true speaker frequency', color='lightsalmon', ax=ax1)
-        self._barplot(data=fake_speaker, measure=fake_speaker_cnt, nwords=25, minmax=(0, max_val), label='% of fake speaker', title='fake speaker frequency', color='lightblue', ax=ax2)
+        self._barplot(data=true_speaker, measure=true_speaker_cnt, nwords=25, minmax=(0, max_val), label='% of true speaker', title='true articles: speaker frequency', color='lightsalmon', ax=ax1)
+        self._barplot(data=fake_speaker, measure=fake_speaker_cnt, nwords=25, minmax=(0, max_val), label='% of fake speaker', title='fake articles: speaker frequency', color='lightblue', ax=ax2)
         fig.tight_layout()
         plt.show()
 
@@ -273,7 +273,7 @@ class Statistics():
         true_subjects, true_subjects_cnt = self._sort_frequency(self.data[self.data[self.binary_type_label] == True][self.subjects_label].explode().tolist(), percentage=True)
         fake_subjects, fake_subjects_cnt = self._sort_frequency(self.data[self.data[self.binary_type_label] == False][self.subjects_label].explode().tolist(), percentage=True)
         max_val = max(true_subjects_cnt + fake_subjects_cnt)*1.1
-        self._barplot(data=true_subjects, measure=true_subjects_cnt, nwords=25, minmax=(0, max_val), label='% of true subject', title='true subject frequency', color='lightsalmon', ax=ax1)
-        self._barplot(data=fake_subjects, measure=fake_subjects_cnt, nwords=25, minmax=(0, max_val), label='% of fake subject', title='fake subject frequency', color='lightblue', ax=ax2)
+        self._barplot(data=true_subjects, measure=true_subjects_cnt, nwords=25, minmax=(0, max_val), label='% of true subject', title='true articles: subject frequency', color='lightsalmon', ax=ax1)
+        self._barplot(data=fake_subjects, measure=fake_subjects_cnt, nwords=25, minmax=(0, max_val), label='% of fake subject', title='fake articles: subject frequency', color='lightblue', ax=ax2)
         fig.tight_layout()
         plt.show()

@@ -449,21 +449,6 @@ class Clean_id_LIAR(FunctionApplier):
     def function_to_apply(self, id):
         return id.split('.')[0]
 
-    def function_to_apply(self, row):
-        if self.num_to_print > 0:
-            self.num_to_print -= 1
-            item = {}
-            for h, i in headers.items():
-                item[h] = row[i]
-            self.table.append(item)
-
-        elif not self.has_printed:
-            self.has_printed = True
-            self.data_frame = pd.DataFrame(data=self.table)
-            self.data_frame.to_csv(self.csv_file)
-
-        return row
-
 
 class Binary_labels_LIAR(FunctionApplier):
     def __init__(self, binary_labels=None):
@@ -706,18 +691,18 @@ def create_dataset(file, cleaned_file, cleaned_file_combined):
 
         (Clean_data(), 'content', 'content_cleaned'),
         (Tokenizer(), "content_cleaned"),
+        (Remove_stopwords(), "content_cleaned"),
         (Stem(), "content_cleaned"),
         (Combine_Content(), "content_cleaned", "content_combined"),
-        (Remove_stopwords2(), "content_cleaned"),
         (Combine_Content(), "content_cleaned", "content_no_swords_combined"),
 
         (Clean_data(), 'title'),
         (Tokenizer(), "title"),
-        (Remove_stopwords2(), "title"),
+        (Remove_stopwords(), "title"),
         (Stem(), "title"),
         (Combine_Content(), "title"),
 
-        (Sentence_analysis(), "content_combined", "sentence_no_swords_analysis"),
+        (Sentence_analysis(), "content_combined", "sentence_analysis"),
         (Sentence_analysis(), "content_no_swords_combined", "sentence_no_swords_analysis"),
     ],
         new_file=cleaned_file,
