@@ -695,10 +695,8 @@ def simple_model_test():
     sm.get_metrics()
 
 
-def create_dataset(file, unwanted_removed_file, cleaned_file, cleaned_file_combined):
-    #remove_unwanted_rows_and_cols(file=file, new_file=unwanted_removed_file, remove_rows=True, remove_cols=True)
-    
-    apply_pipeline(unwanted_removed_file, [
+def create_dataset(file, cleaned_file, cleaned_file_combined):
+    apply_pipeline(file, [
         (Binary_labels(), 'type', 'type_binary'),
 
         (Clean_domain(), 'domain'),
@@ -709,12 +707,10 @@ def create_dataset(file, unwanted_removed_file, cleaned_file, cleaned_file_combi
         (Tokenizer(), "content_cleaned"),
         (Stem(), "content_cleaned"),
         (Combine_Content(), "content_cleaned", "content_combined"),
-        #(Remove_stopwords(), "content_cleaned"),
         (Remove_stopwords2(), "content_cleaned"),
 
         (Clean_data(), 'title'),
         (Tokenizer(), "title"),
-        #(Remove_stopwords(stopwords_lst), "title"),
         (Remove_stopwords2(), "title"),
         (Stem(), "title"),
         (Combine_Content(), "title"),
@@ -752,7 +748,11 @@ def run():
     else:
         print("Invalid choice - exiting")
         return
-    create_dataset(file=path+"shuffled.csv", unwanted_removed_file=path+"unwanted_removed.csv", cleaned_file=path+"dataset.csv", cleaned_file_combined=path+"dataset_combined.csv")
+    remove_unwanted_rows_and_cols(file=path+"shuffled.csv", new_file=path+"cols_removed.csv", remove_rows=False, remove_cols=True)
+    create_dataset(file=path+"cols_removed.csv", cleaned_file=path+"cols_removed_cleaned.csv", cleaned_file_combined=path+"cols_removed_cleaned_combined.csv")
+    remove_unwanted_rows_and_cols(file=path+"cols_removed.csv", new_file=path+"cols_and_rows_removed.csv", remove_rows=True, remove_cols=False)
+    create_dataset(file=path+"cols_and_rows_removed.csv", cleaned_file=path+"cols_and_rows_removed_cleaned.csv", cleaned_file_combined=path+"cols_and_rows_removed_combined.csv")
+    fh.statistics(file=path+"cols_and_rows_removed.csv", new_file=path+"statistics_cols_and_rows_removed.csv")
 
 
 if __name__ == '__main__':
