@@ -1,6 +1,3 @@
-#import filehandling as fh
-import csv
-import preprocessing as pp
 import pandas as pd
 import re
 from nltk.corpus import stopwords

@@ -8,7 +8,8 @@ import pipeline as pp
 import filehandling as fh
 
 class Statistics():
-    def __init__(self, data: pd.DataFrame, content_label: str=None, type_label: str=None, binary_type_label: str=None, type_colors=None, domain_label:str=None, subjects_label=None, speaker_label=None, party_label=None, sentence_analysis_label: str = None):
+    def __init__(self, data: pd.DataFrame, content_label: str = None, type_label: str = None, binary_type_label: str = None, type_colors: str = None, 
+                 sentence_analysis_label: str = None, domain_label: str = None, subjects_label: str = None, speaker_label = None, party_label = None):
         self.data = data
         self.content_label = content_label
         self.type_label = type_label
@@ -33,6 +34,7 @@ class Statistics():
         self.third_person_pronouns = ['he', 'him', 'his', 'she', 'her', 'hers', 'it', 'its', 'they', 'them', 'their', 'theirs']
         self.pronouns = self.first_person_pronouns + self.second_person_pronouns + self.third_person_pronouns
         self.negations = ['not', 'never', 'neither', 'nor', 'barely', 'hardly', 'scarcely', 'seldom', 'rarely', 'no', 'neither', 'neither', 'nothing', 'none', 'nobody', 'nowhere']
+
         
     def _average_sentence_lengths(self, words):
         sentence_lengths = []
@@ -46,6 +48,7 @@ class Statistics():
             return sum(sentence_lengths) / len(sentence_lengths)
         else:
             return 0
+
                 
     def _sort_frequency(self, text, percentage: bool):
         counter = Counter(text)
@@ -57,8 +60,8 @@ class Statistics():
             measure = [(freq/length)*100 for freq in measure]
         return words, measure
 
+
     def _barplot(self, data, measure, nwords: int = 25, minmax: tuple = None, label: str = None, title: str = None, boolean=False, color='lightsalmon', ax=None):
-        # Plot bar plot
         if ax is None:
             fig, ax = plt.subplots(1, 1)
         #ax.tick_params(axis='x', rotation=90)
@@ -71,23 +74,24 @@ class Statistics():
         ax.set_xlabel(label)
         ax.set_title(title)
 
+
     def _boxplot(self, data=None, minmax: tuple = None, label: str = None, title: str = None, color='lightsalmon', ax=None):
         if ax is None:
             fig, ax = plt.subplots(1, 1)
-        boxprops = dict(linewidth=2, facecolor=color)
-        # patch_artist must be True to change color the boxes
-        ax.boxplot(data, patch_artist=True, boxprops=boxprops)
+        boxprops = dict(linewidth=2, facecolor=color) 
+        ax.boxplot(data, patch_artist=True, boxprops=boxprops) # patch_artist must be True to change color the boxes
         ax.set_ylim(minmax)
         ax.set_ylabel(label)
         ax.set_title(title)
         
-    def plot_word_frequency_barplot(self):
+        
+    def barplot_word_frequency(self):
         fig, ax1 = plt.subplots(1, 1, figsize=(10, 10))
         words, words_cnt = self._sort_frequency(self.data[self.content_label].explode().tolist(), percentage=True)
         self._barplot(data=words, measure=words_cnt, nwords=25, label='% of total words', title='word frequency', color='yellowgreen', ax=ax1)
 
-    def plot_word_frequency_boxplot(self):
-        # plot bar and box plot together:
+
+    def boxplot_plot_word_frequency(self):
         fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(10, 5))
         self._boxplot(data=self.data[self.content_label].apply(len),
                         label='# of words', title='# of words per article', color='yellowgreen', ax=ax1)
@@ -97,6 +101,7 @@ class Statistics():
                         label='# of ?', title="# of '?' per article", color='yellowgreen', ax=ax3)
         fig.tight_layout()
         plt.show()
+
 
     def plot_word_frequency_fake_vs_true(self):
         fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(10, 10))
@@ -110,6 +115,7 @@ class Statistics():
         self._boxplot(data=self.data[self.data[self.binary_type_label] == False][self.content_label].apply(len), minmax=minmax_box, label='# of fake words', title='# of fake words per article', color='lightblue', ax=ax4)
         fig.tight_layout()
         plt.show()
+       
         
     def barplot_type(self, percentage: bool = True, ax=None):
         types = self.data[self.type_label].explode().tolist()
@@ -121,6 +127,7 @@ class Statistics():
         ax.set_xlabel('% of total labels' if percentage else '# of labels')
         ax.set_title('label distribution')
         #ax.tick_params(axis='x', rotation=90)
+
 
     def plot_type_fake_vs_true(self):
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
@@ -142,6 +149,7 @@ class Statistics():
         fig.tight_layout()
         plt.show()
 
+
     def barplot_x_to_y_contribution(self, x_label: str, y_label: str, content_label: str, threshold: float = 0, percentage: bool = True, title: str=None):
         counts = self.data.groupby([x_label, y_label])[content_label].count().unstack()
         percentages = counts.apply(lambda x: x / x.sum() * 100)
@@ -162,11 +170,11 @@ class Statistics():
         plt.tight_layout()
         plt.show()
 
+
     def plot_average_sentence_length_fake_vs_true(self):
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(5, 5))
         true = self.data[self.data[self.binary_type_label] == True][self.content_label].apply(self._average_sentence_lengths)
         fake = self.data[self.data[self.binary_type_label] == False][self.content_label].apply(self._average_sentence_lengths)
-        # Percentage max value to limit the y-axis
         max_val = max(true.max(), fake.max()) * 1.1 if max(true.max(), fake.max()) > 0 else 1
         min_val = min(true.min(), fake.min()) * 0.9 if min(true.min(), fake.min()) > 0 else -1
         self._boxplot(data=true, minmax=(min_val, max_val), label='avg. sentence length', title='true avg. sentence length', color='lightsalmon', ax=ax1)
@@ -174,8 +182,8 @@ class Statistics():
         fig.tight_layout()
         plt.show()
 
+
     def plot_pronouns_fake_vs_true(self):
-        # Create 2x4 sub plots
         fig, ((ax1, ax2), (ax3, ax4), (ax5, ax6), (ax7, ax8)) = plt.subplots(4, 2, figsize=(10, 10))
         true_first = self.data[self.data[self.binary_type_label] == True][self.content_label].apply(lambda x: sum([x.count(word) for word in self.first_person_pronouns]))
         fake_first = self.data[self.data[self.binary_type_label] == False][self.content_label].apply(lambda x: sum([x.count(word) for word in self.first_person_pronouns]))
@@ -207,6 +215,7 @@ class Statistics():
         fig.tight_layout()
         plt.show()
         
+        
     def plot_negations_fake_vs_true(self):
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
         true = self.data[self.data[self.binary_type_label] == True][self.content_label].apply(lambda x: sum([x.count(word) for word in self.negations]))
@@ -235,7 +244,8 @@ class Statistics():
             subjective_min, subjective_max), label='subjective score', title='subjective score for fake', color='lightblue', ax=ax4)
         fig.tight_layout()
         plt.show()
-        
+
+
     def plot_party_fake_vs_true(self):
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
         true_party, true_party_cnt = self._sort_frequency(self.data[self.data[self.binary_type_label] == True][self.party_label].dropna().explode().tolist(), percentage=True)
@@ -245,6 +255,7 @@ class Statistics():
         self._barplot(data=fake_party, measure=fake_party_cnt, nwords=25, minmax=(0, max_val), label='% of fake party', title='fake party frequency', color='lightblue', ax=ax2)
         fig.tight_layout()
         plt.show()
+
         
     def plot_speaker_fake_vs_true(self):
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
@@ -255,6 +266,7 @@ class Statistics():
         self._barplot(data=fake_speaker, measure=fake_speaker_cnt, nwords=25, minmax=(0, max_val), label='% of fake speaker', title='fake speaker frequency', color='lightblue', ax=ax2)
         fig.tight_layout()
         plt.show()
+
         
     def plot_subjects_fake_vs_true(self):
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
@@ -267,11 +279,12 @@ class Statistics():
         plt.show()
         
         
-class detectOutliers(FunctionApplier):
+class Detect_outliers(FunctionApplier):
     def __init__(self):
         self.outliers = []
         self.outliers_index = []
         self.outliers_value = []
+
 
     def function_to_apply(self, value):
         # print(value)
@@ -280,6 +293,7 @@ class detectOutliers(FunctionApplier):
             self.outliers_index.append(self.index)
             self.outliers_value.append(self.value)
         return value
+    
     
     def getDataFrame(self, csv):
         df = pd.read_csv(csv, nrows=20000)
