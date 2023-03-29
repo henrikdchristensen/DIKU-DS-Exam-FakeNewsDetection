@@ -449,21 +449,6 @@ class Clean_id_LIAR(FunctionApplier):
     def function_to_apply(self, id):
         return id.split('.')[0]
 
-    def function_to_apply(self, row):
-        if self.num_to_print > 0:
-            self.num_to_print -= 1
-            item = {}
-            for h, i in headers.items():
-                item[h] = row[i]
-            self.table.append(item)
-
-        elif not self.has_printed:
-            self.has_printed = True
-            self.data_frame = pd.DataFrame(data=self.table)
-            self.data_frame.to_csv(self.csv_file)
-
-        return row
-
 
 class Binary_labels_LIAR(FunctionApplier):
     def __init__(self, binary_labels=None):
@@ -716,7 +701,7 @@ def create_dataset(file, cleaned_file, cleaned_file_combined, cleaned_file_combi
 
         (Clean_data(), 'title'),
         (Tokenizer(), "title"),
-        (Remove_stopwords2(), "title"),
+        (Remove_stopwords(), "title"),
         (Stem(), "title"),
         (Combine_Content(), "title"),
     ],
