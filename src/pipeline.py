@@ -88,8 +88,10 @@ class TF_IDF(FunctionApplier):
                 vector[i] = (np.log(vector[i]) + 1) * self.idf_vec[set][i]
         return vector
 
-
-def get_dataframe_with_distribution(file, total_size, splits, balanced, end_col="set", type_col="type",  chunksize=ROWS_PR_ITERATION, out_file=None, get_frame=True, classes=labels, delete=True):
+def get_dataframe_with_distribution(file, 
+                                    total_size, splits, balanced, 
+                                    end_col = "set", type_col ="type",  
+                                    chunksize=ROWS_PR_ITERATION, out_file=None, get_frame=True, classes = labels, delete=True):
     # empty dataframe
     data = None
     curr_index = 0
@@ -106,10 +108,14 @@ def get_dataframe_with_distribution(file, total_size, splits, balanced, end_col=
 
     def apply_to_rows(label):
         nonlocal curr_index
-        if curr_index >= len(sets) or label not in classes:
+        if curr_index >= len(sets):
             return DELETE_TOKEN
 
         balanced, curr_set = sets[curr_index]
+        if balanced and label not in classes:
+            return DELETE_TOKEN
+        
+        
         if balanced:
             if sum(curr_set.values()) == 0:
                 curr_index += 1
@@ -133,25 +139,28 @@ def get_dataframe_with_distribution(file, total_size, splits, balanced, end_col=
     with pd.read_csv(file, chunksize=chunksize, encoding='utf-8') as reader:
         for chunk in reader:
             chunk[end_col] = chunk[type_col].progress_apply(apply_to_rows)
+            print("entries to read:", entries_read)
             if delete:
                 chunk = chunk[chunk[end_col] != DELETE_TOKEN]
-
             if out_file is not None:
                 if entries_read == 0:
                     chunk.to_csv(out_file, mode='w', index=False)
                 else:
                     # Append to csv file without header
+                    print("appending")
                     chunk.to_csv(out_file, mode='a', header=False, index=False)
             if get_frame:
                 if data is None:
                     data = chunk
                 else:
+                    # print("concat")
                     data = pd.concat([data, chunk])
 
             entries_read += chunksize
             finished = True
             for balanced, set in sets:
                 if (balanced and sum(set.values()) > 0) or (not balanced and set > 0):
+                    # print
                     finished = False
             if finished:
                 print("entries read:", entries_read)
@@ -447,6 +456,38 @@ class Clean_id_LIAR(FunctionApplier):
     def function_to_apply(self, id):
         return id.split('.')[0]
 
+    def function_to_apply(self, row):
+        if self.num_to_print > 0:
+            self.num_to_print -= 1
+            item = {}
+            for h, i in headers.items():
+                item[h] = row[i]
+            self.table.append(item)
+
+        elif not self.has_printed:
+            self.has_printed = True
+            self.data_frame = pd.DataFrame(data=self.table)
+            self.data_frame.to_csv(self.csv_file)
+
+        return row
+
+class Binary_labels_LIAR(FunctionApplier):
+    def __init__(self, binary_labels = None):
+        self.binary_labels: dict = {
+            'pants-fire': False,
+            'false': False,
+            'barely-true': False,
+            'half-true': True,
+            'mostly-true': True,
+            'True': True
+        }
+
+    def function_to_apply(self, cell):
+        try:
+            binary_label = self.binary_labels[cell]
+        except:
+            binary_label = True
+        return binary_label
 
 class Binary_labels(FunctionApplier):
     def __init__(self):
