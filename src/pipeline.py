@@ -1,6 +1,3 @@
-#import filehandling as fh
-import csv
-import preprocessing as pp
 import pandas as pd
 import re
 from nltk.corpus import stopwords
@@ -34,7 +31,7 @@ labels: dict = {
     'political': True
 }
 
-ROWS_PR_ITERATION = 20000
+ROWS_PR_ITERATION = 50000
 TQDM_COLOR = 'magenta'
 DELETE_TOKEN = '<DELETE>'
 
@@ -88,10 +85,11 @@ class TF_IDF(FunctionApplier):
                 vector[i] = (np.log(vector[i]) + 1) * self.idf_vec[set][i]
         return vector
 
-def get_dataframe_with_distribution(file, 
-                                    total_size, splits, balanced, 
-                                    end_col = "set", type_col ="type",  
-                                    chunksize=ROWS_PR_ITERATION, out_file=None, get_frame=True, classes = labels, delete=True):
+
+def get_dataframe_with_distribution(file,
+                                    total_size, splits, balanced,
+                                    end_col="set", type_col="type",
+                                    chunksize=ROWS_PR_ITERATION, out_file=None, get_frame=True, classes=labels, delete=True):
     # empty dataframe
     data = None
     curr_index = 0
@@ -114,8 +112,7 @@ def get_dataframe_with_distribution(file,
         balanced, curr_set = sets[curr_index]
         if balanced and label not in classes:
             return DELETE_TOKEN
-        
-        
+
         if balanced:
             if sum(curr_set.values()) == 0:
                 curr_index += 1
@@ -139,7 +136,6 @@ def get_dataframe_with_distribution(file,
     with pd.read_csv(file, chunksize=chunksize, encoding='utf-8') as reader:
         for chunk in reader:
             chunk[end_col] = chunk[type_col].progress_apply(apply_to_rows)
-            print("entries to read:", entries_read)
             if delete:
                 chunk = chunk[chunk[end_col] != DELETE_TOKEN]
             if out_file is not None:
@@ -147,20 +143,17 @@ def get_dataframe_with_distribution(file,
                     chunk.to_csv(out_file, mode='w', index=False)
                 else:
                     # Append to csv file without header
-                    print("appending")
                     chunk.to_csv(out_file, mode='a', header=False, index=False)
             if get_frame:
                 if data is None:
                     data = chunk
                 else:
-                    # print("concat")
                     data = pd.concat([data, chunk])
 
             entries_read += chunksize
             finished = True
             for balanced, set in sets:
                 if (balanced and sum(set.values()) > 0) or (not balanced and set > 0):
-                    # print
                     finished = False
             if finished:
                 print("entries read:", entries_read)
@@ -326,11 +319,11 @@ class Tokenizer(FunctionApplier):
 
 
 class Remove_stopwords(FunctionApplier):
-    def __init__(self, swords):
-        self.swords = swords
+    def __init__(self):
+        self.stopwords = stopwords.words('english')
 
     def function_to_apply(self, words):
-        return [w for w in words if not w in self.swords]
+        return [w for w in words if not w in self.stopwords]
 
 
 class Remove_stopwords2(FunctionApplier):
@@ -456,23 +449,9 @@ class Clean_id_LIAR(FunctionApplier):
     def function_to_apply(self, id):
         return id.split('.')[0]
 
-    def function_to_apply(self, row):
-        if self.num_to_print > 0:
-            self.num_to_print -= 1
-            item = {}
-            for h, i in headers.items():
-                item[h] = row[i]
-            self.table.append(item)
-
-        elif not self.has_printed:
-            self.has_printed = True
-            self.data_frame = pd.DataFrame(data=self.table)
-            self.data_frame.to_csv(self.csv_file)
-
-        return row
 
 class Binary_labels_LIAR(FunctionApplier):
-    def __init__(self, binary_labels = None):
+    def __init__(self, binary_labels=None):
         self.binary_labels: dict = {
             'pants-fire': False,
             'false': False,
@@ -488,6 +467,7 @@ class Binary_labels_LIAR(FunctionApplier):
         except:
             binary_label = True
         return binary_label
+
 
 class Binary_labels(FunctionApplier):
     def __init__(self):
@@ -610,19 +590,21 @@ def apply_pipeline_pd_tqdm(df, function_cols):
     return applier(function_cols, df.copy(), progress_bar=True)
 
 
-def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_ITERATION, get_batch=False, progress_bar=True, total_rows=None):
+def apply_pipeline(old_file, function_cols, new_file=None, chunksize=ROWS_PR_ITERATION, get_batch=False, progress_bar=True, total_rows=None):
     i = 0
     start_time = time()
 
     # Use Pandas chunksize and iterator to read the input file in batches
 
-    with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8', nrows=total_rows) as reader:
+    with pd.read_csv(old_file, chunksize=chunksize, encoding='utf-8', nrows=total_rows) as reader:
         for chunk in reader:
+            start_time_chunk = time()
             if function_cols is None:
                 return chunk
             # Apply the specified functions to each row in the batch
             chunk = applier(function_cols, chunk, progress_bar=progress_bar)
             print("Finished processing")
+            print(f'finish time chunk: {time()-start_time_chunk}')
             # If an output file is specified, append the processed data to it
             if new_file is not None:
                 if i == 0:
@@ -639,7 +621,7 @@ def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_IT
             i += len(chunk)
             print(f'processed {i} rows')
         # Print the time taken to process the data
-        print(f'finish time: {time()-start_time}')
+        print(f'Total finish time: {time()-start_time}')
 
 
 def remove_unwanted_rows_and_cols(file, new_file, remove_rows=True, remove_cols=True):
@@ -678,14 +660,15 @@ def remove_unwanted_rows_and_cols(file, new_file, remove_rows=True, remove_cols=
     fh.remove_file(new_file)
     # Create a file for each chunk in the directory:
     first_iteration = True
-    for c in tqdm(pd.read_csv(file, encoding='utf-8', chunksize=ROWS_PR_ITERATION, lineterminator='\n'),
-                    desc='remove unwanted rows and cols', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
+    for c in tqdm(pd.read_csv(file, encoding='utf-8', chunksize=ROWS_PR_ITERATION),
+                  desc='remove unwanted rows and cols', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
         if remove_cols:
             # Remove columns which are not True in self.headers_to_keep:
             c = c[[k for k, v in headers_to_keep.items() if v]]
         if remove_rows:
             # Remove rows which have empty content or start with 'ERROR' or have a type not in self.labels or have a nan domain:
-            c = c[c['content'].notna() & ~c['content'].str.startswith('Error') & c['type'].isin(labels.keys()) & c['domain'].notna()]
+            c = c[c['content'].notna() & ~c['content'].str.startswith(
+                'Error') & c['type'].isin(labels.keys()) & c['domain'].notna()]
         c.to_csv(new_file, index=False, mode='a', header=first_iteration)
         first_iteration = False
 
@@ -698,48 +681,86 @@ def simple_model_test():
     sm.get_metrics()
 
 
-def create_dataset(file, unwanted_removed_file, cleaned_file, cleaned_file_combined):
-    #remove_unwanted_rows_and_cols(file=file, new_file=unwanted_removed_file, remove_rows=True, remove_cols=True)
-    
-    stopwords_lst = stopwords.words('english')
-    apply_pipeline(unwanted_removed_file, [
+def create_dataset1(file, cleaned_file, cleaned_file_with_sentence_analysis):
+    apply_pipeline(file, [
         (Binary_labels(), 'type', 'type_binary'),
-
         (Clean_domain(), 'domain'),
-
         (Clean_author(), "authors"),
 
         (Clean_data(), 'content', 'content_cleaned'),
-        (Tokenizer(), "content_cleaned"),
-        (Stem(), "content_cleaned"),
-        (Combine_Content(), "content_cleaned", "content_combined"),
-        #(Remove_stopwords(stopwords_lst), "content_cleaned"),
-        (Remove_stopwords2(), "content_cleaned"),
+        (Tokenizer(), "content_cleaned", "content_tokenized"),
+
+        (Remove_stopwords2(), "content_tokenized", "content_no_swords"),
+        (Stem(), "content_no_swords", "content_no_swords_stemmed"),
+        (Combine_Content(), "content_no_swords_stemmed", "content_no_swords_combined"),
 
         (Clean_data(), 'title'),
         (Tokenizer(), "title"),
-        #(Remove_stopwords(stopwords_lst), "title"),
-        (Remove_stopwords2(), "title"),
+        (Remove_stopwords(), "title"),
         (Stem(), "title"),
         (Combine_Content(), "title"),
 
-        (Sentence_analysis(), "content_combined", "sentence_analysis"),
+        (Join_str_columns(['content_no_swords_combined', 'authors']), None, 'content_authors'),
+        (Join_str_columns(['content_no_swords_combined', 'title']), None, 'content_title'),
+        (Join_str_columns(['content_no_swords_combined', 'domain']), None, 'content_domain'),
+        (Join_str_columns(['content_no_swords_combined', 'domain', 'authors', 'title']),
+         None, 'content_no_swords_domain_authors_title')
     ],
         new_file=cleaned_file,
         progress_bar=True,
     )
 
     apply_pipeline(cleaned_file, [
-        (Join_str_columns(
-            ['content_combined', 'authors']), None, 'content_authors'),
-        (Join_str_columns(
-            ['content_combined', 'title']), None, 'content_title'),
-        (Join_str_columns(
-            ['content_combined', 'domain']), None, 'content_domain'),
-        (Join_str_columns(['content_combined', 'domain',
-                           'authors', 'title']), None, 'content_domain_authors_title')
+        (Sentence_analysis(), "content_no_swords", "sentence_analysis_no_swords"),
     ],
-        new_file=cleaned_file_combined,
+        new_file=cleaned_file_with_sentence_analysis,
+        progress_bar=True,
+    )
+
+
+def create_dataset2(file, cleaned_file, cleaned_file_with_sentence_analysis):
+    apply_pipeline(file, [
+        (Binary_labels(), 'type', 'type_binary'),
+        (Clean_domain(), 'domain'),
+        (Clean_author(), "authors"),
+
+        (Clean_data(), 'content', 'content_cleaned'),
+        (Tokenizer(), "content_cleaned", "content_tokenized"),
+
+        (Stem(), "content_tokenized", "content_with_swords_stemmed"),
+        (Combine_Content(), "content_with_swords_stemmed", "content_with_swords_combined"),
+
+        (Remove_stopwords2(), "content_tokenized", "content_no_swords"),
+        (Stem(), "content_no_swords", "content_no_swords_stemmed"),
+        (Combine_Content(), "content_no_swords_stemmed", "content_no_swords_combined"),
+
+        (Clean_data(), 'title'),
+        (Tokenizer(), "title"),
+        (Remove_stopwords(), "title"),
+        (Stem(), "title"),
+        (Combine_Content(), "title"),
+
+        (Join_str_columns(['content_with_swords_combined', 'authors']), None, 'content_with_swords_authors'),
+        (Join_str_columns(['content_with_swords_combined', 'title']), None, 'content_with_swords_title'),
+        (Join_str_columns(['content_with_swords_combined', 'domain']), None, 'content_with_swords_domain'),
+        (Join_str_columns(['content_with_swords_combined', 'domain', 'authors', 'title']),
+         None, 'content_with_swords_domain_authors_title'),
+
+        (Join_str_columns(['content_no_swords_combined', 'authors']), None, 'content_no_swords_authors'),
+        (Join_str_columns(['content_no_swords_combined', 'title']), None, 'content_no_swords_title'),
+        (Join_str_columns(['content_no_swords_combined', 'domain']), None, 'content_no_swords_domain'),
+        (Join_str_columns(['content_no_swords_combined', 'domain', 'authors', 'title']),
+         None, 'content_no_swords_domain_authors_title')
+    ],
+        new_file=cleaned_file,
+        progress_bar=True,
+    )
+
+    apply_pipeline(cleaned_file, [
+        (Sentence_analysis(), "content_with_swords_combined", "sentence_analysis_with_swords"),
+        (Sentence_analysis(), "content_no_swords_combined", "sentence_analysis_no_swords"),
+    ],
+        new_file=cleaned_file_with_sentence_analysis,
         progress_bar=True,
     )
 
@@ -756,7 +777,15 @@ def run():
     else:
         print("Invalid choice - exiting")
         return
-    create_dataset(file=path+"shuffled.csv", unwanted_removed_file=path+"unwanted_removed.csv", cleaned_file=path+"dataset.csv", cleaned_file_combined=path+"dataset_combined.csv")
+    fh.statistics(file=path+"shuffled.csv", output_path=path+"stat/orig/", content_label='content')
+    remove_unwanted_rows_and_cols(file=path+"shuffled.csv", new_file=path +
+                                  "unwanted_removed.csv", remove_rows=True, remove_cols=True)
+    create_dataset2(file=path+"unwanted_removed.csv", cleaned_file=path+"cleaned_file.csv", cleaned_file_with_sentence_analysis=path +
+                    "cleaned_file_with_sentence_analysis.csv")
+    fh.statistics(file=path+"cleaned_file_with_sentence_analysis.csv", output_path=path+"stat/cleaned_file_with_swords/",
+                  content_label='content_with_swords_combined')
+    fh.statistics(file=path+"cleaned_file_with_sentence_analysis.csv", output_path=path+"stat/cleaned_file_no_swords/",
+                  content_label='content_no_swords_combined')
 
 
 if __name__ == '__main__':

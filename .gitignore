@@ -2,9 +2,10 @@
 # exclude
 *.pickle
 *.npz
-
+*d.txt
 # exclude all datasets
 datasets/*
+tmp/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

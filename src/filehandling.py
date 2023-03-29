@@ -8,7 +8,7 @@ from tqdm import tqdm
 from collections import Counter
 
 TQDM_COLOR = 'magenta'
-ROWS_PR_ITERATION = 20000
+ROWS_PR_ITERATION = 50000
 FILE_SIZE = 10000
 PADDING = 3
 COLS = {
@@ -71,15 +71,18 @@ def csv_split(filename: str, dirname: str):
                      desc='csv splitting', unit='splits', colour=TQDM_COLOR):
         pd.concat([colnames, c], ignore_index=True).to_csv(f'{dirname}/{i+1:0{PADDING}}.csv', index=False)
 
+
 def tsv_to_csv(file: str, new_file: str, headers: list = None):
     df = pd.read_csv(file, delimiter='\t', header=None)
     if headers is not None:
         df.columns = headers
     df.to_csv(new_file, index=False)
-    
+
+
 def combine_csv_files(files: list, new_file: str):
     df = pd.concat([pd.read_csv(f) for f in files])
     df.to_csv(new_file, index=False)
+
 
 def create_empty_string_array(cols: int) -> np.ndarray:
     arr = np.empty((1, cols), dtype=object)
@@ -130,35 +133,43 @@ def csv_to_h5(csv_filename: str, h5_filename: str):
                 data_set[-len(chunk):] = chunk.astype(str)
 
 
-def statistics(*h5_filenames: str, output_path: str = None):
+def statistics(file: str, output_path: str = None, content_label=None):
     # Initialize counters:
     total_rows = total_cols = 0
     type_counter = Counter()
+    domain_counter = Counter()
+    content_length = []
     # Iterate over all files:
-    for h5_filename in h5_filenames:
-        with h5py.File(h5_filename, 'r') as data_store:
-            rows, cols = data_store['data'].shape
-            total_rows += rows - 1
-            total_cols = cols
-            for i in tqdm(range(1, rows, ROWS_PR_ITERATION), desc='creating statistics', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
-                type_counter.update(data_store['data'][i:i+ROWS_PR_ITERATION, COLS['type']])
-    # Decode counters:
-    type_counter = decode_dict(type_counter)
+    for chunk in tqdm(pd.read_csv(file, encoding='utf-8', chunksize=ROWS_PR_ITERATION),
+                      desc='creating statistics', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
+        rows, cols = chunk.shape
+        total_rows += rows
+        total_cols = cols
+        type_counter.update(chunk['type'].fillna('none').values.flatten())
+        domain_counter.update(chunk['domain'].fillna('none').values.flatten())
+        content_length.extend(chunk[content_label].apply(len))
     # Add statistics to dataframes:
     total_rows_df = pd.DataFrame([['Number of rows', total_rows]], columns=['Statistic', 'Count'])
     total_cols_df = pd.DataFrame([['Number of cols', total_cols]], columns=['Statistic', 'Count'])
     # Sort dataframes by count and reset index:
     type_df = pd.DataFrame(list(type_counter.items()), columns=['Types', 'Count']).sort_values(
         by='Count', ascending=False).reset_index(drop=True)
+    domain_df = pd.DataFrame(list(domain_counter.items()), columns=['Domains', 'Count']).sort_values(
+        by='Count', ascending=False).reset_index(drop=True)
+    content_length_df = pd.DataFrame(content_length, columns=['Content_length'])
     # Print statistics to console without index:
     print(total_rows_df.to_string(index=False))
     print(total_cols_df.to_string(index=False))
     print(type_df.to_string(index=False))
+    # print(domain_df.to_string(index=False))
     # Save to file if output_file is specified:
     if output_path is not None:
-        total_rows_df.to_csv(output_path+"statistics.csv", mode='w', index=False, header=True)
-        total_cols_df.to_csv(output_path+"statistics.csv", mode='a', index=False, header=False)
-        type_df.to_csv(output_path+"statistics.csv", mode='a', index=False, header=True)
+        total_rows_df.to_csv(output_path+"rows_cols.csv", mode='w', index=False, header=True)
+        total_cols_df.to_csv(output_path+"rows_cols.csv", mode='a', index=False, header=False)
+        type_df.to_csv(output_path+"types.csv", mode='w', index=False, header=True)
+        domain_df.to_csv(output_path+"domain.csv", mode='w', index=False, header=True)
+        content_length_df.to_csv(output_path+"content_length.csv",
+                                 mode='w', index=False, header=True)
         print("Statistics added to csv file")
 
 
@@ -216,8 +227,6 @@ def run():
         return
     # Copy the raw file to a new file:
     copy_file(filename=path+"raw.h5", new_filename=path+"raw_copy.h5")
-    # Get the statistics:
-    statistics(path+"raw_copy.h5", output_path=path)
     # Shuffle the data:
     shuffle_h5(filename=path+"raw_copy.h5", new_filename=path+"shuffled.h5")
     # Convert h5 files to csv files:
