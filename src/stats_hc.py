@@ -91,7 +91,7 @@ class Statistics():
         self._barplot(data=words, measure=words_cnt, nwords=25, label='% of total words', title='word frequency', color='yellowgreen', ax=ax1)
 
 
-    def boxplot_plot_word_frequency(self):
+    def boxplot_word_frequency(self):
         fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(10, 5))
         self._boxplot(data=self.data[self.content_label].apply(len),
                         label='# of words', title='# of words per article', color='yellowgreen', ax=ax1)
@@ -279,7 +279,7 @@ class Statistics():
         plt.show()
         
         
-class Detect_outliers(FunctionApplier):
+class Detect_outliers(pp.FunctionApplier):
     def __init__(self):
         self.outliers = []
         self.outliers_index = []
