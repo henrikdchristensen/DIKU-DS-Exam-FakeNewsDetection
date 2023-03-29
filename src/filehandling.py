@@ -71,15 +71,18 @@ def csv_split(filename: str, dirname: str):
                      desc='csv splitting', unit='splits', colour=TQDM_COLOR):
         pd.concat([colnames, c], ignore_index=True).to_csv(f'{dirname}/{i+1:0{PADDING}}.csv', index=False)
 
+
 def tsv_to_csv(file: str, new_file: str, headers: list = None):
     df = pd.read_csv(file, delimiter='\t', header=None)
     if headers is not None:
         df.columns = headers
     df.to_csv(new_file, index=False)
-    
+
+
 def combine_csv_files(files: list, new_file: str):
     df = pd.concat([pd.read_csv(f) for f in files])
     df.to_csv(new_file, index=False)
+
 
 def create_empty_string_array(cols: int) -> np.ndarray:
     arr = np.empty((1, cols), dtype=object)
@@ -130,20 +133,18 @@ def csv_to_h5(csv_filename: str, h5_filename: str):
                 data_set[-len(chunk):] = chunk.astype(str)
 
 
-def statistics(*h5_filenames: str, output_path: str = None):
+def statistics(file: str, output_path: str = None):
     # Initialize counters:
     total_rows = total_cols = 0
     type_counter = Counter()
     # Iterate over all files:
-    for h5_filename in h5_filenames:
-        with h5py.File(h5_filename, 'r') as data_store:
-            rows, cols = data_store['data'].shape
-            total_rows += rows - 1
-            total_cols = cols
-            for i in tqdm(range(1, rows, ROWS_PR_ITERATION), desc='creating statistics', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
-                type_counter.update(data_store['data'][i:i+ROWS_PR_ITERATION, COLS['type']])
-    # Decode counters:
-    type_counter = decode_dict(type_counter)
+    for chunk in tqdm(pd.read_csv(file, encoding='utf-8', chunksize=ROWS_PR_ITERATION),
+                      desc='csv to h5', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
+        rows, cols = chunk.shape
+        total_rows += rows
+        total_cols = cols
+        for i in tqdm(range(1, rows, ROWS_PR_ITERATION), desc='creating statistics', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
+            type_counter.update(chunk[i:i+ROWS_PR_ITERATION, COLS['type']])
     # Add statistics to dataframes:
     total_rows_df = pd.DataFrame([['Number of rows', total_rows]], columns=['Statistic', 'Count'])
     total_cols_df = pd.DataFrame([['Number of cols', total_cols]], columns=['Statistic', 'Count'])

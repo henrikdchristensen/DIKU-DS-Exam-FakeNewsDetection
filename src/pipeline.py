@@ -85,10 +85,11 @@ class TF_IDF(FunctionApplier):
                 vector[i] = (np.log(vector[i]) + 1) * self.idf_vec[set][i]
         return vector
 
-def get_dataframe_with_distribution(file, 
-                                    total_size, splits, balanced, 
-                                    end_col = "set", type_col ="type",  
-                                    chunksize=ROWS_PR_ITERATION, out_file=None, get_frame=True, classes = labels, delete=True):
+
+def get_dataframe_with_distribution(file,
+                                    total_size, splits, balanced,
+                                    end_col="set", type_col="type",
+                                    chunksize=ROWS_PR_ITERATION, out_file=None, get_frame=True, classes=labels, delete=True):
     # empty dataframe
     data = None
     curr_index = 0
@@ -111,8 +112,7 @@ def get_dataframe_with_distribution(file,
         balanced, curr_set = sets[curr_index]
         if balanced and label not in classes:
             return DELETE_TOKEN
-        
-        
+
         if balanced:
             if sum(curr_set.values()) == 0:
                 curr_index += 1
@@ -468,8 +468,9 @@ class Clean_id_LIAR(FunctionApplier):
 
         return row
 
+
 class Binary_labels_LIAR(FunctionApplier):
-    def __init__(self, binary_labels = None):
+    def __init__(self, binary_labels=None):
         self.binary_labels: dict = {
             'pants-fire': False,
             'false': False,
@@ -485,6 +486,7 @@ class Binary_labels_LIAR(FunctionApplier):
         except:
             binary_label = True
         return binary_label
+
 
 class Binary_labels(FunctionApplier):
     def __init__(self):
@@ -677,14 +679,15 @@ def remove_unwanted_rows_and_cols(file, new_file, remove_rows=True, remove_cols=
     fh.remove_file(new_file)
     # Create a file for each chunk in the directory:
     first_iteration = True
-    for c in tqdm(pd.read_csv(file, encoding='utf-8', chunksize=ROWS_PR_ITERATION, lineterminator='\n'),
-                    desc='remove unwanted rows and cols', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
+    for c in tqdm(pd.read_csv(file, encoding='utf-8', chunksize=ROWS_PR_ITERATION),
+                  desc='remove unwanted rows and cols', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
         if remove_cols:
             # Remove columns which are not True in self.headers_to_keep:
             c = c[[k for k, v in headers_to_keep.items() if v]]
         if remove_rows:
             # Remove rows which have empty content or start with 'ERROR' or have a type not in self.labels or have a nan domain:
-            c = c[c['content'].notna() & ~c['content'].str.startswith('Error') & c['type'].isin(labels.keys()) & c['domain'].notna()]
+            c = c[c['content'].notna() & ~c['content'].str.startswith(
+                'Error') & c['type'].isin(labels.keys()) & c['domain'].notna()]
         c.to_csv(new_file, index=False, mode='a', header=first_iteration)
         first_iteration = False
 
@@ -730,11 +733,12 @@ def create_dataset(file, cleaned_file, cleaned_file_combined):
         (Join_str_columns(['content_combined', 'title']), None, 'content_title'),
         (Join_str_columns(['content_combined', 'domain']), None, 'content_domain'),
         (Join_str_columns(['content_combined', 'domain', 'authors', 'title']), None, 'content_domain_authors_title'),
-        
+
         (Join_str_columns(['sentence_no_swords_analysis', 'authors']), None, 'content_no_swords_authors'),
         (Join_str_columns(['sentence_no_swords_analysis', 'title']), None, 'content_no_swords_title'),
         (Join_str_columns(['sentence_no_swords_analysis', 'domain']), None, 'content_no_swords_domain'),
-        (Join_str_columns(['sentence_no_swords_analysis', 'domain', 'authors', 'title']), None, 'content_no_swords_domain_authors_title')
+        (Join_str_columns(['sentence_no_swords_analysis', 'domain', 'authors', 'title']),
+         None, 'content_no_swords_domain_authors_title')
     ],
         new_file=cleaned_file_combined,
         progress_bar=True,
@@ -753,11 +757,15 @@ def run():
     else:
         print("Invalid choice - exiting")
         return
-    remove_unwanted_rows_and_cols(file=path+"shuffled.csv", new_file=path+"cols_removed.csv", remove_rows=False, remove_cols=True)
-    create_dataset(file=path+"cols_removed.csv", cleaned_file=path+"cols_removed_cleaned.csv", cleaned_file_combined=path+"cols_removed_cleaned_combined.csv")
-    remove_unwanted_rows_and_cols(file=path+"cols_removed.csv", new_file=path+"cols_and_rows_removed.csv", remove_rows=True, remove_cols=False)
-    create_dataset(file=path+"cols_and_rows_removed.csv", cleaned_file=path+"cols_and_rows_removed_cleaned.csv", cleaned_file_combined=path+"cols_and_rows_removed_combined.csv")
-    fh.statistics(file=path+"cols_and_rows_removed.csv", new_file=path+"statistics_cols_and_rows_removed.csv")
+    remove_unwanted_rows_and_cols(file=path+"shuffled.csv", new_file=path +
+                                  "cols_removed.csv", remove_rows=False, remove_cols=True)
+    create_dataset(file=path+"cols_removed.csv", cleaned_file=path+"cols_removed_cleaned.csv",
+                   cleaned_file_combined=path+"cols_removed_cleaned_combined.csv")
+    remove_unwanted_rows_and_cols(file=path+"cols_removed.csv", new_file=path +
+                                  "cols_and_rows_removed.csv", remove_rows=True, remove_cols=False)
+    create_dataset(file=path+"cols_and_rows_removed.csv", cleaned_file=path +
+                   "cols_and_rows_removed_cleaned.csv", cleaned_file_combined=path+"cols_and_rows_removed_combined.csv")
+    #fh.statistics(file=path+"cols_and_rows_removed.csv", new_file=path+"statistics_cols_and_rows_removed.csv")
 
 
 if __name__ == '__main__':
