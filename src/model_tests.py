@@ -19,6 +19,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.ensemble import AdaBoostClassifier
+from keras_preprocessing.sequence import pad_sequences
+from keras_preprocessing.text import Tokenizer
 from time import time
 
 
@@ -34,7 +36,22 @@ def split_data(data, features, y, set="set", get_val=True):
     return X_train, X_val, X_test, y_train, y_val, y_test
 
 
-def create_count_vector(X_train, X_val, X_test):
+def create_padded_sequences(X_train, X_val, X_test, X_liar, num_words=10000, maxlen=1000):
+    tokenizer = Tokenizer(num_words=num_words, oov_token="<OOV>")
+
+    # all cleaned
+    tokenizer.fit_on_texts(X_train)
+    X_train_sequence = tokenizer.texts_to_sequences(X_train)
+    X_val_sequence = tokenizer.texts_to_sequences(X_val)
+    X_test_sequence = tokenizer.texts_to_sequences(X_test)
+    X_liar_sequence = tokenizer.texts_to_sequences(X_liar)
+
+    return (pad_sequences(X_train_sequence, maxlen=maxlen, truncating="post"),
+            pad_sequences(X_val_sequence, maxlen=maxlen, truncating="post"),
+            pad_sequences(X_test_sequence, maxlen=maxlen, truncating="post"),
+            pad_sequences(X_liar_sequence, maxlen=maxlen, truncating="post"))
+
+def create_count_vector(X_train, X_val, X_test, X_liar):
     # count vectri
     count_vectorizer = CountVectorizer(ngram_range=(1, 1)) # unigram
 
@@ -43,10 +60,14 @@ def create_count_vector(X_train, X_val, X_test):
 
     return (count_vectorizer.transform(X_train),
             count_vectorizer.transform(X_val),
-            count_vectorizer.transform(X_test), count_vectorizer)
+            count_vectorizer.transform(X_test),
+            count_vectorizer.transform(X_liar))
 
 
-def create_tdfidf_vector(X_train, X_val, X_test, ngram_range=(1, 1)):
+
+
+
+def create_tdfidf_vector(X_train, X_val, X_test, X_liar, ngram_range=(1, 1)):
     # tfidf vector
     tfidf_vectorizer = TfidfVectorizer(ngram_range=ngram_range) # unigram
 
@@ -55,54 +76,54 @@ def create_tdfidf_vector(X_train, X_val, X_test, ngram_range=(1, 1)):
 
     return (tfidf_vectorizer.transform(X_train),
             tfidf_vectorizer.transform(X_val),
-            tfidf_vectorizer.transform(X_test), tfidf_vectorizer)
+            tfidf_vectorizer.transform(X_test),
+            tfidf_vectorizer.transform(X_liar))
 
 
-def create_tdfidf_vector_unigram(X_train, X_val, X_test):
+def create_tdfidf_vector_unigram(X_train, X_val, X_test, X_liar):
     return create_tdfidf_vector(X_train, X_val, X_test, ngram_range=(1, 1))
 
-def create_tdfidf_vector_bigram(X_train, X_val, X_test):
-    return create_tdfidf_vector(X_train, X_val, X_test, ngram_range=(1, 2))
+def create_tdfidf_vector_bigram(X_train, X_val, X_test, X_liar):
+    return create_tdfidf_vector(X_train, X_val, X_test, X_liar, ngram_range=(1, 2))
 
-def create_tdfidf_vector_trigram(X_train, X_val, X_test):
-    return create_tdfidf_vector(X_train, X_val, X_test, ngram_range=(1, 3))
+def create_tdfidf_vector_trigram(X_train, X_val, X_test, X_liar):
+    return create_tdfidf_vector(X_train, X_val, X_test, X_liar, ngram_range=(1, 3))
 
 def save_csr_picle(file, vectors, append=False):
     file_param = "wb" if not append else "ab"
     with open(file, file_param) as f:
-        for train, val, test in vectors:
+        for train, val, test, liar in vectors:
             pickle.dump(train, f)
             pickle.dump(val, f)
             pickle.dump(test, f)
+            pickle.dump(liar, f)
 
 
-def apply_vec_func(file, func, name, X_train, X_val, X_test):
+def apply_vec_func(file, func, name, X_train, X_val, X_test, X_liar):
     start_time = time()
-    X_train_vec, X_val_vec, X_test_vec, vectorizer = func(X_train, X_val, X_test)
-    save_csr_picle(file, [(X_train_vec, X_val_vec, X_test_vec)], append=True)
+    X_train_vec, X_val_vec, X_test_vec, X_liar_vec = func(X_train, X_val, X_test)
+    save_csr_picle(file, [(X_train_vec, X_val_vec, X_test_vec, X_liar_vec)], append=True)
     print(f"Saved {name} vectors in {time() - start_time} seconds") 
-    return vectorizer
 
 # Vectorize data
-def create_vector_file(file, vec_funcs, X_train, X_val, X_test, y_train, y_val, y_test, save_y=True, append_y=False):
+def create_vector_file(file, vec_funcs, X_train, X_val, X_test, X_liar, y_train, y_val, y_test, y_liar, save_y=True, append_y=False):
     # save y
-    vectorizers = []
     if save_y:
-        save_csr_picle(file, [(y_train, y_val, y_test)], append=append_y)
+        save_csr_picle(file, [(y_train, y_val, y_test, y_liar)], append=append_y)
     # vectorize X and save
     for func, name in vec_funcs:
-        vectorizers.append(apply_vec_func(file, func, name, X_train, X_val, X_test))
-    return vectorizers
+        apply_vec_func(file, func, name, X_train, X_val, X_test, X_liar)
 
-def create_vector_file_cols(file, x_cols, y_col, vec_funcs, out_file, set_col = "set"):
-    data = pd.read_csv(file, usecols=x_cols + [y_col, set_col])
-    print("csv read for file:", file)
 
-    for i, col in enumerate(x_cols):
-        print("Vectorizing column:", col)
-        X_train, X_val, X_test, y_train, y_val, y_test = split_data(data, col, y_col, set=set_col)
-        save_y = True if i == 0 else False
-        create_vector_file(out_file, vec_funcs, X_train, X_val, X_test, y_train, y_val, y_test, save_y=save_y)
+# def create_vector_file_cols(file, x_cols, y_col, vec_funcs, out_file, set_col = "set"):
+#     data = pd.read_csv(file, usecols=x_cols + [y_col, set_col])
+#     print("csv read for file:", file)
+
+#     for i, col in enumerate(x_cols):
+#         print("Vectorizing column:", col)
+#         X_train, X_val, X_test, y_train, y_val, y_test = split_data(data, col, y_col, set=set_col)
+#         save_y = True if i == 0 else False
+#         create_vector_file(out_file, vec_funcs, X_train, X_val, X_test, y_train, y_val, y_test, save_y=save_y)
 
 def create_vectors_from_infolist(out_file, info_list, use_standard=True):
     vectorizers = []
