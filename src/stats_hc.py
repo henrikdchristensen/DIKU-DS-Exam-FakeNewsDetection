@@ -267,7 +267,55 @@ class Statistics():
         plt.show()
         
         
+class detectOutliers(FunctionApplier):
+    def __init__(self):
+        self.outliers = []
+        self.outliers_index = []
+        self.outliers_value = []
+
+    def function_to_apply(self, value):
+        # print(value)
+        if value > 0.5:
+            self.outliers.append(value)
+            self.outliers_index.append(self.index)
+            self.outliers_value.append(self.value)
+        return value
+    
+    def getDataFrame(self, csv):
+        df = pd.read_csv(csv, nrows=20000)
+        return df
+
+    
+    def kMeans(self):
+
+        df = self.getDataFrame("cleaned_fake_news.csv")
+
         
+        # Load cleaned fake news corpus
+        # df = pd.read_csv("cleaned_fake_news.csv")
+
+        # Vectorize the corpus using TF-IDF
+        tfidf_vectorizer = TfidfVectorizer(stop_words='english')
+        tfidf = tfidf_vectorizer.fit_transform(df['text'])
+
+        # Perform K-Means clustering
+        num_clusters = 5
+        kmeans = KMeans(n_clusters=num_clusters, init='k-means++', max_iter=100, n_init=1)
+        kmeans.fit(tfidf)
+
+        # Print the top terms in each cluster
+        print("Top terms per cluster:")
+        order_centroids = kmeans.cluster_centers_.argsort()[:, ::-1]
+        terms = tfidf_vectorizer.get_feature_names()
+        for i in range(num_clusters):
+            print(f"Cluster {i} terms: ", end='')
+            for j in order_centroids[i, :10]:
+                print(f"{terms[j]}, ", end='')
+            print()
+
+        # Visualize the clusters
+        plt.scatter(tfidf[:, 0], tfidf[:, 1], c=kmeans.labels_, cmap='rainbow')
+        plt.show()
 
 
 def create_dataset(file, cleaned_file, cleaned_file_combined):
