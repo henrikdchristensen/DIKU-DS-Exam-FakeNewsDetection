@@ -209,7 +209,7 @@ class Statistics_Fake_News_Corpus(Statistics, Fake_News_Corpus):
         # Plot: average sentence length
         true = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == True][self.fake_news.content_label].apply(self.stat.average_sentence_lengths)
         fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == False][self.fake_news.content_label].apply(self.stat.average_sentence_lengths)
-        self.stat.boxplot_true_fake(true=true, fake=fake, ylabel='avg. sentence length', title='# of words per article', ax=ax1)
+        self.stat.boxplot_true_fake(true=true, fake=fake, ylabel='avg. sentence length', ax=ax1)
 
         fig.suptitle('Avg. sentence length', fontsize=16)
         fig.tight_layout()
@@ -218,28 +218,28 @@ class Statistics_Fake_News_Corpus(Statistics, Fake_News_Corpus):
     def plot_pronouns(self):
         fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(10, 5))
         
-        # Plot 1: First person pronouns
+        # Plot 1: First pronouns
         true = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == True][self.fake_news.content_label].apply(lambda x: sum([x.count(word) for word in self.stat.first_pronouns]))
         fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == False][self.fake_news.content_label].apply(lambda x: sum([x.count(word) for word in self.stat.first_pronouns]))
         self.stat.boxplot_true_fake(true=true, fake=fake, ylabel='# of 1st pronouns', title='1st pronouns', ax=ax1)
         
-        # Plot 2: Second person pronouns
+        # Plot 2: Second pronouns
         true = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == True][self.fake_news.content_label].apply(lambda x: sum([x.count(word) for word in self.stat.second_pronouns]))
         fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == False][self.fake_news.content_label].apply(lambda x: sum([x.count(word) for word in self.stat.second_pronouns]))
         self.stat.boxplot_true_fake(true=true, fake=fake, ylabel='# of 2nd pronouns', title='2nd pronouns', ax=ax2)
         
-        # Plot 3: Third person pronouns
+        # Plot 3: Third pronouns
         true = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == True][self.fake_news.content_label].apply(lambda x: sum([x.count(word) for word in self.stat.third_pronouns]))
         fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == False][self.fake_news.content_label].apply(lambda x: sum([x.count(word) for word in self.stat.third_pronouns]))
         self.stat.boxplot_true_fake(true=true, fake=fake, ylabel='# of 3rd pronouns', title='3rd pronouns', ax=ax3)
         
-        # Plot 4: Person pronouns
+        # Plot 4: Pronouns
         true = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == True][self.fake_news.content_label].apply(lambda x: sum([x.count(word) for word in self.stat.pronouns]))
         fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == False][self.fake_news.content_label].apply(lambda x: sum([x.count(word) for word in self.stat.pronouns]))
         self.stat.boxplot_true_fake(true=true, fake=fake, ylabel='# of pronouns', title='total pronouns', ax=ax4)
 
         # Display the plots
-        fig.suptitle('Person pronouns', fontsize=16)
+        fig.suptitle('Personal pronouns', fontsize=16)
         fig.tight_layout()
         plt.show()
         
@@ -340,7 +340,7 @@ class Statistics_Fake_News_vs_Liar(Statistics, Fake_News_Corpus, Liar):
         ax1.set_xticklabels(data.keys())
         ax1.set_ylabel('# of words')        
         
-        fig.suptitle('Word frequency', fontsize=16)
+        fig.suptitle('# of words', fontsize=16)
         fig.tight_layout()
         plt.show()
         
