@@ -681,19 +681,14 @@ def simple_model_test():
     sm.get_metrics()
 
 
-def create_dataset(file, cleaned_file, cleaned_file_combined, cleaned_file_combined_with_sentence):
+def create_dataset1(file, cleaned_file, cleaned_file_with_sentence_analysis):
     apply_pipeline(file, [
         (Binary_labels(), 'type', 'type_binary'),
-
         (Clean_domain(), 'domain'),
-
         (Clean_author(), "authors"),
 
         (Clean_data(), 'content', 'content_cleaned'),
         (Tokenizer(), "content_cleaned", "content_tokenized"),
-
-        (Stem(), "content_tokenized", "content_with_swords"),
-        (Combine_Content(), "content_with_swords", "content_with_swords_combined"),
 
         (Remove_stopwords2(), "content_tokenized", "content_no_swords"),
         (Stem(), "content_no_swords", "content_no_swords_stemmed"),
@@ -704,17 +699,52 @@ def create_dataset(file, cleaned_file, cleaned_file_combined, cleaned_file_combi
         (Remove_stopwords(), "title"),
         (Stem(), "title"),
         (Combine_Content(), "title"),
+
+        (Join_str_columns(['content_no_swords_combined', 'authors']), None, 'content_authors'),
+        (Join_str_columns(['content_no_swords_combined', 'title']), None, 'content_title'),
+        (Join_str_columns(['content_no_swords_combined', 'domain']), None, 'content_domain'),
+        (Join_str_columns(['content_no_swords_combined', 'domain', 'authors', 'title']),
+         None, 'content_no_swords_domain_authors_title')
     ],
         new_file=cleaned_file,
         progress_bar=True,
     )
 
     apply_pipeline(cleaned_file, [
+        (Sentence_analysis(), "content_no_swords", "sentence_analysis_no_swords"),
+    ],
+        new_file=cleaned_file_with_sentence_analysis,
+        progress_bar=True,
+    )
+
+
+def create_dataset2(file, cleaned_file, cleaned_file_with_sentence_analysis):
+    apply_pipeline(file, [
+        (Binary_labels(), 'type', 'type_binary'),
+        (Clean_domain(), 'domain'),
+        (Clean_author(), "authors"),
+
+        (Clean_data(), 'content', 'content_cleaned'),
+        (Tokenizer(), "content_cleaned", "content_tokenized"),
+
+        (Stem(), "content_tokenized", "content_with_swords_stemmed"),
+        (Combine_Content(), "content_with_swords_stemmed", "content_with_swords_combined"),
+
+        (Remove_stopwords2(), "content_tokenized", "content_no_swords"),
+        (Stem(), "content_no_swords", "content_no_swords_stemmed"),
+        (Combine_Content(), "content_no_swords_stemmed", "content_no_swords_combined"),
+
+        (Clean_data(), 'title'),
+        (Tokenizer(), "title"),
+        (Remove_stopwords(), "title"),
+        (Stem(), "title"),
+        (Combine_Content(), "title"),
+
         (Join_str_columns(['content_with_swords_combined', 'authors']), None, 'content_with_swords_authors'),
         (Join_str_columns(['content_with_swords_combined', 'title']), None, 'content_with_swords_title'),
         (Join_str_columns(['content_with_swords_combined', 'domain']), None, 'content_with_swords_domain'),
-        (Join_str_columns(['content_with_swords_combined', 'domain',
-                           'authors', 'title']), None, 'content_with_swords_domain_authors_title'),
+        (Join_str_columns(['content_with_swords_combined', 'domain', 'authors', 'title']),
+         None, 'content_with_swords_domain_authors_title')
 
         (Join_str_columns(['content_no_swords_combined', 'authors']), None, 'content_no_swords_authors'),
         (Join_str_columns(['content_no_swords_combined', 'title']), None, 'content_no_swords_title'),
@@ -722,15 +752,15 @@ def create_dataset(file, cleaned_file, cleaned_file_combined, cleaned_file_combi
         (Join_str_columns(['content_no_swords_combined', 'domain', 'authors', 'title']),
          None, 'content_no_swords_domain_authors_title')
     ],
-        new_file=cleaned_file_combined,
+        new_file=cleaned_file,
         progress_bar=True,
     )
 
-    apply_pipeline(cleaned_file_combined, [
-        (Sentence_analysis(), "content_with_swords", "sentence_analysis_with_swords"),
-        (Sentence_analysis(), "content_no_swords", "sentence_analysis_no_swords"),
+    apply_pipeline(cleaned_file, [
+        (Sentence_analysis(), "content_with_swords_combined", "sentence_analysis_with_swords"),
+        (Sentence_analysis(), "content_no_swords_combined", "sentence_analysis_no_swords"),
     ],
-        new_file=cleaned_file_combined_with_sentence,
+        new_file=cleaned_file_with_sentence_analysis,
         progress_bar=True,
     )
 
@@ -750,11 +780,9 @@ def run():
     fh.statistics(file=path+"shuffled.csv", output_path=path+"stat/orig/", content_label='content')
     remove_unwanted_rows_and_cols(file=path+"shuffled.csv", new_file=path +
                                   "unwanted_removed.csv", remove_rows=True, remove_cols=True)
-    create_dataset(file=path+"unwanted_removed.csv", cleaned_file=path +
-                   "unwanted_removed_cleaned.csv", cleaned_file_combined=path+"unwanted_removed_combined.csv", cleaned_file_combined_with_sentence=path+"unwanted_removed_sentence_analysis.csv")
-    fh.statistics(file=path+"unwanted_removed_sentence_analysis.csv", output_path=path+"stat/unwanted_removed_with_swords/",
-                  content_label='content_with_swords_combined')
-    fh.statistics(file=path+"unwanted_removed_sentence_analysis.csv", output_path=path+"stat/unwanted_removed_no_swords/",
+    create_dataset2(file=path+"unwanted_removed.csv", cleaned_file=path+"cleaned_file.csv", cleaned_file_with_sentence_analysis=path +
+                    "cleaned_file_with_sentence_analysis.csv")
+    fh.statistics(file=path+"cleaned_file_with_sentence_analysis.csv", output_path=path+"stat/cleaned_file_no_swords/",
                   content_label='content_no_swords_combined')
 
 
