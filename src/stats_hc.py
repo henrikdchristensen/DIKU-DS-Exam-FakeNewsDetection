@@ -329,11 +329,11 @@ class Statistics_Fake_News_vs_Liar(Statistics, Fake_News_Corpus, Liar):
         plt.show()
         
     def boxplot_word_frequency(self):
-        fig, ax1 = plt.subplots(1, 1, figsize=(4, 3))
+        fig, ax1 = plt.subplots(1, 1, figsize=(4, 7))
         colors = ['yellowgreen', 'orange']
         fake_news = self.fake_news.data[self.fake_news.content_label].apply(len)
         liar = self.liar.data[self.liar.statement_label].apply(len)
-        data = {"Fake News": fake_news, "LIAR": liar}
+        data = {"Fake News Corpus": fake_news, "LIAR": liar}
         bp = ax1.boxplot(data.values(), patch_artist=True, showfliers=True, widths=0.25)
         for patch, color in zip(bp['boxes'], colors):
             patch.set_facecolor(color)
