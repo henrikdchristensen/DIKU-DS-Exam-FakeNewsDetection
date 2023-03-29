@@ -757,6 +757,7 @@ def run():
     else:
         print("Invalid choice - exiting")
         return
+    fh.statistics(file=path+"shuffled.csv", output_path=path+"stat/orig/", content_label='content')
     remove_unwanted_rows_and_cols(file=path+"shuffled.csv", new_file=path +
                                   "cols_removed.csv", remove_rows=False, remove_cols=True)
     create_dataset(file=path+"cols_removed.csv", cleaned_file=path+"cols_removed_cleaned.csv",
@@ -765,7 +766,10 @@ def run():
                                   "cols_and_rows_removed.csv", remove_rows=True, remove_cols=False)
     create_dataset(file=path+"cols_and_rows_removed.csv", cleaned_file=path +
                    "cols_and_rows_removed_cleaned.csv", cleaned_file_combined=path+"cols_and_rows_removed_combined.csv")
-    #fh.statistics(file=path+"cols_and_rows_removed.csv", new_file=path+"statistics_cols_and_rows_removed.csv")
+    fh.statistics(file=path+"cols_and_rows_removed_combined.csv", output_path=path+"stat/cols_and_rows_removed_combined/",
+                  content_label='content_combined')
+    fh.statistics(file=path+"cols_and_rows_removed_combined.csv", output_path=path+"stat/cols_and_rows_removed_combined_no_swords/",
+                  content_label='content_no_swords_combined')
 
 
 if __name__ == '__main__':
