@@ -615,11 +615,13 @@ def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_IT
 
     with pd.read_csv(old_file, chunksize=batch_size, encoding='utf-8', nrows=total_rows) as reader:
         for chunk in reader:
+            start_time_chunk = time()
             if function_cols is None:
                 return chunk
             # Apply the specified functions to each row in the batch
             chunk = applier(function_cols, chunk, progress_bar=progress_bar)
             print("Finished processing")
+            print(f'finish time chunk: {time()-start_time_chunk}')
             # If an output file is specified, append the processed data to it
             if new_file is not None:
                 if i == 0:
@@ -636,7 +638,7 @@ def apply_pipeline(old_file, function_cols, new_file=None, batch_size=ROWS_PR_IT
             i += len(chunk)
             print(f'processed {i} rows')
         # Print the time taken to process the data
-        print(f'finish time: {time()-start_time}')
+        print(f'Total finish time: {time()-start_time}')
 
 
 def remove_unwanted_rows_and_cols(file, new_file, remove_rows=True, remove_cols=True):
