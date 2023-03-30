@@ -1,0 +1,21 @@
+True:
+count    574876.000000
+mean        333.874509
+std         393.337457
+min           3.000000
+25%         106.000000
+50%         232.000000
+75%         449.000000
+max       20403.000000
+Name: content_no_swords_stemmed, dtype: float64
+
+Fake:
+count    525124.000000
+mean        264.865119
+std         449.265210
+min           0.000000
+25%          32.000000
+50%         125.000000
+75%         333.000000
+max       14041.000000
+Name: content_no_swords_stemmed, dtype: float64
