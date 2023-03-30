@@ -497,6 +497,20 @@ class Binary_labels_LIAR(FunctionApplier):
 
 class Binary_labels(FunctionApplier):
     def __init__(self):
+        # self.binary_labels: dict = {
+        #     'fake': False,
+        #     'conspiracy': False,
+        #     'junksci': False,
+        #     'hate': False,
+        #     'unreliable': False,
+        #     'bias': False,
+        #     'satire': False,
+        #     'state': False,
+        #     'reliable': True,
+        #     'clickbait': True,
+        #     'political': True
+        # }
+
         self.binary_labels: dict = {
             'fake': True,
             'conspiracy': True,
