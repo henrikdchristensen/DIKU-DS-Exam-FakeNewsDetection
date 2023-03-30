@@ -232,6 +232,28 @@ class Read_numpy_arr(FunctionApplier):
         sorted_freq_items = [x[0] for x in sorted_items if x[1] /
                              word_sum >= low and x[1] / word_sum <= high]
 
+class Get_vocabulary_size(FunctionApplier):
+    def __init__(self):
+        self.unique_words = Counter()
+
+    def function_to_apply(self, cell):
+        words = cell
+        if type(words) is not list:
+            words = literal_eval(words)
+        self.unique_words.update(words)
+        return cell
+
+    def get_unique_words(self, low, high):
+        # Get the sum of all words
+        word_sum = sum(self.unique_words.values())
+        # Sort the words by frequency and filter out the words that are not within the given range
+        sorted_items = sorted(self.unique_words.items(),
+                              key=lambda x: x[1], reverse=True)
+        sorted_freq_items = [x[0] for x in sorted_items if x[1] /
+                             word_sum >= low and x[1] / word_sum <= high]
+
+        return sorted(sorted_freq_items)
+
 class Generate_unique_word_list(FunctionApplier):
     def __init__(self):
         self.unique_words = Counter()
