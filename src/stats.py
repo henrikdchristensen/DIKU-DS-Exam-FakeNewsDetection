@@ -46,7 +46,7 @@ class Statistics():
             measure = [(freq/length)*100 for freq in measure]
         return words, measure
 
-    def barplot(self, data, measure, nwords: int = 25, minmax: tuple = None, label: str = None, title: str = None, boolean=False, color='lightsalmon', ax=None):
+    def barplot(self, data, measure, num: int = 25, minmax: tuple = None, label: str = None, title: str = None, boolean=False, color='lightsalmon', ax=None):
         if ax is None:
             fig, ax = plt.subplots(1, 1)
         #ax.tick_params(axis='x', rotation=90)
@@ -54,13 +54,12 @@ class Statistics():
             color = ['lightblue', 'lightsalmon']
             ax.set_yticks([0, 1])
             ax.set_yticklabels(['Fake', 'True'])
-        ax.barh(data[:nwords], measure[:nwords], color=color)
+        ax.barh(data[:num], measure[:num], color=color, height=0.4)
         ax.set_xlim(minmax)
         ax.set_xlabel(label)
         ax.set_title(title)
 
-    def boxplot_true_fake(self, true=None, fake=None, showfliers=True, colors=['lightsalmon', 'lightblue'], ylabel: str = None, title: str = None, ax=None):
-        data = {"True": true, "Fake": fake}
+    def boxplot_data1_vs_data2(self, data=None, showfliers=True, colors=['lightsalmon', 'lightblue'], ylabel: str = None, title: str = None, ax=None):
         bp = ax.boxplot(data.values(), patch_artist=True, showfliers=showfliers, widths=0.25)
         for patch, color in zip(bp['boxes'], colors):
             patch.set_facecolor(color)
@@ -111,19 +110,20 @@ class Statistics_Fake_News_Corpus(Statistics, Fake_News_Corpus):
         self.stat = Statistics()
         self.fake_news = fake_news
 
-    def barplot_word_frequency(self):
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 10))
+    def barplot_word_frequency(self, nwords=25):
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 7))
         true_words, true_words_cnt = self.stat.sort_frequency(
             self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == True][self.fake_news.content_label].explode().tolist(), percentage=True)
         fake_words, fake_words_cnt = self.stat.sort_frequency(
             self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == False][self.fake_news.content_label].explode().tolist(), percentage=True)
         max_value = max(max(true_words_cnt), max(fake_words_cnt))*1.1
-        self.stat.barplot(data=true_words, measure=true_words_cnt, nwords=25, minmax=(0, max_value),
+        self.stat.barplot(data=true_words, measure=true_words_cnt, num=nwords, minmax=(0, max_value),
                           label='% of words in true articles', title='True', color='lightsalmon', ax=ax1)
-        self.stat.barplot(data=fake_words, measure=fake_words_cnt, nwords=25, minmax=(0, max_value),
+        self.stat.barplot(data=fake_words, measure=fake_words_cnt, num=nwords, minmax=(0, max_value),
                           label='% of words in fake articles', title='Fake', color='lightblue', ax=ax2)
-
+        fig.tight_layout()
         fig.suptitle('Word frequency', fontsize=16)
+        plt.show()
 
     def boxplot_word_frequency(self):
         fig, ax1 = plt.subplots(1, 1, figsize=(8, 4))
@@ -132,7 +132,8 @@ class Statistics_Fake_News_Corpus(Statistics, Fake_News_Corpus):
                                    == True][self.fake_news.content_label].apply(len)
         fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label]
                                    == False][self.fake_news.content_label].apply(len)
-        self.stat.boxplot_true_fake(true=true, fake=fake, ylabel='# of words', ax=ax1)
+        data = {"True": true, "Fake": fake}
+        self.stat.boxplot_data1_vs_data2(data=data, ylabel='# of words', ax=ax1)
 
         fig.suptitle('# of words per article', fontsize=16)
         fig.tight_layout()
@@ -145,13 +146,15 @@ class Statistics_Fake_News_Corpus(Statistics, Fake_News_Corpus):
                                    == True][self.fake_news.content_label].apply(lambda x: x.count("!"))
         fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label]
                                    == False][self.fake_news.content_label].apply(lambda x: x.count("!"))
-        self.stat.boxplot_true_fake(true=true, fake=fake, ylabel='# of !', title="# of '!' per article", ax=ax1)
+        data = {"True": true, "Fake": fake}
+        self.stat.boxplot_data1_vs_data2(data=data, ylabel='# of !', title="# of '!' per article", ax=ax1)
 
         true = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label]
                                    == True][self.fake_news.content_label].apply(lambda x: x.count("?"))
         fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label]
                                    == False][self.fake_news.content_label].apply(lambda x: x.count("?"))
-        self.stat.boxplot_true_fake(true=true, fake=fake, ylabel='# of ?', title="# of '?' per article", ax=ax2)
+        data = {"True": true, "Fake": fake}
+        self.stat.boxplot_data1_vs_data2(data=data, ylabel='# of ?', title="# of '?' per article", ax=ax2)
 
         #fig.suptitle('frequencies', fontsize=16)
         fig.tight_layout()
@@ -201,6 +204,8 @@ class Statistics_Fake_News_Corpus(Statistics, Fake_News_Corpus):
         plt.show()
 
     def barplot_domain_to_label_contribution(self, threshold=0, percentage=True):
+        fig, ax = plt.subplots(figsize=(8, 9))
+        
         counts, percentages = None, None
         counts = self.fake_news.data.groupby([self.fake_news.domain_label, self.fake_news.type_label])[
             self.fake_news.content_label].count().unstack()
@@ -215,7 +220,6 @@ class Statistics_Fake_News_Corpus(Statistics, Fake_News_Corpus):
         color_list = [self.fake_news.types_colors[label] for label in percentages.columns]
         plot_title = f'Domain contribution to Label ( ≥ {threshold}%)' if percentage else f'Domain contribution to Label (top {threshold} most frequent)'
         xlabel = '% of label' if percentage else '# of label'
-        fig, ax = plt.subplots(figsize=(10, 10))
         if percentage:
             percentages.plot(kind='barh', stacked=True, width=0.6, color=color_list, alpha=0.5, ax=ax)
         else:
@@ -236,7 +240,8 @@ class Statistics_Fake_News_Corpus(Statistics, Fake_News_Corpus):
                                    True][self.fake_news.content_label].apply(self.stat.average_sentence_lengths)
         fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] ==
                                    False][self.fake_news.content_label].apply(self.stat.average_sentence_lengths)
-        self.stat.boxplot_true_fake(true=true, fake=fake, ylabel='avg. sentence length', ax=ax1)
+        data = {"True": true, "Fake": fake}
+        self.stat.boxplot_data1_vs_data2(data=data, ylabel='avg. sentence length', ax=ax1)
 
         fig.suptitle('Avg. sentence length', fontsize=16)
         fig.tight_layout()
@@ -250,28 +255,32 @@ class Statistics_Fake_News_Corpus(Statistics, Fake_News_Corpus):
             lambda x: sum([x.count(word) for word in self.stat.first_pronouns]))
         fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == False][self.fake_news.content_label].apply(
             lambda x: sum([x.count(word) for word in self.stat.first_pronouns]))
-        self.stat.boxplot_true_fake(true=true, fake=fake, ylabel='# of 1st pronouns', title='1st pronouns', ax=ax1)
+        data = {"True": true, "Fake": fake}
+        self.stat.boxplot_data1_vs_data2(data=data, ylabel='# of 1st pronouns', title='1st pronouns', ax=ax1)
 
         # Plot 2: Second pronouns
         true = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == True][self.fake_news.content_label].apply(
             lambda x: sum([x.count(word) for word in self.stat.second_pronouns]))
         fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == False][self.fake_news.content_label].apply(
             lambda x: sum([x.count(word) for word in self.stat.second_pronouns]))
-        self.stat.boxplot_true_fake(true=true, fake=fake, ylabel='# of 2nd pronouns', title='2nd pronouns', ax=ax2)
+        data = {"True": true, "Fake": fake}
+        self.stat.boxplot_data1_vs_data2(data=data, ylabel='# of 2nd pronouns', title='2nd pronouns', ax=ax2)
 
         # Plot 3: Third pronouns
         true = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == True][self.fake_news.content_label].apply(
             lambda x: sum([x.count(word) for word in self.stat.third_pronouns]))
         fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == False][self.fake_news.content_label].apply(
             lambda x: sum([x.count(word) for word in self.stat.third_pronouns]))
-        self.stat.boxplot_true_fake(true=true, fake=fake, ylabel='# of 3rd pronouns', title='3rd pronouns', ax=ax3)
+        data = {"True": true, "Fake": fake}
+        self.stat.boxplot_data1_vs_data2(data=data, ylabel='# of 3rd pronouns', title='3rd pronouns', ax=ax3)
 
         # Plot 4: Pronouns
         true = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == True][self.fake_news.content_label].apply(
             lambda x: sum([x.count(word) for word in self.stat.pronouns]))
         fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == False][self.fake_news.content_label].apply(
             lambda x: sum([x.count(word) for word in self.stat.pronouns]))
-        self.stat.boxplot_true_fake(true=true, fake=fake, ylabel='# of pronouns', title='total pronouns', ax=ax4)
+        data = {"True": true, "Fake": fake}
+        self.stat.boxplot_data1_vs_data2(data=data, ylabel='# of pronouns', title='total pronouns', ax=ax4)
 
         # Display the plots
         fig.suptitle('Personal pronouns', fontsize=16)
@@ -286,7 +295,8 @@ class Statistics_Fake_News_Corpus(Statistics, Fake_News_Corpus):
             lambda x: sum([x.count(word) for word in self.stat.negations]))
         fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == False][self.fake_news.content_label].apply(
             lambda x: sum([x.count(word) for word in self.stat.negations]))
-        self.stat.boxplot_true_fake(true=true, fake=fake, ylabel='# of negations', ax=ax1)
+        data = {"True": true, "Fake": fake}
+        self.stat.boxplot_data1_vs_data2(data=data, ylabel='# of negations', ax=ax1)
 
         fig.suptitle('Negations', fontsize=16)
         fig.tight_layout()
@@ -300,14 +310,16 @@ class Statistics_Fake_News_Corpus(Statistics, Fake_News_Corpus):
                                    == True][self.fake_news.sentence_analysis_label].apply(lambda x: x[0])
         fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label]
                                    == False][self.fake_news.sentence_analysis_label].apply(lambda x: x[0])
-        self.stat.boxplot_true_fake(true=true, fake=fake, ylabel='polarity score', title='Polarity score', ax=ax1)
+        data = {"True": true, "Fake": fake}
+        self.stat.boxplot_data1_vs_data2(data=data, ylabel='polarity score', title='Polarity score', ax=ax1)
 
         # Plot 2: Subjective score
         true = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label]
                                    == True][self.fake_news.sentence_analysis_label].apply(lambda x: x[1])
         fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label]
                                    == False][self.fake_news.sentence_analysis_label].apply(lambda x: x[1])
-        self.stat.boxplot_true_fake(true=true, fake=fake, ylabel='subjective score', title='Subjective score', ax=ax2)
+        data = {"True": true, "Fake": fake}
+        self.stat.boxplot_data1_vs_data2(data=data, ylabel='subjective score', title='Subjective score', ax=ax2)
 
         fig.suptitle('Sentence analysis', fontsize=16)
         fig.tight_layout()
@@ -357,16 +369,16 @@ class Statistics_Fake_News_vs_Liar(Statistics, Fake_News_Corpus, Liar):
         self.fake_news = fake_news
         self.liar = liar
 
-    def barplot_word_frequency(self):
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 10))
+    def barplot_word_frequency(self, nwords = 25):
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 7))
         words_fake_news, words_cnt_fake_news = self.stat.sort_frequency(
             self.fake_news.data[self.fake_news.content_label].explode(), percentage=True)
         words_liar, words_cnt_liar = self.stat.sort_frequency(
             self.liar.data[self.liar.statement_label].explode(), percentage=True)
         max_value = max(max(words_cnt_fake_news), max(words_cnt_liar))*1.1
-        self.stat.barplot(data=words_fake_news, measure=words_cnt_fake_news, nwords=25, minmax=(
+        self.stat.barplot(data=words_fake_news, measure=words_cnt_fake_news, num=nwords, minmax=(
             0, max_value), label='% of total words', title='Fake News Corpus', color='yellowgreen', ax=ax1)
-        self.stat.barplot(data=words_liar, measure=words_cnt_liar, nwords=25, minmax=(
+        self.stat.barplot(data=words_liar, measure=words_cnt_liar, num=nwords, minmax=(
             0, max_value), label='% of total words', title='LIAR', color='orange', ax=ax2)
 
         fig.suptitle('Word frequency', fontsize=16)
@@ -374,59 +386,59 @@ class Statistics_Fake_News_vs_Liar(Statistics, Fake_News_Corpus, Liar):
         plt.show()
 
     def boxplot_word_frequency(self):
-        fig, ax1 = plt.subplots(1, 1, figsize=(4, 7))
-        colors = ['yellowgreen', 'orange']
+        fig, ax1 = plt.subplots(1, 1, figsize=(3, 5))
         fake_news = self.fake_news.data[self.fake_news.content_label].apply(len)
         liar = self.liar.data[self.liar.statement_label].apply(len)
         data = {"Fake News Corpus": fake_news, "LIAR": liar}
-        bp = ax1.boxplot(data.values(), patch_artist=True, showfliers=True, widths=0.25)
-        for patch, color in zip(bp['boxes'], colors):
-            patch.set_facecolor(color)
-        ax1.set_xticklabels(data.keys())
-        ax1.set_ylabel('# of words')
+        self.stat.boxplot_data1_vs_data2(data=data, colors=['yellowgreen', 'orange'], ylabel='# of words', ax=ax1)
 
         fig.suptitle('# of words', fontsize=16)
         fig.tight_layout()
         plt.show()
 
-    def plot_party(self):
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
+    def plot_party(self, nparties=25):
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 7))
         true_party, true_party_cnt = self.stat.sort_frequency(
             self.liar.data[self.liar.data[self.liar.binary_type_label] == True][self.liar.party_label].dropna().explode(), percentage=True)
         fake_party, fake_party_cnt = self.stat.sort_frequency(
             self.liar.data[self.liar.data[self.liar.binary_type_label] == False][self.liar.party_label].dropna().explode(), percentage=True)
         max_val = max(true_party_cnt + fake_party_cnt)*1.1
-        self.stat.barplot(data=true_party, measure=true_party_cnt, nwords=25, minmax=(0, max_val),
+        self.stat.barplot(data=true_party, measure=true_party_cnt, num=nparties, minmax=(0, max_val),
                           label='% of true articles', title='True', color='lightsalmon', ax=ax1)
-        self.stat.barplot(data=fake_party, measure=fake_party_cnt, nwords=25, minmax=(0, max_val),
+        self.stat.barplot(data=fake_party, measure=fake_party_cnt, num=nparties, minmax=(0, max_val),
                           label='% of fake articles', title='Fake', color='lightblue', ax=ax2)
 
         fig.suptitle('Party frequency', fontsize=16)
         fig.tight_layout()
         plt.show()
 
-    def plot_speaker(self):
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
+    def plot_speaker(self, nspeakers=25):
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 7))
         true_speaker, true_speaker_cnt = self.stat.sort_frequency(
             self.liar.data[self.liar.data[self.liar.binary_type_label] == True][self.liar.speaker_label].explode(), percentage=True)
         fake_speaker, fake_speaker_cnt = self.stat.sort_frequency(
             self.liar.data[self.liar.data[self.liar.binary_type_label] == False][self.liar.speaker_label].explode(), percentage=True)
         max_val = max(true_speaker_cnt + fake_speaker_cnt)*1.1
-        self.stat.barplot(data=true_speaker, measure=true_speaker_cnt, nwords=25, minmax=(
+        self.stat.barplot(data=true_speaker, measure=true_speaker_cnt, num=nspeakers, minmax=(
             0, max_val), label='% of true articles', title='True', color='lightsalmon', ax=ax1)
-        self.stat.barplot(data=fake_speaker, measure=fake_speaker_cnt, nwords=25, minmax=(
+        self.stat.barplot(data=fake_speaker, measure=fake_speaker_cnt, num=nspeakers, minmax=(
             0, max_val), label='% of fake articles', title='Fake', color='lightblue', ax=ax2)
 
         fig.suptitle('Speaker frequency', fontsize=16)
         fig.tight_layout()
         plt.show()
 
-    def plot_subjects(self):
-        fig, ax1 = plt.subplots(1, 1, figsize=(10, 5))
-        subjects, subjects_cnt = self.stat.sort_frequency(
-            self.liar.data[self.liar.subjects_label].explode(), percentage=True)
-        self.stat.barplot(data=subjects, measure=subjects_cnt, nwords=25, minmax=(
-            0, None), label='% of articles', color='orange', ax=ax1)
+    def plot_subjects(self, nsubjects=25):
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 7))
+        true_subjects, true_subjects_cnt = self.stat.sort_frequency(
+            self.liar.data[self.liar.data[self.liar.binary_type_label] == True][self.liar.subjects_label].explode(), percentage=True)
+        fake_subjects, fake_subjects_cnt = self.stat.sort_frequency(
+            self.liar.data[self.liar.data[self.liar.binary_type_label] == False][self.liar.subjects_label].explode(), percentage=True)
+        max_val = max(true_subjects_cnt + fake_subjects_cnt)*1.1
+        self.stat.barplot(data=true_subjects, measure=true_subjects_cnt, num=nsubjects, minmax=(
+            0, max_val), label='% of true articles', title='True', color='lightsalmon', ax=ax1)
+        self.stat.barplot(data=fake_subjects, measure=fake_subjects_cnt, num=nsubjects, minmax=(
+            0, max_val), label='% of fake articles', title='Fake', color='lightblue', ax=ax2)
 
         fig.suptitle('Subjects frequency', fontsize=16)
         fig.tight_layout()
