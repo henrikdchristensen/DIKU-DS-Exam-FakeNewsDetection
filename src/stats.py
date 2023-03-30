@@ -112,7 +112,7 @@ class Statistics_Fake_News_Corpus(Statistics, Fake_News_Corpus):
         self.fake_news = fake_news
 
     def barplot_word_frequency(self):
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 10))
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 10))
         true_words, true_words_cnt = self.stat.sort_frequency(
             self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == True][self.fake_news.content_label].explode().tolist(), percentage=True)
         fake_words, fake_words_cnt = self.stat.sort_frequency(
@@ -126,25 +126,32 @@ class Statistics_Fake_News_Corpus(Statistics, Fake_News_Corpus):
         fig.suptitle('Word frequency', fontsize=16)
 
     def boxplot_word_frequency(self):
-        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(8, 4))
+        fig, ax1 = plt.subplots(1, 1, figsize=(8, 4))
 
         true = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label]
                                    == True][self.fake_news.content_label].apply(len)
         fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label]
                                    == False][self.fake_news.content_label].apply(len)
-        self.stat.boxplot_true_fake(true=true, fake=fake, ylabel='# of words', title='# of words per article', ax=ax1)
+        self.stat.boxplot_true_fake(true=true, fake=fake, ylabel='# of words', ax=ax1)
+
+        fig.suptitle('# of words per article', fontsize=16)
+        fig.tight_layout()
+        plt.show()
+        
+    def boxplot_char_frequency(self):
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8, 4))
 
         true = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label]
                                    == True][self.fake_news.content_label].apply(lambda x: x.count("!"))
         fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label]
                                    == False][self.fake_news.content_label].apply(lambda x: x.count("!"))
-        self.stat.boxplot_true_fake(true=true, fake=fake, ylabel='# of !', title="# of '!' per article", ax=ax2)
+        self.stat.boxplot_true_fake(true=true, fake=fake, ylabel='# of !', title="# of '!' per article", ax=ax1)
 
         true = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label]
                                    == True][self.fake_news.content_label].apply(lambda x: x.count("?"))
         fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label]
                                    == False][self.fake_news.content_label].apply(lambda x: x.count("?"))
-        self.stat.boxplot_true_fake(true=true, fake=fake, ylabel='# of ?', title="# of '?' per article", ax=ax3)
+        self.stat.boxplot_true_fake(true=true, fake=fake, ylabel='# of ?', title="# of '?' per article", ax=ax2)
 
         #fig.suptitle('frequencies', fontsize=16)
         fig.tight_layout()
@@ -201,6 +208,7 @@ class Statistics_Fake_News_Corpus(Statistics, Fake_News_Corpus):
         percentages = counts.apply(lambda x: x / x.sum() * 100)
         print(len(percentages))
         percentages = percentages[percentages >= threshold]
+        percentages = percentages.dropna(how='all')
         print(len(percentages))
         for label in list(percentages.columns):
             percentages.sort_values(label, na_position='first', ascending=False, inplace=True)
