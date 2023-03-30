@@ -178,6 +178,12 @@ def get_dataframe_with_distribution(file,
     print("ERROR: not enough data to create sets")
     return data
 
+class Delete_nan(FunctionApplier):
+    def function_to_apply(self, content):
+        if type(content) != str:
+            return " "
+        return content
+
 class Debug(FunctionApplier):
     def __init__(self):
         self.i=0
