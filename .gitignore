@@ -2,6 +2,9 @@
 # exclude
 *.csv
 *.h5
+*.pickle
+*.tsv
+*d.txt
 
 # exclude all datasets
 datasets\*
