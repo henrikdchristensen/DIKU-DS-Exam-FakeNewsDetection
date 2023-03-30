@@ -1,558 +1,478 @@
-import preprocessing as pp
-import pipeline as pl
-from pipeline import FunctionApplier, apply_pipeline, ist_pipeline
 import matplotlib.pyplot as plt
 from collections import Counter
-from ast import literal_eval
+import pipeline as pp
 import numpy as np
-from scipy.stats import norm
-from matplotlib_venn import venn2
 import pandas as pd
-from multiprocessing import Process
-from sklearn.cluster import KMeans
-from sklearn.feature_extraction.text import TfidfVectorizer
-# import StandardScaler
-from sklearn.preprocessing import StandardScaler
-
-# import count vectorizer
-from sklearn.feature_extraction.text import CountVectorizer
+from ast import literal_eval
+import pipeline as pp
+import filehandling as fh
+from matplotlib_venn import venn2
 
 
+def plot_colors():
+    tab20 = plt.get_cmap('tab20').colors
+    hex_colors = ['#' + ''.join(f'{int(c*255):02x}' for c in color) for color in tab20]
+    print(hex_colors)
 
-RAW_DATA = '../datasets/sample/dataset.csv'
-CLEANED_DATA = '../datasets/sample/news_sample_cleaned.csv'
-CLEANED_DATA_NUM = '../datasets/sample/news_sample_cleaned_num_100k.csv'
+
+class Statistics():
+    def __init__(self):
+        self.first_pronouns = ['i', 'me', 'my', 'mine', 'we', 'us', 'our', 'ours']
+        self.second_pronouns = ['you', 'your', 'yours']
+        self.third_pronouns = ['he', 'him', 'his', 'she', 'her', 'hers', 'it', 'its', 'they', 'them', 'their', 'theirs']
+        self.pronouns = self.first_pronouns + self.second_pronouns + self.third_pronouns
+        self.negations = ['not', 'never', 'neither', 'nor', 'barely', 'hardly', 'scarcely',
+                          'seldom', 'rarely', 'no', 'neither', 'neither', 'nothing', 'none', 'nobody', 'nowhere']
+
+    def average_sentence_lengths(self, words):
+        sentence_lengths = []
+        current_sentence_length = 0
+        for word in words:
+            current_sentence_length += 1
+            if word in ['.', '!', '?']:
+                sentence_lengths.append(current_sentence_length)
+                current_sentence_length = 0
+        if sentence_lengths:
+            return sum(sentence_lengths) / len(sentence_lengths)
+        else:
+            return 0
+
+    def sort_frequency(self, text, percentage: bool):
+        counter = Counter(text)
+        sorted_frequency = sorted(counter.items(), key=lambda x: x[1], reverse=True)
+        words = [word for word, _ in sorted_frequency]
+        measure = [freq for _, freq in sorted_frequency]
+        if percentage:
+            length = len(text)
+            measure = [(freq/length)*100 for freq in measure]
+        return words, measure
+
+    def barplot(self, data, measure, num: int = 25, minmax: tuple = None, label: str = None, title: str = None, boolean=False, color='lightsalmon', ax=None):
+        if ax is None:
+            fig, ax = plt.subplots(1, 1)
+        #ax.tick_params(axis='x', rotation=90)
+        if boolean:
+            color = ['lightblue', 'lightsalmon']
+            ax.set_yticks([0, 1])
+            ax.set_yticklabels(['Fake', 'Reliable'])
+        ax.barh(data[:num], measure[:num], color=color, height=0.4)
+        ax.set_xlim(minmax)
+        ax.set_xlabel(label)
+        ax.set_title(title)
+
+    def boxplot_data1_vs_data2(self, data=None, showfliers=True, colors=['lightsalmon', 'lightblue'], ylabel: str = None, title: str = None, ax=None):
+        bp = ax.boxplot(data.values(), patch_artist=True, showfliers=showfliers, widths=0.25)
+        for patch, color in zip(bp['boxes'], colors):
+            patch.set_facecolor(color)
+        ax.set_xticklabels(data.keys())
+        ax.set_ylabel(ylabel)
+        ax.set_title(title)
 
 
-class Word_frequency(FunctionApplier):
-    def __init__(self, nwords = 50):
-        self.swords = nwords
-        self.words = []
-        self.frequency = Counter()
-        self.sorted_frequency = []
-        self.totalRows = 0
+class FakeNewsCorpus():
+    _initialized = False
 
-    def function_to_apply(self, content):
-        # Update/add list of word
-        # print(type(content))
-        content: list = literal_eval( content )
-        # content = [x for x in content if x != "<number>"]
-        # print(content)
-        self.frequency.update(content)
-        # Return the sorted dictionary based on the frequency of each word
-        self.sorted_frequency = sorted(self.frequency.items(), key=lambda x: x[1], reverse=True)
-        # print("sorted_frequency", self.sorted_frequency)
-        self.totalRows += 1
-        return content
+    def __init__(self, data: pd.DataFrame, type_label: str = None, binary_type_label: str = None, content_label: str = None, domain_label: str = None, sentence_analysis_label: str = None):
+        self.data = data
+        self.type_label = type_label
+        self.binary_type_label = binary_type_label
+        self.content_label = content_label
+        self.domain_label = domain_label
+        self.sentence_analysis_label = sentence_analysis_label
+        # Convert text-list-of-strins to list of strings
+        if content_label is not None and not FakeNewsCorpus._initialized:
+            self.data[content_label] = self.data[content_label].apply(literal_eval)
+        if sentence_analysis_label is not None and not FakeNewsCorpus._initialized:
+            self.data[sentence_analysis_label] = self.data[sentence_analysis_label].apply(literal_eval)
+        # Colors:
+        types = [
+            'fake',
+            'conspiracy',
+            'junksci',
+            'hate',
+            'unreliable',
+            'bias',
+            'satire',
+            'reliable',
+            'clickbait',
+            'political',
+        ]
+        colors = plt.get_cmap('tab10').colors[:len(types)]
+        unknown_types = set(types)
+        colors += tuple(['black'] * len(unknown_types))
+        self.types_colors = {types[i]: colors[i] for i in range(len(types))}
+        FakeNewsCorpus._initialized = True
 
-    def function_to_apply_df(self, content):
-        # Update/add list of word
-        # content: list = list[content]
-        # content = [x for x in content if x != "<number>"]
-        print(content)
-        content = content
-        print(content)
-        self.frequency.update(content)
-        # Return the sorted dictionary based on the frequency of each word
-        self.sorted_frequency = sorted(self.frequency.items(), key=lambda x: x[1], reverse=True)
-        # print("sorted_frequency", self.sorted_frequency)
-        self.totalRows += 1
-        return content
-    
-    def plot(self):
-        # Extract the words and their frequency from the sorted list
-        # print(self.sorted_frequency)
-        words = [x[0] for x in self.sorted_frequency[:self.swords]]
-        frequency = [x[1] for x in self.sorted_frequency[:self.swords]]
-        # Plot a barplot using matplotlib
-        plt.bar(words, frequency)
-        plt.ylabel('Frequency')
-        plt.title(f'Frequency of the {self.swords} most frequent words')
-        plt.xticks(rotation=90)
+
+class Statistics_FakeNewsCorpus(Statistics, FakeNewsCorpus):
+    def __init__(self, fake_news: FakeNewsCorpus):
+        self.stat = Statistics()
+        self.fake_news = fake_news
+
+    def barplot_word_frequency(self, nwords=25):
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 7))
+        true_words, true_words_cnt = self.stat.sort_frequency(self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == False][self.fake_news.content_label].explode().tolist(), percentage=True)
+        fake_words, fake_words_cnt = self.stat.sort_frequency(self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == True][self.fake_news.content_label].explode().tolist(), percentage=True)
+        max_value = max(max(true_words_cnt), max(fake_words_cnt))*1.1
+        self.stat.barplot(data=true_words, measure=true_words_cnt, num=nwords, minmax=(0, max_value), label='% of words in reliable articles', title='Reliable', color='lightsalmon', ax=ax1)
+        self.stat.barplot(data=fake_words, measure=fake_words_cnt, num=nwords, minmax=(0, max_value), label='% of words in fake articles', title='Fake', color='lightblue', ax=ax2)
+        fig.tight_layout()
+        fig.suptitle('Word frequency', fontsize=16)
+        plt.show()
+
+    def boxplot_word_frequency(self):
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7, 4))
+
+        true = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == False][self.fake_news.content_label].apply(len)
+        fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == True][self.fake_news.content_label].apply(len)
+        data = {"Reliable": true, "Fake": fake}
+        self.stat.boxplot_data1_vs_data2(data=data, ylabel='# of words', ax=ax1, title='With outliers')
+        
+        # Without outliers:
+        true = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == False][self.fake_news.content_label].apply(len)
+        fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == True][self.fake_news.content_label].apply(len)
+        data = {"Reliable": true, "Fake": fake}
+        self.stat.boxplot_data1_vs_data2(data=data, ylabel='# of words', ax=ax2, showfliers=False, title='Without outliers')
+
+        fig.suptitle('# of words per article', fontsize=16)
+        fig.tight_layout()
+        plt.show()
+        
+    def boxplot_char_frequency(self):
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8, 4))
+
+        true = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == False][self.fake_news.content_label].apply(lambda x: x.count("!"))
+        fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == True][self.fake_news.content_label].apply(lambda x: x.count("!"))
+        data = {"Reliable": true, "Fake": fake}
+        self.stat.boxplot_data1_vs_data2(data=data, ylabel='# of !', title="# of '!' per article", ax=ax1)
+
+        true = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == False][self.fake_news.content_label].apply(lambda x: x.count("?"))
+        fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == True][self.fake_news.content_label].apply(lambda x: x.count("?"))
+        data = {"Reliable": true, "Fake": fake}
+        self.stat.boxplot_data1_vs_data2(data=data, ylabel='# of ?', title="# of '?' per article", ax=ax2)
+
+        #fig.suptitle('frequencies', fontsize=16)
+        fig.tight_layout()
+        plt.show()
+
+    def word_frequency(self):
+        print(f'\nReliable:\n{self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == False][self.fake_news.content_label].apply(len).describe()}')
+        print(f'\nFake:\n{self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == True][self.fake_news.content_label].apply(len).describe()}')
+
+    def barplot_type(self, percentage: bool = True, ax=None, title=None):
+        types = self.fake_news.data[self.fake_news.type_label].explode().tolist()
+        types, measure = self.stat.sort_frequency(text=types, percentage=percentage)
+        color_list = [self.fake_news.types_colors[tp] for tp in types]
+        if ax is None:
+            fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+        ax.barh(types, measure, color=color_list, alpha=0.5)
+        ax.set_xlabel('% of total labels' if percentage else '# of labels')
+        ax.set_title(title)
+        #ax.tick_params(axis='x', rotation=90)
+
+    def plot_type(self):
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8, 4))
+        self.barplot_type(percentage=True, ax=ax1, title="Label distribution")
+        words, words_cnt = self.stat.sort_frequency(self.fake_news.data[self.fake_news.binary_type_label].tolist(), percentage=True)
+        self.stat.barplot(data=words, measure=words_cnt, boolean=True, title="Reliable vs. Fake distribution", label="% of total labels", ax=ax2)
+
+        fig.suptitle('Labels', fontsize=16)
+        fig.tight_layout()
+        plt.show()
+
+    def barplot_domain(self, num: int = None, percentage: bool = True):
+        types = self.fake_news.data[self.fake_news.domain_label].explode().tolist()
+        types, measure = self.stat.sort_frequency(text=types, percentage=percentage)
+        colors = plt.cm.tab20(np.arange(len(types)))
+        fig, ax = plt.subplots(1, 1, figsize=(5, 7))
+        ax.barh(types[:num], measure[:num], color=colors, alpha=0.5)
+        ax.set_xlabel('% of total domains' if percentage else '# of domain')
+
+        ax.set_title('Domain distribution' if percentage else 'Domain distribution', fontsize=16)
+        fig.tight_layout()
+        plt.show()
+
+    def barplot_domain_to_label_contribution(self, threshold=0, percentage=True):
+        fig, ax = plt.subplots(figsize=(7, 8))
+        
+        counts, percentages = None, None
+        counts = self.fake_news.data.groupby([self.fake_news.domain_label, self.fake_news.type_label])[self.fake_news.content_label].count().unstack()
+        # Remove percentages lower than threshold:
+        percentages = counts.apply(lambda x: x / x.sum() * 100)
+        percentages = percentages[percentages >= threshold]
+        percentages = percentages.dropna(how='all')
+        for label in list(percentages.columns):
+            percentages.sort_values(label, na_position='first', ascending=False, inplace=True)
+        color_list = [self.fake_news.types_colors[label] for label in percentages.columns]
+        plot_title = f'Domain contribution to Label ( ≥ {threshold}%)' if percentage else f'Domain contribution to Label (top {threshold} most frequent)'
+        xlabel = '% of label' if percentage else '# of label'
+        if percentage:
+            percentages.plot(kind='barh', stacked=True, width=0.5, color=color_list, alpha=0.5, ax=ax)
+        else:
+            counts[counts >= threshold].plot(kind='barh', stacked=True, width=0.5, color=color_list, alpha=0.5, ax=ax)
+        ax.set_xlabel(xlabel)
+        ax.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
+        ax.set_title(plot_title, fontsize=16)
+        
         plt.tight_layout()
         plt.show()
 
-    def plotVenn(self, other_sorted_frequency: list[tuple[str, int]]): 
-        words = [x[0] for x in self.sorted_frequency[:self.swords]]
-        frequency = [x[1] for x in self.sorted_frequency[:self.swords]]
+    def plot_average_sentence_length(self):
+        fig, ax1 = plt.subplots(1, 1, figsize=(3, 4))
 
-        other_words = [x[0] for x in other_sorted_frequency[:self.swords]]
-        other_frequency = [x[1] for x in other_sorted_frequency[:self.swords]]
+        # Plot: average sentence length
+        true = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == False][self.fake_news.content_label].apply(self.stat.average_sentence_lengths)
+        fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == True][self.fake_news.content_label].apply(self.stat.average_sentence_lengths)
+        data = {"Reliable": true, "Fake": fake}
+        self.stat.boxplot_data1_vs_data2(data=data, ylabel='avg. sentence length', ax=ax1)
 
-        set1 = set(words)
-        set2 = set(other_words)
+        fig.suptitle('Avg. sentence length', fontsize=16)
+        fig.tight_layout()
+        plt.show()
 
-        venn2([set1, set2], set_labels=("Reliable", "Fake"))
+    def plot_pronouns(self):
+        fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(10, 5))
 
-        venn2_circles = venn2([set1, set2], set_labels=("Reliable", "Fake"))
-        venn2_circles.get_patch_by_id('10').set_color('orange')
-        venn2_circles.get_patch_by_id('10').set_alpha(0.5)
+        # Plot 1: First pronouns
+        true = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == False][self.fake_news.content_label].apply(
+            lambda x: sum([x.count(word) for word in self.stat.first_pronouns]))
+        fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == True][self.fake_news.content_label].apply(
+            lambda x: sum([x.count(word) for word in self.stat.first_pronouns]))
+        data = {"Reliable": true, "Fake": fake}
+        self.stat.boxplot_data1_vs_data2(data=data, ylabel='# of 1st pronouns', title='1st pronouns', ax=ax1)
+
+        # Plot 2: Second pronouns
+        true = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == False][self.fake_news.content_label].apply(
+            lambda x: sum([x.count(word) for word in self.stat.second_pronouns]))
+        fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == True][self.fake_news.content_label].apply(
+            lambda x: sum([x.count(word) for word in self.stat.second_pronouns]))
+        data = {"Reliable": true, "Fake": fake}
+        self.stat.boxplot_data1_vs_data2(data=data, ylabel='# of 2nd pronouns', title='2nd pronouns', ax=ax2)
+
+        # Plot 3: Third pronouns
+        true = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == False][self.fake_news.content_label].apply(
+            lambda x: sum([x.count(word) for word in self.stat.third_pronouns]))
+        fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == True][self.fake_news.content_label].apply(
+            lambda x: sum([x.count(word) for word in self.stat.third_pronouns]))
+        data = {"Reliable": true, "Fake": fake}
+        self.stat.boxplot_data1_vs_data2(data=data, ylabel='# of 3rd pronouns', title='3rd pronouns', ax=ax3)
+
+        # Plot 4: Pronouns
+        true = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == False][self.fake_news.content_label].apply(
+            lambda x: sum([x.count(word) for word in self.stat.pronouns]))
+        fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == True][self.fake_news.content_label].apply(
+            lambda x: sum([x.count(word) for word in self.stat.pronouns]))
+        data = {"Reliable": true, "Fake": fake}
+        self.stat.boxplot_data1_vs_data2(data=data, ylabel='# of pronouns', title='total pronouns', ax=ax4)
+
+        # Display the plots
+        fig.suptitle('Personal pronouns', fontsize=16)
+        fig.tight_layout()
+        plt.show()
+
+    def plot_negations(self):
+        fig, ax1 = plt.subplots(1, 1, figsize=(3, 4))
+
+        # Plot 1: First person pronouns
+        true = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == False][self.fake_news.content_label].apply(
+            lambda x: sum([x.count(word) for word in self.stat.negations]))
+        fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == True][self.fake_news.content_label].apply(
+            lambda x: sum([x.count(word) for word in self.stat.negations]))
+        data = {"Reliable": true, "Fake": fake}
+        self.stat.boxplot_data1_vs_data2(data=data, ylabel='# of negations', ax=ax1)
+
+        fig.suptitle('Negations', fontsize=16)
+        fig.tight_layout()
+        plt.show()
+
+    def plot_sentence_analysis(self):
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(5, 5))
+
+        # Plot 1: Polarity score
+        true = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == False][self.fake_news.sentence_analysis_label].apply(lambda x: x[0])
+        fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == True][self.fake_news.sentence_analysis_label].apply(lambda x: x[0])
+        data = {"Reliable": true, "Fake": fake}
+        self.stat.boxplot_data1_vs_data2(data=data, ylabel='polarity score', title='Polarity score', ax=ax1)
+
+        # Plot 2: Subjective score
+        true = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == False][self.fake_news.sentence_analysis_label].apply(lambda x: x[1])
+        fake = self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == True][self.fake_news.sentence_analysis_label].apply(lambda x: x[1])
+        data = {"Reliable": true, "Fake": fake}
+        self.stat.boxplot_data1_vs_data2(data=data, ylabel='subjective score', title='Subjective score', ax=ax2)
+
+        fig.suptitle('Sentence analysis', fontsize=16)
+        fig.tight_layout()
+        plt.show()
         
+    def plot_venn(self, nwords=40):
+        fig, ax = plt.subplots(figsize=(10, 10))  # change figsize to a smaller size
+        true_words, true_words_cnt = self.stat.sort_frequency(self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == False][self.fake_news.content_label].explode().tolist(), percentage=False)
+        fake_words, fake_words_cnt = self.stat.sort_frequency(self.fake_news.data[self.fake_news.data[self.fake_news.binary_type_label] == True][self.fake_news.content_label].explode().tolist(), percentage=False)
+        
+        true_words = [word for word in true_words[:nwords]]
+        fake_words = [word for word in fake_words[:nwords]]
+        
+        true_set = set(true_words)
+        fake_set = set(fake_words)
+
+        # Limit the set words to max to characters
+        true_set = set([word for word in true_set])
+        fake_set = set([word for word in fake_set])
+        
+        venn2([true_set, fake_set], set_labels=("Reliable", "Fake"))
+
+        venn2_circles = venn2([true_set, fake_set], set_labels=("Reliable", "Fake"))
+        
+        # id='10' is the left circle, id='01' is the right circle, id='11' is the intersection
+        venn2_circles.get_patch_by_id('10').set_color('red')
+        venn2_circles.get_patch_by_id('10').set_alpha(0.3)
+        venn2_circles.get_patch_by_id('01').set_color('blue')
+        venn2_circles.get_patch_by_id('01').set_alpha(0.3)
+        
+        venn2_circles.get_patch_by_id('11').set_color('#9d0042')
+
         intersection_label = venn2_circles.get_label_by_id('11')
-        intersection_label.set_text('\n'.join(list(set1.intersection(set2))))
-        
-        # intersection_label.set_position((0.08, 0))
-        disjoint_words1 = set(words) - set(other_words)
-        disjoint_words2 = set(other_words) - set(words)
-
-        # set the text of the disjoint words
-        venn2_circles.get_label_by_id('01').set_text('\n'.join(list(disjoint_words1)))
-        
-        venn2_circles.get_label_by_id('10').set_text('\n'.join(list(disjoint_words2)))
-        # set the text of the intersection int the middle of the venn diagram 
+        intersection_label.set_text('\n'.join(list(true_set.intersection(fake_set))))
         intersection_label.set_fontsize(10)
-        # venn2_circles.get_label_by_id('10').set_fontsize(14)
 
-        plt.show()
-
-    def plotWordMap():
-
-        # Define a dictionary of word frequencies
-        word_freq = {'word1': 10, 'word2': 5, 'word3': 7, 'word4': 3, 'word5': 12}
-
-        # Create a WordCloud object
-        wordcloud = WordCloud(background_color='white')
-
-        # Generate a word map from the word frequency dictionary
-        wordcloud.generate_from_frequencies(word_freq)
-
-        # Display the word map
-        import matplotlib.pyplot as plt
-        plt.imshow(wordcloud, interpolation='bilinear')
-        plt.axis('off')
-        plt.show()
-
-    # plot the frequency of the words from the fake news and plot the frequency of the words from the real news
-    def plot_fake_real(self, other_sorted_frequency: list[tuple[str, int]], set_labels: tuple[str, str] = ("Fake", "Reliable") ):
-        # Extract the words and their frequency from the sorted list
-        words = [x[0] for x in self.sorted_frequency[:self.swords]]
-        frequency = [x[1] for x in self.sorted_frequency[:self.swords]]
-
-        other_words = [x[0] for x in other_sorted_frequency[:self.swords]]
-        other_frequency = [x[1] for x in other_sorted_frequency[:self.swords]]
-
-        disjoint_words = set(words) - set(other_words)
-        print("disjoint_words", disjoint_words)
-
-        # map the word frequency from the fake news word list to the words from the real news
-        for i in range(len(words)):
-            if not words[i] in other_words:
-                other_frequency[i] = 0
-
-        # Set the width of the bars
-        bar_width = 0.35
-
-        print("freq", frequency)
-        print("\n\n")
-        print("otherfreq", other_frequency)
-
-        # Set the positions of the bars on the x-axis
-        fake_pos = np.arange(len(words))
-        reliable_pos = fake_pos + bar_width
-
-        # Create the figure and axis objects
-        fig, ax = plt.subplots()
-
-        # Plot the bars for fake news
-        ax.bar(fake_pos, frequency, width=bar_width, color='b', label=set_labels[0])
-
-        # Plot the bars for reliable news
-        ax.bar(reliable_pos, other_frequency, width=bar_width, color='g', label=set_labels[1])
-
-        # Add labels and title to the plot
-        ax.set_xlabel('Words')
-        ax.set_ylabel('Frequency')
-        ax.set_xticks(fake_pos + bar_width / 2)
-        ax.set_xticklabels(words)
-        ax.set_title('Word Frequency Comparison')
-        
-        # rotate the xticks
-        plt.xticks(rotation=90)
-
-        # Add a legend to the plot
-        ax.legend()
-
-        # Show the plot
-        plt.show()
-
-class Count_Items(FunctionApplier):
-    def __init__(self):
-        self.count = {
-            "urls": 0,
-            "dates": 0,
-            "numbers": 0 
-        }
-
-    def function_to_apply(self, content):
-        # Update/add list of word
-        content: list = literal_eval(str(content))
-        self.countItems(content)
+        disjoint_words1 = set(true_words) - set(fake_words)
+        disjoint_words2 = set(fake_words) - set(true_words)
         
 
-    def countItems(self, content):
-        # pp.Exploration.countItems(data)
-        for text in content:
-            self.count["urls"] += text.count("<url>")
-            self.count["dates"] += text.count("<date>")
-            self.count["numbers"] += text.count("<num>")
-
-
-class Contribution(FunctionApplier): 
-    def __init__(self):
-        self.data = []
-
-    def function_to_apply(self, content: pd.DataFrame):
-        self.data.append(content.copy())
-
-    def contributionPlot2(self):
+        venn2_circles.get_label_by_id('01').set_text('\n'.join(list(disjoint_words1)))
+        venn2_circles.get_label_by_id('10').set_text('\n'.join(list(disjoint_words2)))
         
-        threshold = 2
-        self.data = pd.DataFrame(self.data)
-
-        # print("got keys: \n", len(self.data), self.data.iloc[0].keys())
-
-        # group the articles by domain and category, and count the number of articles in each group
-        # print("groupby: \n", self.data['domain'].unique())
-        counts = self.data.groupby(['domain', 'type'])['content'].count().unstack()
-
-        # print("counts: \n", counts)
-
-        # convert the counts to percentages and round to two decimal places
-        percentages = counts.apply(lambda x: x / x.sum() * 100).round(2)
-        # filter the percentages to only show the contributions above the threshold
-        percentages = percentages[percentages > threshold]
-        # drop the rows with all NaN values
-        percentages = percentages.dropna(how='all')
-
-        # rearrange the rows so that the order of the categories is consistent
-        for type in list(percentages.columns):
-            percentages.sort_values(type, na_position='first', ascending=False, inplace=True)
-
-        # create a stacked horizontal bar chart of the percentages
-        ax = percentages.plot(kind='barh', stacked=True, figsize=(10, 8), width=0.6)
-        # set the x-axis label to show the percentages
-        ax.set_xlabel('Percentage')
-        # set the legend to display outside the chart
-        ax.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
-
-        # make fontsize smaller of the domain labels
-        ax.set_yticklabels(ax.get_yticklabels(), fontsize=6)
-
-        
-        
-        title = f'Contribution of Domains to Categories ( ≥ {threshold}%)'
-        ax.set_title(title)
-
-        # show the chart
-        plt.show()
-
-    def contributionPlot1(self):
-
-        threshold = 3
-        self.data = pd.DataFrame(self.data)
-
-        # group the articles by type and domain, and count the number of articles in each group
-        type_groups = self.data.groupby(['type', 'domain'])['content'].count()
-        type_groups = type_groups.unstack().fillna(0)
-            
-        # iterate over each unique type to generate a new DataFrame with the count of each domain for that type
-        domain_counts = []
-        for typ in self.data['type'].unique():
-            type_counts = type_groups.loc[typ].rename(typ)
-            domain_counts.append(type_counts)
-
-        # combine the domain counts into a new DataFrame where the rows are each unique domain and the columns are the counts for each type
-        domain_counts = pd.concat(domain_counts, axis=1, sort=False)
-
-        # sum the counts for each domain across all types and sort the resulting Series in descending order
-        domain_totals = domain_counts.sum(axis=1)
-        domain_totals = domain_totals.sort_values(ascending=False)
-
-        # print domain_totals and domain_counts and compare the order of the domains
-        print(domain_totals)
-        print("\n\n")
-        print(domain_counts)
-        print("\n\n")
-
-        print("total index: ", domain_totals.index)
-
-        # reorder the columns of the DataFrame using the sorted Series
-        # domain_counts = domain_counts[domain_counts.index]
-
-        percentages = domain_counts.apply(lambda x: x / x.sum() * 100).round(2)
-
-        # filter the percentages to only show the contributions above the threshold
-        percentages = percentages[percentages > threshold]
-        # drop the rows with all NaN values
-        percentages = percentages.dropna(how='all')
-
-
-        # for 
-        # [reliable  political  conspiracy   fake   bias  unreliable  junksci  clickbait   hate  satire]
-
-        for type in self.data['type'].unique():
-            # print(type)
-            # print(domain_counts[type].sort_values(ascending=False))
-            percentages.sort_values(type, na_position='first', ascending=False, inplace=True)
-        
-        print("percentages: ", percentages)
-        # create a stacked horizontal bar chart of the percentages
-        ax = percentages.plot(kind='barh', stacked=True, figsize=(10, 8))
-        # set the x-axis label to show the percentages
-        ax.set_xlabel('Percentage')
-        # set the legend to display outside the chart
-        ax.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
-        
-        title = f'Contribution of Domains to Categories ( ≥ {threshold}%)'
-        ax.set_title(title)
-
-        # show the chart
+        fig.tight_layout()
+        fig.suptitle('Venn diagram of word frequency', fontsize=16)
         plt.show()
 
 
-# make class to count each type fake, real, unreliable, reliable etc. and make a frequency plot
-class Article_Type_frequency(FunctionApplier):
-    # kg = 20
-    def __init__(self):
-        self.frequency = Counter()
-        self.sorted_frequency = []
-        self.items = 13
+class Liar(Statistics):
+    _initialized = False
 
-    def function_to_apply(self, type):
-        # Update/add list of word
-        type = str(type)
-        # print(self.frequency)
-        self.frequency.update({type: 1})
-        # Return the sorted dictionary based on the frequency of each word
-        self.sorted_frequency = sorted(self.frequency.items(), key=lambda x: x[1], reverse=True)
-        # print("sorted_frequency", self.sorted_frequency)
-        return type
-
-    def plot(self):
-        # print(self.sorted_frequency)
-        # Extract the words and their frequency from the sorted list
-        words = [x[0] for x in self.sorted_frequency[:self.items]]
-        frequency = [x[1] for x in self.sorted_frequency[:self.items]]
-        # Plot a barplot using matplotlib
-        plt.bar(words, frequency)
-        plt.ylabel('Frequency')
-        plt.title(f'Frequency of the {self.items} most frequent words')
-        plt.xticks(rotation=90)
-        plt.tight_layout()
-        plt.show()
-
-    def plotDistribution(self):
-        # Extract the words and their frequency from the sorted list
-        words = [x[0] for x in self.sorted_frequency]
-        frequency = [x[1] for x in self.sorted_frequency]
-
-        total_frequency = sum(frequency)
-
-        # Compute the probability of each word.
-        probabilities = [x / total_frequency for x in frequency]
-
-        # sort the words by their probability
-        # sorted_probability = sorted(probability, reverse=True)
-        # Sort the words based on their probability.
-        sorted_indices = np.argsort(probabilities)[::-1]
-        sorted_probabilities = [probabilities[i] for i in sorted_indices]
-
-        # Compute the cumulative probability of each word.
-        cumulative_probabilities = np.cumsum(sorted_probabilities)
-
-        plt.bar(words, sorted_probabilities)
-        plt.xlabel('Type')
-        plt.ylabel('Frequency')
-        plt.title('Type Frequency Distribution')
-        plt.show()
-
-class detectOutliers(FunctionApplier):
-    def __init__(self):
-        self.outliers = []
-        self.outliers_index = []
-        self.outliers_value = []
-
-    def function_to_apply(self, value):
-        # print(value)
-        if value > 0.5:
-            self.outliers.append(value)
-            self.outliers_index.append(self.index)
-            self.outliers_value.append(self.value)
-        return value
-    
-    def getDataFrame(self, csv):
-        df = pd.read_csv(csv, nrows=20000)
-        return df
-
-    
-    def kMeans(self):
-
-        df = self.getDataFrame("cleaned_fake_news.csv")
-
+    def __init__(self, data: pd.DataFrame, type_label: str = None, binary_type_label: str = None, statement_label: str = None,
+                 subjects_label: str = None, speaker_label: str = None, party_label: str = None, sentence_analysis_label: str = None):
+        self.data = data
+        self.stat = Statistics()
+        self.type_label = type_label
+        self.binary_type_label = binary_type_label
+        self.statement_label = statement_label
+        self.subjects_label = subjects_label
+        self.speaker_label = speaker_label
+        self.party_label = party_label
+        self.sentence_analysis_label = sentence_analysis_label
+        # Convert text-list-of-strins to list of strings
+        if not Liar._initialized:
+            self.data[statement_label] = self.data[statement_label].apply(literal_eval)
+            self.data[sentence_analysis_label] = self.data[sentence_analysis_label].apply(literal_eval)
+            # Replace empty values with 'None':
+            self.data[party_label] = self.data[party_label].fillna('none')
+        types = [
+            'pants-fire',
+            'false',
+            'mostly-false',
+            'barely-true',
+            'half-true',
+            'mostly-true',
+            'true',
+        ]
+        # Assign colors to each type from the Tab20 color map
+        colors = plt.get_cmap('tab10').colors[:len(types)]
+        # Add black color for unknown types
+        unknown_types = set(types)  # get all other unknown types
+        colors += tuple(['black'] * len(unknown_types))  # add black color for other unknown types
+        # Create a dictionary mapping each type to its assigned color
+        self.types_colors = {types[i]: colors[i] for i in range(len(types))}
         
-        # Load cleaned fake news corpus
-        # df = pd.read_csv("cleaned_fake_news.csv")
-
-        # Vectorize the corpus using TF-IDF
-        tfidf_vectorizer = TfidfVectorizer(stop_words='english')
-        tfidf = tfidf_vectorizer.fit_transform(df['text'])
-
-        # Perform K-Means clustering
-        num_clusters = 5
-        kmeans = KMeans(n_clusters=num_clusters, init='k-means++', max_iter=100, n_init=1)
-        kmeans.fit(tfidf)
-
-        # Print the top terms in each cluster
-        print("Top terms per cluster:")
-        order_centroids = kmeans.cluster_centers_.argsort()[:, ::-1]
-        terms = tfidf_vectorizer.get_feature_names()
-        for i in range(num_clusters):
-            print(f"Cluster {i} terms: ", end='')
-            for j in order_centroids[i, :10]:
-                print(f"{terms[j]}, ", end='')
-            print()
-
-        # Visualize the clusters
-        plt.scatter(tfidf[:, 0], tfidf[:, 1], c=kmeans.labels_, cmap='rainbow')
+        
+    def barplot_type(self, percentage: bool = True):
+        fig, ax = plt.subplots(1, 1, figsize=(4, 3))
+        types = self.data[self.type_label].explode().tolist()
+        types, measure = self.stat.sort_frequency(text=types, percentage=percentage)
+        color_list = [self.types_colors[tp] for tp in types]
+        ax.barh(types, measure, color=color_list, alpha=0.5)
+        ax.set_xlabel('% of total labels' if percentage else '# of labels')
+        ax.set_title('Label distribution', fontsize=16)
+        fig.tight_layout()
         plt.show()
 
-        # X = fake_news_df[['type', 'title', 'text']]
-        # X_scaled = StandardScaler().fit_transform(X)
-        # # Initialize the k-means model with the desired number of clusters
-        # kmeans = KMeans(n_clusters=3)
 
-        # # Fit the model to the data
-        # kmeans.fit(X_scaled)
+class Statistics_FakeNewsCorpus_vs_Liar(Statistics):
+    def __init__(self, fake_news: FakeNewsCorpus, liar: Liar):
+        self.stat = Statistics()
+        self.fake_news = fake_news
+        self.liar = liar
 
-        # # Identify the cluster labels for each data point
-        # labels = kmeans.labels_
+    def barplot_word_frequency(self, nwords = 25):
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 7))
+        words_fake_news, words_cnt_fake_news = self.stat.sort_frequency(self.fake_news.data[self.fake_news.content_label].explode(), percentage=True)
+        words_liar, words_cnt_liar = self.stat.sort_frequency(self.liar.data[self.liar.statement_label].explode(), percentage=True)
+        max_value = max(max(words_cnt_fake_news), max(words_cnt_liar))*1.1
+        self.stat.barplot(data=words_fake_news, measure=words_cnt_fake_news, num=nwords, minmax=(0, max_value), label='% of total words', title='FakeNewsCorpus', color='yellowgreen', ax=ax1)
+        self.stat.barplot(data=words_liar, measure=words_cnt_liar, num=nwords, minmax=(0, max_value), label='% of total words', title='LIAR', color='orange', ax=ax2)
 
-        # # Add the cluster labels to the original dataframe
-        # fake_news_df['cluster_label'] = labels
+        fig.suptitle('Word frequency', fontsize=16)
+        fig.tight_layout()
+        plt.show()
 
+    def boxplot_word_frequency(self):
+        fig, ax1 = plt.subplots(1, 1, figsize=(3, 5))
+        fake_news = self.fake_news.data[self.fake_news.content_label].apply(len)
+        liar = self.liar.data[self.liar.statement_label].apply(len)
+        data = {"FakeNewsCorpus": fake_news, "LIAR": liar}
+        self.stat.boxplot_data1_vs_data2(data=data, colors=['yellowgreen', 'orange'], ylabel='# of words', ax=ax1)
 
-def clean():
-    ist_pipeline(RAW_DATA)
+        fig.suptitle('# of words', fontsize=16)
+        fig.tight_layout()
+        plt.show()
 
-def plot_in_processes(plot_funcs):
-    """Spawn multiple processes to plot matplotlib plots."""
-    processes = []
-    for plot_func in plot_funcs:
-        process = Process(target=plot_func)
-        process.start()
-        processes.append(process)
-    for process in processes:
-        process.join()
+    def plot_party(self, nparties=25):
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 7))
+        true_party, true_party_cnt = self.stat.sort_frequency(
+            self.liar.data[self.liar.data[self.liar.binary_type_label] == False][self.liar.party_label].fillna('none').explode(), percentage=True)
+        fake_party, fake_party_cnt = self.stat.sort_frequency(
+            self.liar.data[self.liar.data[self.liar.binary_type_label] == True][self.liar.party_label].fillna('none').explode(), percentage=True)
+        max_val = max(true_party_cnt + fake_party_cnt)*1.1
+        self.stat.barplot(data=true_party, measure=true_party_cnt, num=nparties, minmax=(0, max_val), label='% of reliable articles', title='Reliable', color='lightsalmon', ax=ax1)
+        self.stat.barplot(data=fake_party, measure=fake_party_cnt, num=nparties, minmax=(0, max_val), label='% of fake articles', title='Fake', color='lightblue', ax=ax2)
 
+        fig.suptitle('Party frequency', fontsize=16)
+        fig.tight_layout()
+        plt.show()
+        
 
+    def plot_speaker(self, nspeakers=25):
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 7))
+        true_speaker, true_speaker_cnt = self.stat.sort_frequency(
+            self.liar.data[self.liar.data[self.liar.binary_type_label] == False][self.liar.speaker_label].explode(), percentage=True)
+        fake_speaker, fake_speaker_cnt = self.stat.sort_frequency(
+            self.liar.data[self.liar.data[self.liar.binary_type_label] == True][self.liar.speaker_label].explode(), percentage=True)
+        max_val = max(true_speaker_cnt + fake_speaker_cnt)*1.1
+        self.stat.barplot(data=true_speaker, measure=true_speaker_cnt, num=nspeakers, minmax=(
+            0, max_val), label='% of reliable articles', title='Reliable', color='lightsalmon', ax=ax1)
+        self.stat.barplot(data=fake_speaker, measure=fake_speaker_cnt, num=nspeakers, minmax=(
+            0, max_val), label='% of fake articles', title='Fake', color='lightblue', ax=ax2)
 
+        fig.suptitle('Speaker frequency', fontsize=16)
+        fig.tight_layout()
+        plt.show()
 
-def wordFrequency():
+    def plot_subjects(self, nsubjects=25):
+        fig, ax1 = plt.subplots(1, 1, figsize=(7, 7))
+        subjects, subjects_cnt = self.stat.sort_frequency(self.liar.data[self.liar.subjects_label].explode(), percentage=True)
+        self.stat.barplot(data=subjects, measure=subjects_cnt, num=nsubjects, label='% of total subjects', color='lightsalmon', ax=ax1)
 
-    size = 100000
-    blc = pl.Binary_labels()
-    bl = blc.binary_labels
+        fig.suptitle('Subjects frequency', fontsize=16)
+        fig.tight_layout()
+        plt.show()
+        
+    def plot_type(self):
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(5, 3))
+        fake_news_words, fake_news_words_cnt = self.stat.sort_frequency(self.fake_news.data[self.fake_news.binary_type_label].tolist(), percentage=True)
+        self.stat.barplot(data=fake_news_words, measure=fake_news_words_cnt, boolean=True, title="FakeNewsCorpus", label="% of total labels", ax=ax1)
+        liar_words, liar_words_cnt = self.stat.sort_frequency(self.liar.data[self.liar.binary_type_label].tolist(), percentage=True)
+        self.stat.barplot(data=liar_words, measure=liar_words_cnt, boolean=True, title="LIAR", label="% of total labels", ax=ax2)
 
-
-    # get all values that are true in the binary labels
-    trueFilterList = [k for k, v in bl.items() if v]
-    print(trueFilterList)
-
-    # get all values that are false in the binary labels
-    falseFilterList = [k for k, v in bl.items() if not v]
-    print(falseFilterList)
-
-    trueFilter = pl.Filter(trueFilterList)
-    falseFilter = pl.Filter(falseFilterList)
-    
-    wf = Word_frequency()
-    apply_pipeline(
-        CLEANED_DATA_NUM, 
-        [
-            (falseFilter, "type"),
-            (wf, "content"),
-        ],
-        batch_size=size,
-        # get_batch=True,
-        # type="fake"
-        # exclude=["reliable"]
-        # total_rows=20000,
-        total_rows=20000,
-        progress_bar=True
-    )
-
-    wf2 = Word_frequency()
-    apply_pipeline(
-        CLEANED_DATA_NUM, 
-        [
-            (trueFilter, "type"),
-            (wf2, "content"),
-        ],
-        # batch_size=size,
-        total_rows=20000,
-        progress_bar=True
-        # get_batch=True,
-        # type="reliable"
-    )
-
-    return wf, wf2
-    # cp = Contribution()
-    # apply_pipeline(
-    #     CLEANED_DATA_NUM, 
-    #     [
-    #         (cp, None),
-    #     ],
-    #     batch_size=10000,
-    #     progress_bar=True,
-    #     # get_batch=True,
-    #     # type="reliable"
-    # )
-
-
-    # print(ss.count)
-
-    # atf.plotDistribution()
-    # atf.plotDistribution()
-    # wf.plot()
-
-    # wf.plotVenn(wf2.sorted_frequency)
-
-    # print(cp.data.iloc[0:10])
-
-    # cp.contributionPlot2()
-    # wf2.plot_fake_real(wf.sorted_frequency, set_labels=("Reliable", "Fake"))
-    # wf.plot()
-
-    # wf.plot_fake_real(wf2.sorted_frequency)
-    # plot_in_processes([cp.contributionPlot2, wf.plot])
-
-
-
-def runStats2():
-    
-    wf = Word_frequency()
-    ss = Count_Items()
-    atf = Article_Type_frequency()
-    apply_pipeline(
-        CLEANED_DATA, 
-        [
-            (wf, "content"),
-            (ss, "content"),
-            (atf, "type")
-        ],
-        batch_size=10000,
-        # get_batch=True
-    )
-
-    print(ss.count)
-
-    # atf.plotDistribution()
-    # atf.plotDistribution()
-    wf.plot()
-
-
-# runStats()
-# clean()
-
-
-
+        fig.suptitle('Binary Label distribution', fontsize=16)
+        fig.tight_layout()
+        plt.show()

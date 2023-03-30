@@ -6,8 +6,12 @@
 *.tsv
 *d.txt
 
+*.pickle
+*.npz
+*d.txt
 # exclude all datasets
-datasets\*
+datasets/*
+tmp/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -16,6 +20,11 @@ __pycache__/
 
 # C extensions
 *.so
+
+# exclude all text files in src folder
+src/**/*.txt
+
+# *.txt
 
 # Distribution / packaging
 .Python

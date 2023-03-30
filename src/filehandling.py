@@ -8,7 +8,7 @@ from tqdm import tqdm
 from collections import Counter
 
 TQDM_COLOR = 'magenta'
-ROWS_PR_ITERATION = 20000
+ROWS_PR_ITERATION = 50000
 FILE_SIZE = 10000
 PADDING = 3
 COLS = {
@@ -35,23 +35,23 @@ def remove_file(filename: str):
         os.remove(filename)
 
 
-def copy_file(old_filename: str, new_filename: str):
+def copy_file(filename: str, new_filename: str):
     print("Copying file...")
     remove_file(new_filename)
-    shutil.copyfile(old_filename, new_filename)
+    shutil.copyfile(filename, new_filename)
 
 
 def create_directory(dirname: str):
     if not os.path.exists(dirname):
         os.makedirs(dirname)
-        
+
 
 def remove_directory(dirname: str):
     if os.path.exists(dirname):
         shutil.rmtree(dirname)
 
 
-def create_random_array(size:int) -> np.ndarray:
+def create_random_array(size: int) -> np.ndarray:
     # Create a numpy array of the given size and set values from 0 to size-1:
     arr = np.arange(1, size+1)
     # Shuffle the indexes of the array:
@@ -70,6 +70,18 @@ def csv_split(filename: str, dirname: str):
     for i, c in tqdm(enumerate(pd.read_csv(filename, encoding='utf-8', chunksize=FILE_SIZE, lineterminator='\n')),
                      desc='csv splitting', unit='splits', colour=TQDM_COLOR):
         pd.concat([colnames, c], ignore_index=True).to_csv(f'{dirname}/{i+1:0{PADDING}}.csv', index=False)
+
+
+def tsv_to_csv(file: str, new_file: str, headers: list = None):
+    df = pd.read_csv(file, delimiter='\t', header=None)
+    if headers is not None:
+        df.columns = headers
+    df.to_csv(new_file, index=False)
+
+
+def combine_csv_files(files: list, new_file: str):
+    df = pd.concat([pd.read_csv(f) for f in files])
+    df.to_csv(new_file, index=False)
 
 
 def create_empty_string_array(cols: int) -> np.ndarray:
@@ -101,13 +113,14 @@ def csv_to_h5(csv_filename: str, h5_filename: str):
         colnames.pop(0)
         cols = len(colnames)
         # Create dataset:
-        data_set = store.create_dataset('data', data=create_empty_string_array(cols), maxshape=(None, cols), dtype=h5py.string_dtype(encoding='utf-8'))
+        data_set = store.create_dataset('data', data=create_empty_string_array(
+            cols), maxshape=(None, cols), dtype=h5py.string_dtype(encoding='utf-8'))
         # Set the header row:
         data_set[0] = colnames
         # Read the rest of the rows and assign to dataset:
         rows = 0
         for chunk in tqdm(pd.read_csv(csv_filename, encoding='utf-8', dtype=str, chunksize=ROWS_PR_ITERATION, lineterminator='\n'),
-                      desc='csv to h5', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
+                          desc='csv to h5', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
             # Remove first column (unnamed), which is not used:
             chunk = chunk.drop(chunk.columns[[0]], axis=1)
             # Set unique index for each row in 'id' column and remove index column:
@@ -120,57 +133,43 @@ def csv_to_h5(csv_filename: str, h5_filename: str):
                 data_set[-len(chunk):] = chunk.astype(str)
 
 
-def statistics(*h5_filenames: str, output_path: str = None):
+def statistics(file: str, output_path: str = None, content_label=None):
     # Initialize counters:
     total_rows = total_cols = 0
-    domain_counter = Counter()
     type_counter = Counter()
-    author_counter = Counter()
-    content_word_counter = []
+    domain_counter = Counter()
+    content_length = []
     # Iterate over all files:
-    for h5_filename in h5_filenames:
-        with h5py.File(h5_filename, 'r') as data_store:
-            rows, cols = data_store['data'].shape
-            total_rows += rows - 1
-            total_cols = cols
-            for i in tqdm(range(1, rows, ROWS_PR_ITERATION), desc='creating statistics', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
-                chunk = data_store['data'][i:i+ROWS_PR_ITERATION]
-                # Update counters:
-                content = decode_1d(chunk[:, COLS['content']])
-                # Count the occurrence of each word in the content list
-                for word in content:
-                     content_word_counter.append(len(word.split()))
-                # Concatenate with the existing DataFrame
-                domain_counter.update(chunk[:, COLS['domain']])
-                type_counter.update(chunk[:, COLS['type']])
-                author_counter.update(chunk[:, COLS['authors']])
-    # Decode counters:
-    domain_counter = decode_dict(domain_counter)
-    type_counter = decode_dict(type_counter)
-    author_counter = decode_dict(author_counter)
+    for chunk in tqdm(pd.read_csv(file, encoding='utf-8', chunksize=ROWS_PR_ITERATION),
+                      desc='creating statistics', unit='rows', unit_scale=ROWS_PR_ITERATION, colour=TQDM_COLOR):
+        rows, cols = chunk.shape
+        total_rows += rows
+        total_cols = cols
+        type_counter.update(chunk['type'].fillna('none').values.flatten())
+        domain_counter.update(chunk['domain'].fillna('none').values.flatten())
+        content_length.extend(chunk[content_label].apply(len))
     # Add statistics to dataframes:
     total_rows_df = pd.DataFrame([['Number of rows', total_rows]], columns=['Statistic', 'Count'])
     total_cols_df = pd.DataFrame([['Number of cols', total_cols]], columns=['Statistic', 'Count'])
     # Sort dataframes by count and reset index:
-    type_df = pd.DataFrame(list(type_counter.items()), columns = ['Types', 'Count']).sort_values(by='Count', ascending=False).reset_index(drop=True)
-    domain_df = pd.DataFrame(list(domain_counter.items()), columns = ['Domain', 'Count']).sort_values(by='Count', ascending=False).reset_index(drop=True)
-    author_df = pd.DataFrame(list(author_counter.items()), columns = ['Author', 'Count']).sort_values(by='Count', ascending=False).reset_index(drop=True)
-    content_counter_df = pd.DataFrame(content_word_counter, columns=['Count']).sort_values(by='Count', ascending=False)
-    # Print statistics to console:
-    print(total_rows_df)
-    print(total_cols_df)
-    print(type_df)
-    print(domain_df[:10]) # Only print the top 10 domains
-    print(author_df[:10]) # Only print the top 10 authors
-    print(content_counter_df[:10]) # Only print the top 10 words
+    type_df = pd.DataFrame(list(type_counter.items()), columns=['Types', 'Count']).sort_values(
+        by='Count', ascending=False).reset_index(drop=True)
+    domain_df = pd.DataFrame(list(domain_counter.items()), columns=['Domains', 'Count']).sort_values(
+        by='Count', ascending=False).reset_index(drop=True)
+    content_length_df = pd.DataFrame(content_length, columns=['Content_length'])
+    # Print statistics to console without index:
+    print(total_rows_df.to_string(index=False))
+    print(total_cols_df.to_string(index=False))
+    print(type_df.to_string(index=False))
+    # print(domain_df.to_string(index=False))
     # Save to file if output_file is specified:
     if output_path is not None:
         total_rows_df.to_csv(output_path+"rows_cols.csv", mode='w', index=False, header=True)
         total_cols_df.to_csv(output_path+"rows_cols.csv", mode='a', index=False, header=False)
-        type_df.to_csv(output_path+"rows_cols.csv", mode='w', index=False, header=True)
-        domain_df.to_csv(output_path, mode='w', index=False, header=True)
-        author_df.to_csv(output_path+"rows_cols.csv", mode='w', index=False, header=True)
-        content_counter_df.to_csv(output_path+"rows_cols.csv", mode='a', index=True, header=True)
+        type_df.to_csv(output_path+"types.csv", mode='w', index=False, header=True)
+        domain_df.to_csv(output_path+"domain.csv", mode='w', index=False, header=True)
+        content_length_df.to_csv(output_path+"content_length.csv",
+                                 mode='w', index=False, header=True)
         print("Statistics added to csv file")
 
 
@@ -190,12 +189,13 @@ def h5_to_csv(h5_filename: str, csv_filename: str):
             pd.DataFrame(data).to_csv(csv_filename, mode='a', header=None, index=False)
 
 
-def shuffle_h5(old_filename: str, new_filename: str):
-    with h5py.File(old_filename, 'r') as read, h5py.File(new_filename, 'w') as write:
+def shuffle_h5(filename: str, new_filename: str):
+    with h5py.File(filename, 'r') as read, h5py.File(new_filename, 'w') as write:
         rows = read['data'].shape[0]-1
         cols = read['data'].shape[1]
         # Create a dataset:
-        write_set = write.create_dataset('data', data=create_empty_string_array(cols), maxshape=(None, cols), dtype=h5py.string_dtype(encoding='utf-8'))
+        write_set = write.create_dataset('data', data=create_empty_string_array(
+            cols), maxshape=(None, cols), dtype=h5py.string_dtype(encoding='utf-8'))
         # Create a random array of the given size:
         random_arr = create_random_array(size=rows)
         # Set the header row:
@@ -207,9 +207,10 @@ def shuffle_h5(old_filename: str, new_filename: str):
             write_set[i] = read['data'][x]
 
 
-def run():        
+def run():
     choice = input("Press 's' for sample or 'l' for large dataset or 'x' to Exit: ")
     if choice == 'x':
+        print("exiting")
         return
     elif choice == 's':
         path = "../datasets/sample/"
@@ -222,15 +223,15 @@ def run():
     if choice == 'y':
         csv_to_h5(csv_filename=path+"raw.csv", h5_filename=path+"raw.h5")
     elif choice == 'x':
+        print("exiting")
         return
     # Copy the raw file to a new file:
-    copy_file(old_filename=path+"raw.h5", new_filename=path+"raw_copy.h5")
-    # Get the statistics:
-    statistics(path+"raw_copy.h5", output_file=path+"statistics.csv")
+    copy_file(filename=path+"raw.h5", new_filename=path+"raw_copy.h5")
     # Shuffle the data:
-    shuffle_h5(old_filename=path+"raw_copy.h5", new_filename=path+"shuffled.h5")
+    shuffle_h5(filename=path+"raw_copy.h5", new_filename=path+"shuffled.h5")
     # Convert h5 files to csv files:
     h5_to_csv(h5_filename=path+"shuffled.h5", csv_filename=path+"shuffled.csv")
+
 
 if __name__ == '__main__':
     run()
