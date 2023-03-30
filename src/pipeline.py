@@ -35,17 +35,17 @@ headers = {
 }
 
 labels: dict = {
-    'fake': False,
-    'conspiracy': False,
-    'junksci': False,
-    'hate': False,
-    'unreliable': False,
-    'bias': False,
-    'satire': False,
+    'fake': True,
+    'conspiracy': True,
+    'junksci': True,
+    'hate': True,
+    'unreliable': True,
+    'bias': True,
+    'satire': True,
     #'state': False,
-    'reliable': True,
-    'clickbait': True,
-    'political': True
+    'reliable': False,
+    'clickbait': False,
+    'political': False
 }
 
 ROWS_PR_ITERATION = 20000
@@ -466,19 +466,19 @@ class Print_content_to_csv(FunctionApplier):
 class Binary_labels_LIAR(FunctionApplier):
     def __init__(self, binary_labels = None):
         self.binary_labels: dict = {
-            'pants-fire': False,
-            'false': False,
-            'barely-true': False,
-            'half-true': True,
-            'mostly-true': True,
-            'True': True
+            'pants-fire': True,
+            'false': True,
+            'barely-true': True,
+            'half-true': False,
+            'mostly-true': False,
+            'True': False
         }
 
     def function_to_apply(self, cell):
         try:
             binary_label = self.binary_labels[cell]
         except:
-            binary_label = True
+            binary_label = False
         return binary_label
 
 class Binary_labels(FunctionApplier):
