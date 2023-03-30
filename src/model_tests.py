@@ -23,6 +23,7 @@ from keras_preprocessing.sequence import pad_sequences
 from keras_preprocessing.text import Tokenizer
 from time import time
 from sklearn.metrics import confusion_matrix
+import matplotlib.pyplot as plt
 
 def split_data(data, features, y, set="set", get_val=True):
     train = data[data[set] == 0]
@@ -63,7 +64,28 @@ def create_count_vector(X_train, X_val, X_test, X_liar):
             count_vectorizer.transform(X_test),
             count_vectorizer.transform(X_liar))
 
+def plot_history(history):
 
+    print(history.history.keys())
+    acc = history.history['accuracy']
+    val_acc = history.history['val_accuracy']
+    loss = history.history['loss']
+    val_loss = history.history['val_loss']
+    x = range(1, len(acc) + 1)
+
+    plt.figure(figsize=(12, 5))
+    plt.subplot(1, 2, 1)
+    plt.plot(x, acc, 'b', label='Training acc')
+    plt.plot(x, val_acc, 'r', label='Validation acc')
+    plt.title('Training and validation accuracy')
+    plt.legend()
+    plt.subplot(1, 2, 2)
+    plt.plot(x, loss, 'b', label='Training loss')
+    plt.plot(x, val_loss, 'r', label='Validation loss')
+    plt.title('Training and validation loss')
+    plt.legend()
+
+# plot_history(history)
 
 
 
