@@ -18,17 +18,17 @@ tqdm.pandas()
 
 
 labels: dict = {
-    'fake': False,
-    'conspiracy': False,
-    'junksci': False,
-    'hate': False,
-    'unreliable': False,
-    'bias': False,
-    'satire': False,
-    # 'state': False,
-    'reliable': True,
-    'clickbait': True,
-    'political': True
+    'fake': True,
+    'conspiracy': True,
+    'junksci': True,
+    'hate': True,
+    'unreliable': True,
+    'bias': True,
+    'satire': True,
+    #'state': False,
+    'reliable': False,
+    'clickbait': False,
+    'political': False
 }
 
 ROWS_PR_ITERATION = 50000
@@ -163,6 +163,11 @@ def get_dataframe_with_distribution(file,
     print("ERROR: not enough data to create sets")
     return data
 
+class Delete_nan(FunctionApplier):
+    def function_to_apply(self, content):
+        if type(content) != str:
+            return " "
+        return content
 
 class Debug(FunctionApplier):
     def __init__(self):
@@ -453,19 +458,19 @@ class Clean_id_LIAR(FunctionApplier):
 class Binary_labels_LIAR(FunctionApplier):
     def __init__(self, binary_labels=None):
         self.binary_labels: dict = {
-            'pants-fire': False,
-            'false': False,
-            'barely-true': False,
-            'half-true': True,
-            'mostly-true': True,
-            'True': True
+            'pants-fire': True,
+            'false': True,
+            'barely-true': True,
+            'half-true': False,
+            'mostly-true': False,
+            'True': False
         }
 
     def function_to_apply(self, cell):
         try:
             binary_label = self.binary_labels[cell]
         except:
-            binary_label = True
+            binary_label = False
         return binary_label
 
 
