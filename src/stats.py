@@ -70,6 +70,8 @@ class Statistics():
 
 
 class Fake_News_Corpus():
+    _initialized = False
+
     def __init__(self, data: pd.DataFrame, type_label: str = None, binary_type_label: str = None, content_label: str = None, domain_label: str = None,
                  sentence_analysis_label: str = None, type_colors: str = None):
         self.data = data
@@ -80,10 +82,10 @@ class Fake_News_Corpus():
         self.sentence_analysis_label = sentence_analysis_label
         self.type_colors = type_colors
         # Convert text-list-of-strins to list of strings
-        #self.data[content_label] = self.data[content_label].apply(literal_eval)
-        if sentence_analysis_label is not None:
+        if content_label is not None and not Fake_News_Corpus._initialized:
+            self.data[content_label] = self.data[content_label].apply(literal_eval)
+        if sentence_analysis_label is not None and not Fake_News_Corpus._initialized:
             self.data[sentence_analysis_label] = self.data[sentence_analysis_label].apply(literal_eval)
-
         # Colors:
         types = [
             'fake',
@@ -101,6 +103,7 @@ class Fake_News_Corpus():
         unknown_types = set(types)
         colors += tuple(['black'] * len(unknown_types))
         self.types_colors = {types[i]: colors[i] for i in range(len(types))}
+        Fake_News_Corpus._initialized = True
 
 
 class Statistics_Fake_News_Corpus(Statistics, Fake_News_Corpus):
@@ -190,27 +193,30 @@ class Statistics_Fake_News_Corpus(Statistics, Fake_News_Corpus):
         fig.tight_layout()
         plt.show()
 
-    def barplot_domain_to_label_contribution(self, threshold: float = 0, percentage: bool = True):
-        fig, ax = None, None  # initialize variables
+    def barplot_domain_to_label_contribution(self, threshold=0, percentage=True):
+        counts, percentages = None, None
         counts = self.fake_news.data.groupby([self.fake_news.domain_label, self.fake_news.type_label])[
             self.fake_news.content_label].count().unstack()
+        # Remove percentages lower than threshold:
         percentages = counts.apply(lambda x: x / x.sum() * 100)
-        percentages = percentages[percentages > threshold]
-        counts = counts[counts > threshold]
-        for type in list(percentages.columns):
-            percentages.sort_values(type, na_position='first', ascending=False, inplace=True)
-        color_list = [self.fake_news.types_colors[tp] for tp in percentages.columns]
+        print(len(percentages))
+        percentages = percentages[percentages >= threshold]
+        print(len(percentages))
+        for label in list(percentages.columns):
+            percentages.sort_values(label, na_position='first', ascending=False, inplace=True)
+        color_list = [self.fake_news.types_colors[label] for label in percentages.columns]
+        plot_title = f'Domain contribution to Label ( ≥ {threshold}%)' if percentage else f'Domain contribution to Label (top {threshold} most frequent)'
+        xlabel = '% of label' if percentage else '# of label'
+        fig, ax = plt.subplots(figsize=(10, 10))
         if percentage:
-            ax = percentages.plot(kind='barh', stacked=True, figsize=(10, 10), width=0.6, color=color_list, alpha=0.5)
-            ax.set_xlabel('% of label')
+            percentages.plot(kind='barh', stacked=True, width=0.6, color=color_list, alpha=0.5, ax=ax)
         else:
-            ax = counts.plot(kind='barh', stacked=True, figsize=(10, 10), width=0.6, color=color_list, alpha=0.5)
-            ax.set_xlabel('# of label')
+            counts[counts >= threshold].plot(kind='barh', stacked=True, width=0.6, color=color_list, alpha=0.5, ax=ax)
+        ax.set_xlabel(xlabel)
         ax.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
-        ax.set_yticklabels(ax.get_yticklabels(), fontsize=6)
+        ax.set_title(plot_title, fontsize=16)
 
-        ax.set_title(
-            f'Domain contribution to Label ( ≥ {threshold}%)' if percentage else f'domain contribution to label ( {threshold} most frequent)', fontsize=16)
+        # Show the plot
         plt.tight_layout()
         plt.show()
 
@@ -301,6 +307,8 @@ class Statistics_Fake_News_Corpus(Statistics, Fake_News_Corpus):
 
 
 class Liar():
+    _initialized = False
+
     def __init__(self, data: pd.DataFrame, type_label: str = None, binary_type_label: str = None, statement_label: str = None,
                  subjects_label: str = None, speaker_label: str = None, party_label: str = None, sentence_analysis_label: str = None, type_colors: str = None):
         self.data = data
@@ -311,13 +319,12 @@ class Liar():
         self.speaker_label = speaker_label
         self.party_label = party_label
         self.sentence_analysis_label = sentence_analysis_label
-
         # Convert text-list-of-strins to list of strings
-        self.data[statement_label] = self.data[statement_label].apply(literal_eval)
-        self.data[sentence_analysis_label] = self.data[sentence_analysis_label].apply(literal_eval)
-        # Replace empty values with 'None':
-        self.data[party_label] = self.data[party_label].fillna('none')
-
+        if not Liar._initialized:
+            self.data[statement_label] = self.data[statement_label].apply(literal_eval)
+            self.data[sentence_analysis_label] = self.data[sentence_analysis_label].apply(literal_eval)
+            # Replace empty values with 'None':
+            self.data[party_label] = self.data[party_label].fillna('none')
         types = [
             'pants-fire',
             'false',
