@@ -25,7 +25,7 @@ labels: dict = {
     'unreliable': True,
     'bias': True,
     'satire': True,
-    #'state': False,
+    # 'state': False,
     'reliable': False,
     'clickbait': False,
     'political': False
@@ -163,11 +163,13 @@ def get_dataframe_with_distribution(file,
     print("ERROR: not enough data to create sets")
     return data
 
+
 class Delete_nan(FunctionApplier):
     def function_to_apply(self, content):
         if type(content) != str:
             return " "
         return content
+
 
 class Debug(FunctionApplier):
     def __init__(self):
@@ -237,6 +239,7 @@ class Read_numpy_arr(FunctionApplier):
         sorted_freq_items = [x[0] for x in sorted_items if x[1] /
                              word_sum >= low and x[1] / word_sum <= high]
 
+
 class Get_vocabulary_size(FunctionApplier):
     def __init__(self):
         self.unique_words = Counter()
@@ -258,6 +261,7 @@ class Get_vocabulary_size(FunctionApplier):
                              word_sum >= low and x[1] / word_sum <= high]
 
         return sorted(sorted_freq_items)
+
 
 class Generate_unique_word_list(FunctionApplier):
     def __init__(self):
@@ -347,14 +351,6 @@ class Tokenizer(FunctionApplier):
 class Remove_stopwords(FunctionApplier):
     def __init__(self):
         self.stopwords = stopwords.words('english')
-
-    def function_to_apply(self, words):
-        return [w for w in words if not w in self.stopwords]
-
-
-class Remove_stopwords2(FunctionApplier):
-    def __init__(self):
-        self.stopwords = pd.read_csv("stopwords2.csv").values.flatten()
 
     def function_to_apply(self, words):
         return [w for w in words if not w in self.stopwords]
@@ -752,9 +748,12 @@ def run():
         print("Invalid choice - exiting")
         return
     fh.statistics(file=path+"shuffled.csv", output_path=path+"stat/orig/", content_label='content')
-    remove_unwanted_rows_and_cols(file=path+"shuffled.csv", new_file=path+"unwanted_removed.csv", remove_rows=True, remove_cols=True)
-    create_dataset(file=path+"unwanted_removed.csv", cleaned_file=path+"cleaned_file.csv", cleaned_file_with_sentence_analysis=path+"cleaned_file_with_sentence_analysis.csv")
-    fh.statistics(file=path+"cleaned_file_with_sentence_analysis.csv", output_path=path+"stat/cleaned_file_no_swords/", content_label='content_no_swords_combined')
+    remove_unwanted_rows_and_cols(file=path+"shuffled.csv", new_file=path +
+                                  "unwanted_removed.csv", remove_rows=True, remove_cols=True)
+    create_dataset(file=path+"unwanted_removed.csv", cleaned_file=path+"cleaned_file.csv",
+                   cleaned_file_with_sentence_analysis=path+"cleaned_file_with_sentence_analysis.csv")
+    fh.statistics(file=path+"cleaned_file_with_sentence_analysis.csv", output_path=path +
+                  "stat/cleaned_file_no_swords/", content_label='content_no_swords_combined')
 
 
 if __name__ == '__main__':
