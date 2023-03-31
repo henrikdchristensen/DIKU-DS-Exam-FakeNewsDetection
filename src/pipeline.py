@@ -31,7 +31,7 @@ labels: dict = {
     'political': False
 }
 
-ROWS_PR_ITERATION = 50000
+ROWS_PR_ITERATION = 500000
 TQDM_COLOR = 'magenta'
 DELETE_TOKEN = '<DELETE>'
 
