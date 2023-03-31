@@ -1,14 +1,18 @@
-# FakeNews
+# Fake News Corpus
 
 The overall goal of this project is to be able to detect fake news. For this, we have created and trained models to classify news articles.
 
-## Access the dataset
+## Access the Fake News Corpus dataset
 
 The dataset used in the project is scraped articles into a large .csv file (>32 GB, 8+ mio. rows). There exists also a sample .csv file, which only contains a small number of articles (250 rows).
 For the large dataset, all the chunks need to be downloaded, and 7-zip can be used to unpack the dataset.
 
 - Sample: https://raw.githubusercontent.com/several27/FakeNewsCorpus/master/news_sample.csv
 - Large: https://github.com/several27/FakeNewsCorpus/releases/tag/v1.0
+
+## Access the LIAR dataset
+
+https://paperswithcode.com/dataset/liar
 
 ## Getting started
 
@@ -45,12 +49,10 @@ For the large dataset, all the chunks need to be downloaded, and 7-zip can be us
    jupyter lab
    ```
 
-## Run in VS Code
-
-Nice-to-have extensions:
+## Nice-to-have extensions in VS Code
 
 - Python Extension Pack
-- Jupyter
+- Jupyter Notebook
 
 ## Enabling conda in Windows Powershell
 
@@ -88,32 +90,64 @@ The data set files should be placed in `datasets/large` and `datasets/sample`.
 
 #### _filehandling.py_
 
-This code overall creates a randomly sampled dataset from the raw dataset file. It has a function to just create one single random dataset file and a function to split the data set into training, validation, and testing dataset. These two functions have helper functions which for example remove unwanted rows, such as those with empty content or types which is not of interest.
+This Python module in overall creates a randomly sampled data set from the raw data set file. To achieve this the module have different helper functions. Fist of all the csv_to_h5() function is converting a csv file to h5 and a function to shuffle the entries in h5 format. Secondly a function to convert back again called h5_to_csv().
+
+The code (correct sequence of functions) to generate the randomly shuffled data set can be done by running the script:
+
+```powershell
+python pipeline.py
+```
+
+Where choices can be made to either generate a cleaned sample or cleaned large data set of a size specified.
 
 #### _pipeline.py_
 
-TODO
+This Python module contains the entire preprocessing pipeline. The different functionalities are structured in classes, which makes it possible to chain multiple classes. E.g. Clean_data(), Stem(), Remove_stopwords(), etc. In this way we can easily combine and test multiple preprocessing techniques. This module also contain the function get_dataframe_with_distribution(), where you can specify a distribution and a split (how train, validation and test classes should be split). In addition the module also contains classes that is used for statistics.
 
-#### _preprocessing.py_
+The code (correct sequence of functions) can be run by running the script:
 
-TODO
+```powershell
+python filehandling.py
+```
 
 #### _simple_model.py_
 
 TODO
 
-#### _models.py_
+#### _advanced_model.ipynb_
 
-TODO
+The jupyter notebook contains the code for testing and training different neural networks for the fake news detection.
 
-#### _book.ipynb_
+### _logistic_model.ipynb_
 
-TODO
+This Jupyter Notebook contains the code for testing and training different logistic and simple models. It uses extensively the model_tests.py for creating different vector representations and to get evaluation metrics of the different models.
 
-#### _main.py_
+### _model_tests.py_
 
-TODO
+This Python module contains functions to create different vector representations, such as count-vectors, td-idf vectors etc. It also has functions that should make it easier to test many different models and input representations. It also contain functions to find different evaluation metrics.
 
-### Tests
+### _liar.py_
 
-TODO
+This Python module contains the correct pipeline to generate a cleaned liar dataset.
+
+The code (correct sequence of functions) can be run by running the script:
+
+```powershell
+python liar.py
+```
+
+### _stats.py_
+
+This Python module contains the code for the statistics of the project.
+
+The Statistics class contains general functions for getting the data and plotting the data.
+
+The FakeNewsCorpus class contains the interface for getting the data from the Fake News Corpus dataset and plotting the data using the Statistics class.
+
+The Liar class contains the interface for getting the data from the Liar dataset and plotting the data using the Statistics class.
+
+The Statistics_FakeNewsCorpus_vs_Liar uses the FakeNewsCorpus and Liar classes to get the data and plot the data for the comparison between the two datasets.
+
+### _stats.ipynb_
+
+This Jupyter Notebook contains plot of the statistics of the project. It uses the stats.py file to get the data.

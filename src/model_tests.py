@@ -25,6 +25,7 @@ from time import time
 from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
 
+# Split the data into train, validation and test sets
 def split_data(data, features, y, set="set", get_val=True):
     train = data[data[set] == 0]
     val = data[data[set] == 1]
@@ -37,6 +38,7 @@ def split_data(data, features, y, set="set", get_val=True):
     return X_train, X_val, X_test, y_train, y_val, y_test
 
 
+# Create padded sequences that is used by the LSTM model
 def create_padded_sequences(X_train, X_val, X_test, X_liar, numwords=10000, maxlen=1000):
     tokenizer = Tokenizer(num_words=numwords, oov_token="<OOV>")
 
@@ -52,8 +54,9 @@ def create_padded_sequences(X_train, X_val, X_test, X_liar, numwords=10000, maxl
             pad_sequences(X_test_sequence, maxlen=maxlen, truncating="post"),
             pad_sequences(X_liar_sequence, maxlen=maxlen, truncating="post"))
 
+
+# create BoW representation
 def create_count_vector(X_train, X_val, X_test, X_liar):
-    # count vectri
     count_vectorizer = CountVectorizer(ngram_range=(1, 1)) # unigram
 
     # fit and transform train data to count vectorizer
@@ -64,6 +67,7 @@ def create_count_vector(X_train, X_val, X_test, X_liar):
             count_vectorizer.transform(X_test),
             count_vectorizer.transform(X_liar))
 
+# Create epoch diagram
 def plot_history(history):
 
     print(history.history.keys())
@@ -85,10 +89,7 @@ def plot_history(history):
     plt.title('Training and validation loss')
     plt.legend()
 
-# plot_history(history)
-
-
-
+# Creat tf-idf vectors
 def create_tdfidf_vector(X_train, X_val, X_test, X_liar, ngram_range=(1, 1)):
     # tfidf vector
     tfidf_vectorizer = TfidfVectorizer(ngram_range=ngram_range) # unigram
@@ -137,16 +138,13 @@ def create_vector_file(file, vec_funcs, X_train, X_val, X_test, X_liar, y_train,
         apply_vec_func(file, func, name, X_train, X_val, X_test, X_liar)
 
 
-# def create_vector_file_cols(file, x_cols, y_col, vec_funcs, out_file, set_col = "set"):
-#     data = pd.read_csv(file, usecols=x_cols + [y_col, set_col])
-#     print("csv read for file:", file)
-
-#     for i, col in enumerate(x_cols):
-#         print("Vectorizing column:", col)
-#         X_train, X_val, X_test, y_train, y_val, y_test = split_data(data, col, y_col, set=set_col)
-#         save_y = True if i == 0 else False
-#         create_vector_file(out_file, vec_funcs, X_train, X_val, X_test, y_train, y_val, y_test, save_y=save_y)
-
+# Create a vector file, form a list containing the following information:
+# file: file to save the vectors to
+# x_col: column name of the text data
+# y_col: column name of the labels
+# set_col: column name of the set information
+# vec_func: function to create the vectors
+# model: model to use
 def create_vectors_from_infolist(out_file, info_list, X_liar, y_liar, use_standard=True):
     for i, item in enumerate(info_list):
         if use_standard:
@@ -162,6 +160,7 @@ def create_vectors_from_infolist(out_file, info_list, X_liar, y_liar, use_standa
         append_y = False if i == 0 else True
         create_vector_file(out_file, [(vec_func, f'vector {i}')], X_train, X_val, X_test, X_liar, y_train, y_val, y_test, y_liar, save_y=True, append_y=append_y)
 
+# Test models and returns a dataframe with the results
 def try_models(models, X_train, y_train, predict_pairs, name):
     metrics = []
     for model in models:
@@ -217,7 +216,7 @@ def get_metrics(y_pred, y_test):
         "f1": f1_score(y_test, y_pred), 
     }
 
-
+# Class to memorize the (over many runs)
 class Test_statistic():
     def __init__(self):
         self.metrics = pd.DataFrame()
@@ -226,43 +225,13 @@ class Test_statistic():
         metric = try_models([model], X_train, y_train, predict_pairs, name)
         self.metrics = pd.concat([self.metrics, metric])
 
-
-# def test_vectors(models, vec_funcs, file, tests = None):
-#     if tests == None:
-#         tests = Test_statistic()
-#     with open(file, 'rb') as f:
-#         y_train, y_val, _ = (pickle.load(f), pickle.load(f), pickle.load(f))
-#         for _, name in vec_funcs:
-#             X_train, X_val, _ = (pickle.load(f), pickle.load(f), pickle.load(f))
-#             for model in models:
-#                 tests.test_baseline(X_train, X_val, y_train, y_val, model, name=name)
-#     return tests
-
-# def test_vectors_cols(file, models, vec_funcs_used, cols_in_file, test_col = None, test_vec = None, tests = None):
-#     if tests == None:
-#         tests = Test_statistic()
-#     with open(file, 'rb') as f:
-#         y_train, y_val, _ = (pickle.load(f), pickle.load(f), pickle.load(f))
-#         for col in cols_in_file:
-#             for _, name in vec_funcs_used:
-#                 X_train, X_val, _ = (pickle.load(f), pickle.load(f), pickle.load(f))
-
-#                 if test_col != None and col != test_col:
-#                     # skip if not test column
-#                     continue
-#                 if test_vec != None and name != test_vec:
-#                     # skip if not test vector
-#                     continue
-#                 if test_col != None and test_vec != None:
-#                     print("Testing")
-
-#                 for model in models:
-#                     if type(model) == tuple:
-#                         model, model_name = model
-#                         col = f"{col}_{model_name}"
-#                     tests.test_baseline(X_train, X_val, y_train, y_val, model, name=f"{col}_{name}")
-#     return tests
-
+# Tests the vectors that is saved in from_file. Which tests is specified in info_list containing the following information:
+# file: file to save the vectors to
+# x_col: column name of the text data
+# y_col: column name of the labels
+# set_col: column name of the set information
+# vec_func: function to create the vectors
+# model: model to usev
 def test_vectors_from_infolist(from_file, info_list, tests = None, use_standard=True):
     if tests == None:
         tests = Test_statistic()

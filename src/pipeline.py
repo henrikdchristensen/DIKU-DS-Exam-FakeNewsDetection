@@ -9,8 +9,6 @@ from tqdm import tqdm
 from time import time
 from ast import literal_eval
 import numpy as np
-from sklearn.preprocessing import normalize
-import bisect
 import filehandling as fh
 from textblob import TextBlob
 

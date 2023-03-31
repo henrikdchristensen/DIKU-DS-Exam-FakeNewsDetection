@@ -1,21 +1,20 @@
+Total:
+count    1000000.000000
+mean         470.120974
+std          660.511689
+min            4.000000
+max        33936.000000
+
 Reliable:
 count    522475.000000
-mean        303.822834
-std         362.970873
-min           2.000000
-25%          98.000000
-50%         224.000000
-75%         404.000000
-max       18230.000000
-Name: content_no_swords_stemmed, dtype: float64
+mean        511.707739
+std         619.879085
+min           4.000000
+max       33936.000000
 
 Fake:
 count    477525.000000
-mean        242.238614
-std         405.826387
-min           0.000000
-25%          29.000000
-50%         115.000000
-75%         305.000000
-max       16043.000000
-Name: content_no_swords_stemmed, dtype: float64
+mean        424.619597
+std         699.454659
+min           6.000000
+max       18941.000000

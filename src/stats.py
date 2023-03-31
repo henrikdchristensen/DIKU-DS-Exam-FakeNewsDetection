@@ -72,12 +72,13 @@ class Statistics():
 class FakeNewsCorpus(Statistics):
     _initialized = False
 
-    def __init__(self, data: pd.DataFrame, type_label: str = None, binary_type_label: str = None, content_label: str = None, domain_label: str = None, sentence_analysis_label: str = None):
+    def __init__(self, data: pd.DataFrame, type_label: str = None, binary_type_label: str = None, raw_content_label: str = None, content_label: str = None, domain_label: str = None, sentence_analysis_label: str = None):
         self.data = data
         self.stat = Statistics()
         self.type_label = type_label
         self.binary_type_label = binary_type_label
         self.content_label = content_label
+        self.raw_content_label = raw_content_label
         self.domain_label = domain_label
         self.sentence_analysis_label = sentence_analysis_label
         # Convert text-list-of-strins to list of strings
@@ -123,9 +124,9 @@ class FakeNewsCorpus(Statistics):
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7, 4))
 
         true = self.data[self.data[self.binary_type_label]
-                                   == False][self.content_label].apply(len)
+                                   == False][self.raw_content_label].apply(lambda x: len(x.split()))
         fake = self.data[self.data[self.binary_type_label]
-                                   == True][self.content_label].apply(len)
+                                   == True][self.raw_content_label].apply(lambda x: len(x.split()))
         data = {"Reliable": true, "Fake": fake}
         self.stat.boxplot_data1_vs_data2(data=data, ylabel='# of words', ax=ax1, title='with outliers')
 
@@ -159,9 +160,9 @@ class FakeNewsCorpus(Statistics):
         plt.show()
 
     def word_frequency(self):
-        print(f'\nTotal:\n{self.data[self.content_label].apply(len).describe()}')
-        print(f'\nReliable:\n{self.data[self.data[self.binary_type_label] == False][self.content_label].apply(len).describe()}')
-        print(f'\nFake:\n{self.data[self.data[self.binary_type_label] == True][self.content_label].apply(len).describe()}')
+        print(f'\nTotal:\n{self.data[self.raw_content_label].apply(lambda x: len(x.split())).describe()}')
+        print(f'\nReliable:\n{self.data[self.data[self.binary_type_label] == False][self.raw_content_label].apply(lambda x: len(x.split())).describe()}')
+        print(f'\nFake:\n{self.data[self.data[self.binary_type_label] == True][self.raw_content_label].apply(lambda x: len(x.split())).describe()}')
 
     def barplot_type(self, percentage: bool = True, ax=None, title=None):
         types = self.data[self.type_label].explode().tolist()
@@ -367,23 +368,27 @@ class FakeNewsCorpus(Statistics):
 class Liar(Statistics):
     _initialized = False
 
-    def __init__(self, data: pd.DataFrame, type_label: str = None, binary_type_label: str = None, statement_label: str = None,
+    def __init__(self, data: pd.DataFrame, type_label: str = None, binary_type_label: str = None, statement_label: str = None, raw_statement_label: str = None,
                  subjects_label: str = None, speaker_label: str = None, party_label: str = None, sentence_analysis_label: str = None):
         self.data = data
         self.stat = Statistics()
         self.type_label = type_label
         self.binary_type_label = binary_type_label
         self.statement_label = statement_label
+        self.raw_statement_label = raw_statement_label
         self.subjects_label = subjects_label
         self.speaker_label = speaker_label
         self.party_label = party_label
         self.sentence_analysis_label = sentence_analysis_label
         # Convert text-list-of-strins to list of strings
         if not Liar._initialized:
-            self.data[statement_label] = self.data[statement_label].apply(literal_eval)
-            self.data[sentence_analysis_label] = self.data[sentence_analysis_label].apply(literal_eval)
+            if statement_label is not None:
+                self.data[statement_label] = self.data[statement_label].apply(literal_eval)
+            if sentence_analysis_label is not None:
+                self.data[sentence_analysis_label] = self.data[sentence_analysis_label].apply(literal_eval)
             # Replace empty values with 'None':
-            self.data[party_label] = self.data[party_label].fillna('none')
+            if party_label is not None:
+                self.data[party_label] = self.data[party_label].fillna('none')
         types = [
             'pants-fire',
             'false',
@@ -400,11 +405,12 @@ class Liar(Statistics):
         colors += tuple(['black'] * len(unknown_types))  # add black color for other unknown types
         # Create a dictionary mapping each type to its assigned color
         self.types_colors = {types[i]: colors[i] for i in range(len(types))}
+        Liar._initialized = True
 
     def word_frequency(self):
-        print(f'\nTotal:\n{self.data[self.statement_label].apply(len).describe()}')
-        print(f'\nReliable:\n{self.data[self.data[self.binary_type_label] == False][self.statement_label].apply(len).describe()}')
-        print(f'\nFake:\n{self.data[self.data[self.binary_type_label] == True][self.statement_label].apply(len).describe()}')
+        print(f'\nTotal:\n{self.data[self.raw_statement_label].apply(lambda x: len(x.split())).describe()}')
+        print(f'\nReliable:\n{self.data[self.data[self.binary_type_label] == False][self.raw_statement_label].apply(lambda x: len(x.split())).describe()}')
+        print(f'\nFake:\n{self.data[self.data[self.binary_type_label] == True][self.raw_statement_label].apply(lambda x: len(x.split())).describe()}')
         
     def barplot_type(self, percentage: bool = True, ax=None, title='Label distribution'):
         types = self.data[self.type_label].explode().tolist()
@@ -494,8 +500,8 @@ class Statistics_FakeNewsCorpus_vs_Liar(Statistics):
 
     def boxplot_word_frequency(self):
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7, 5))
-        fake_news = self.fake_news.data[self.fake_news.content_label].apply(len)
-        liar = self.liar.data[self.liar.statement_label].apply(len)
+        fake_news = self.fake_news.data[self.fake_news.raw_content_label].apply(lambda x: len(x.split()))
+        liar = self.liar.data[self.liar.raw_statement_label].apply(lambda x: len(x.split()))
         data = {"FakeNewsCorpus": fake_news, "LIAR": liar}
         self.stat.boxplot_data1_vs_data2(data=data, showfliers=True, colors=['plum', 'yellowgreen'], ylabel='# of words', ax=ax1, title="With outliers")
         self.stat.boxplot_data1_vs_data2(data=data, showfliers=False, colors=['plum', 'yellowgreen'], ylabel='# of words', ax=ax2, title="Without outliers")
