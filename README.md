@@ -110,10 +110,6 @@ The code (correct sequence of functions) can be run by running the script:
 python filehandling.py
 ```
 
-#### _simple_model.py_
-
-TODO
-
 #### _advanced_model.ipynb_
 
 The jupyter notebook contains the code for testing and training different neural networks for the fake news detection.
