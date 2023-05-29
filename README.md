@@ -1,4 +1,4 @@
-# Fake News Corpus
+# Fake News Detection
 
 The overall goal of this project is to be able to detect fake news. For this, we have created and trained models to classify news articles.
 
